@@ -145,10 +145,10 @@ INSERT INTO public.amenities (id, name, slug, bucket, sort_order) VALUES
   ('a0000001-0001-4001-8001-000000000007', 'Apple Pay / Google Pay', 'apple-pay-google-pay', 'global', 7),
   ('a0000001-0001-4001-8001-000000000008', 'Cash Only', 'cash-only', 'global', 8),
   ('a0000001-0001-4001-8001-000000000009', 'Financing Available', 'financing-available', 'global', 9),
-  ('a0000001-0001-4001-8001-000000010', 'Wheelchair Accessible', 'wheelchair-accessible', 'global', 10),
-  ('a0000001-0001-4001-8001-000000011', 'Handicap Parking', 'handicap-parking', 'global', 11),
-  ('a0000001-0001-4001-8001-000000012', 'Family Friendly', 'family-friendly', 'global', 12),
-  ('a0000001-0001-4001-8001-000000013', 'Pet Friendly', 'pet-friendly', 'global', 13)
+  ('a0000001-0001-4001-8001-000000000010', 'Wheelchair Accessible', 'wheelchair-accessible', 'global', 10),
+  ('a0000001-0001-4001-8001-000000000011', 'Handicap Parking', 'handicap-parking', 'global', 11),
+  ('a0000001-0001-4001-8001-000000000012', 'Family Friendly', 'family-friendly', 'global', 12),
+  ('a0000001-0001-4001-8001-000000000013', 'Pet Friendly', 'pet-friendly', 'global', 13)
 ON CONFLICT (slug) DO UPDATE SET name = EXCLUDED.name, bucket = EXCLUDED.bucket, sort_order = EXCLUDED.sort_order;
 
 -- EAT (10)
