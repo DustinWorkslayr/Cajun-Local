@@ -11,9 +11,10 @@ class FavoritesScope extends InheritedWidget {
   final ValueNotifier<Set<String>> favoriteIds;
 
   static ValueNotifier<Set<String>> of(BuildContext context) {
-    final scope = context.dependOnInheritedWidgetOfExactType<FavoritesScope>();
-    assert(scope != null, 'FavoritesScope not found. Wrap app with FavoritesScope.');
-    return scope!.favoriteIds;
+    final element = context.getElementForInheritedWidgetOfExactType<FavoritesScope>();
+    assert(element != null, 'FavoritesScope not found. Wrap app with FavoritesScope.');
+    context.dependOnInheritedElement(element!);
+    return (element.widget as FavoritesScope).favoriteIds;
   }
 
   @override

@@ -1,0 +1,33 @@
+[functions.ask-local]
+verify_jwt = true
+
+[functions.send-email]
+verify_jwt = true
+
+[functions.send-templated-email]
+verify_jwt = true
+
+[functions.process-email-queue]
+verify_jwt = false
+
+[functions.directory-sync]
+enabled = true
+verify_jwt = true
+import_map = "./functions/directory-sync/deno.json"
+# Uncomment to specify a custom file path to the entrypoint.
+# Supported file extensions are: .ts, .js, .mjs, .jsx, .tsx
+entrypoint = "./functions/directory-sync/index.ts"
+# Specifies static files to be bundled with the function. Supports glob patterns.
+# For example, if you want to serve static HTML pages in your function:
+# static_files = [ "./functions/directory-sync/*.html" ]
+
+[functions.blog-sync]
+enabled = true
+verify_jwt = true
+import_map = "./functions/blog-sync/deno.json"
+# Uncomment to specify a custom file path to the entrypoint.
+# Supported file extensions are: .ts, .js, .mjs, .jsx, .tsx
+entrypoint = "./functions/blog-sync/index.ts"
+# Specifies static files to be bundled with the function. Supports glob patterns.
+# For example, if you want to serve static HTML pages in your function:
+# static_files = [ "./functions/blog-sync/*.html" ]

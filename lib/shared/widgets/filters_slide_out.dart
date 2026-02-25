@@ -1,19 +1,27 @@
 import 'package:flutter/material.dart';
 import 'package:my_app/core/data/mock_data.dart';
+import 'package:my_app/shared/widgets/app_buttons.dart';
 
 /// Slide-out panel from the right: Filters & Categories with search,
 /// expandable categories with multiselect subcategories, and parish selector.
+/// [totalCount] and [categories] are optional; when null, 0 and [] are used (no mock data).
 class FiltersSlideOut extends StatefulWidget {
   const FiltersSlideOut({
     super.key,
     required this.initialFilters,
     required this.onApply,
     required this.onClose,
+    required this.parishes,
+    this.totalCount,
+    this.categories,
   });
 
   final ListingFilters initialFilters;
   final void Function(ListingFilters filters) onApply;
   final VoidCallback onClose;
+  final List<MockParish> parishes;
+  final int? totalCount;
+  final List<MockCategory>? categories;
 
   @override
   State<FiltersSlideOut> createState() => _FiltersSlideOutState();
@@ -53,7 +61,8 @@ class _FiltersSlideOutState extends State<FiltersSlideOut>
     super.dispose();
   }
 
-  int get _totalCount => MockData.listings.length;
+  int get _totalCount => widget.totalCount ?? 0;
+  List<MockCategory> get _categories => widget.categories ?? [];
 
   @override
   Widget build(BuildContext context) {
@@ -122,26 +131,21 @@ class _FiltersSlideOutState extends State<FiltersSlideOut>
                               Row(
                                 children: [
                                   Expanded(
-                                    child: OutlinedButton(
+                                    child: AppOutlinedButton(
                                       onPressed: _clearFilters,
-                                      style: OutlinedButton.styleFrom(
-                                        padding: const EdgeInsets.symmetric(vertical: 14),
-                                      ),
                                       child: const Text('Clear all'),
                                     ),
                                   ),
                                   const SizedBox(width: 12),
                                   Expanded(
                                     flex: 2,
-                                    child: FilledButton(
+                                    child: AppPrimaryButton(
                                       onPressed: () {
                                         widget.onApply(_filters.copyWith(
                                           searchQuery: _searchController.text.trim(),
                                         ));
                                       },
-                                      style: FilledButton.styleFrom(
-                                        padding: const EdgeInsets.symmetric(vertical: 14),
-                                      ),
+                                      expanded: false,
                                       child: const Text('Apply filters'),
                                     ),
                                   ),
@@ -217,7 +221,7 @@ class _FiltersSlideOutState extends State<FiltersSlideOut>
             _expandedCategoryId = null;
           }),
         ),
-        ...MockData.categories.map((cat) {
+        ..._categories.map((cat) {
           final isExpanded = _expandedCategoryId == cat.id;
           final isSelected = _filters.categoryId == cat.id;
           return Column(
@@ -262,7 +266,7 @@ class _FiltersSlideOutState extends State<FiltersSlideOut>
     return Wrap(
       spacing: 8,
       runSpacing: 8,
-      children: MockData.parishes.map((p) {
+      children: widget.parishes.map((p) {
         final selected = _filters.parishIds.contains(p.id);
         return FilterChip(
           label: Text(p.name),

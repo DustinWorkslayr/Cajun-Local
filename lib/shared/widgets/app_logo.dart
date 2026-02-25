@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 class AppLogo extends StatelessWidget {
   const AppLogo({
     super.key,
-    this.height = 36,
+    this.height = 44,
     this.fit = BoxFit.contain,
   });
 
@@ -19,7 +19,7 @@ class AppLogo extends StatelessWidget {
       _assetPath,
       height: height,
       fit: fit,
-      errorBuilder: (_, __, ___) => Text(
+      errorBuilder: (_, _, _) => Text(
         'Cajun Local',
         style: Theme.of(context).textTheme.titleLarge?.copyWith(
               fontWeight: FontWeight.w600,

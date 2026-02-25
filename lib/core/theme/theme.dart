@@ -1,16 +1,48 @@
 import 'package:flutter/material.dart';
 
 /// Cajun Local app theme using Material 3.
-/// Colors aligned with brand logo: red (Cajun), dark blue (Local), yellow/gold accent.
+/// Navy, red, gold — warm, community-driven, regionally proud.
 class AppTheme {
   AppTheme._();
 
-  // Logo palette
-  static const Color _cajunRed = Color(0xFFBF0A30);       // Vibrant red (Cajun text / pin)
-  static const Color _localBlue = Color(0xFF002868);      // Deep navy (Local text / pin)
-  static const Color _accentGold = Color(0xFFF4C430);     // Yellow/gold (star, castle)
+  /// Tablet breakpoint (width): use multi-column layouts above this.
+  static const double breakpointTablet = 600;
+  /// Max content width for centered sections on large screens.
+  static const double sectionMaxWidth = 800;
+
+  // Brand palette (UI spec: navy primary, gold accent, red limited)
+  static const Color _cajunRed = Color(0xFFBF0A30);   // Cajun / primary
+  static const Color _localBlue = Color(0xFF002868);  // Navy / secondary
+  static const Color _accentGold = Color(0xFFF4C430); // Gold accent
   static const Color _black = Color(0xFF1A1A1A);
   static const Color _white = Color(0xFFFFFFFF);
+
+  /// Spec colors: navy primary, gold highlight, red accent (limited), off-white background.
+  static const Color specNavy = Color(0xFF0B2A55);
+  static const Color specGold = Color(0xFFF4B400);
+  static const Color specRed = Color(0xFFC62828);
+  static const Color specOffWhite = Color(0xFFF8F6F2);
+  static const Color specWhite = Color(0xFFFFFFFF);
+
+  static TextTheme _textTheme(Color onSurface, Color onSurfaceVariant) {
+    return TextTheme(
+      displayLarge: TextStyle(fontSize: 32, fontWeight: FontWeight.w800, letterSpacing: -0.8, color: onSurface, height: 1.15),
+      displayMedium: TextStyle(fontSize: 28, fontWeight: FontWeight.w700, letterSpacing: -0.5, color: onSurface, height: 1.2),
+      displaySmall: TextStyle(fontSize: 24, fontWeight: FontWeight.w700, color: onSurface, height: 1.25),
+      headlineLarge: TextStyle(fontSize: 22, fontWeight: FontWeight.w700, color: onSurface, height: 1.25),
+      headlineMedium: TextStyle(fontSize: 20, fontWeight: FontWeight.w600, color: onSurface, height: 1.3),
+      headlineSmall: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: onSurface, height: 1.3),
+      titleLarge: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: onSurface, height: 1.35),
+      titleMedium: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: onSurface, height: 1.4),
+      titleSmall: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: onSurface, height: 1.4),
+      bodyLarge: TextStyle(fontSize: 16, fontWeight: FontWeight.w400, color: onSurface, height: 1.5),
+      bodyMedium: TextStyle(fontSize: 14, fontWeight: FontWeight.w400, color: onSurface, height: 1.45),
+      bodySmall: TextStyle(fontSize: 12, fontWeight: FontWeight.w400, color: onSurfaceVariant, height: 1.4),
+      labelLarge: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: onSurface, height: 1.3),
+      labelMedium: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: onSurfaceVariant, height: 1.3),
+      labelSmall: TextStyle(fontSize: 11, fontWeight: FontWeight.w500, color: onSurfaceVariant, height: 1.3, letterSpacing: 0.5),
+    );
+  }
 
   static ThemeData get light {
     const colorScheme = ColorScheme.light(
@@ -38,6 +70,7 @@ class AppTheme {
     return ThemeData(
       useMaterial3: true,
       colorScheme: colorScheme,
+      textTheme: _textTheme(colorScheme.onSurface, colorScheme.onSurfaceVariant),
       fontFamily: 'Roboto',
       appBarTheme: AppBarTheme(
         centerTitle: true,
@@ -67,12 +100,29 @@ class AppTheme {
       ),
       filledButtonTheme: FilledButtonThemeData(
         style: FilledButton.styleFrom(
-          backgroundColor: _cajunRed,
-          foregroundColor: _white,
+          backgroundColor: specGold,
+          foregroundColor: specNavy,
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+          minimumSize: const Size(88, 48),
+          elevation: 0,
+          shadowColor: Colors.transparent,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
           ),
+        ),
+      ),
+      outlinedButtonTheme: OutlinedButtonThemeData(
+        style: OutlinedButton.styleFrom(
+          foregroundColor: specNavy,
+          side: BorderSide(color: specNavy.withValues(alpha: 0.6), width: 1.5),
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        ),
+      ),
+      textButtonTheme: TextButtonThemeData(
+        style: TextButton.styleFrom(
+          foregroundColor: specNavy,
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         ),
       ),
       inputDecorationTheme: InputDecorationTheme(
@@ -109,6 +159,7 @@ class AppTheme {
     return ThemeData(
       useMaterial3: true,
       colorScheme: colorScheme,
+      textTheme: _textTheme(colorScheme.onSurface, colorScheme.onSurfaceVariant),
       fontFamily: 'Roboto',
       appBarTheme: AppBarTheme(
         centerTitle: true,
