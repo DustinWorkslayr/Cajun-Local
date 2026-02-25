@@ -167,11 +167,11 @@ class _HomeScreenState extends State<HomeScreen> {
                   child: DismissibleAlertBanner(horizontalPadding: padding, compact: true),
                 ),
               ),
-              // ——— Hero: logo, tagline, primary CTAs ———
+              // ——— Hero: logo, tagline, primary CTAs (blue card; 23px narrower to match design) ———
               SliverToBoxAdapter(
                 child: AnimatedEntrance(
                   child: Padding(
-                    padding: EdgeInsets.fromLTRB(padding.left, 8, padding.right, _sectionSpacing),
+                    padding: EdgeInsets.fromLTRB(padding.left + 11.5, 8, padding.right + 11.5, _sectionSpacing),
                     child: _HomeHero(
                       onExplore: () {
                         if (widget.onNavigateToExplore != null) {

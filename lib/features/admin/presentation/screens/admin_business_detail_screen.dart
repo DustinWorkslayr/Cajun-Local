@@ -264,10 +264,14 @@ class _OverviewTabState extends State<_OverviewTab> {
   String? _selectedPrimaryParishId;
   Set<String> _selectedServiceParishIds = {};
 
+  /// Admin can change listing status; synced from [widget.business] when it updates.
+  late String _selectedStatus;
+
   @override
   void initState() {
     super.initState();
     final b = widget.business;
+    _selectedStatus = b.status;
     _nameController = TextEditingController(text: b.name);
     _addressController = TextEditingController(text: b.address ?? '');
     _cityController = TextEditingController(text: b.city ?? '');
@@ -302,6 +306,7 @@ class _OverviewTabState extends State<_OverviewTab> {
   void didUpdateWidget(covariant _OverviewTab oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.business.id != widget.business.id) return;
+    _selectedStatus = widget.business.status;
     if (oldWidget.business.categoryId != widget.business.categoryId ||
         oldWidget.business.name != widget.business.name) {
       _syncCategoryFromBusiness();
@@ -826,53 +831,43 @@ class _OverviewTabState extends State<_OverviewTab> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Status',
+                  'Listing status',
                   style: theme.textTheme.titleMedium?.copyWith(
                     fontWeight: FontWeight.w700,
                     color: AppTheme.specNavy,
                   ),
                 ),
-                const SizedBox(height: 8),
-                Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                      decoration: BoxDecoration(
-                        color: _statusColor(widget.business.status).withValues(alpha: 0.15),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Text(
-                        widget.business.status,
-                        style: theme.textTheme.labelLarge?.copyWith(
-                          color: _statusColor(widget.business.status),
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
+                const SizedBox(height: 12),
+                DropdownButtonFormField<String>(
+                  value: _selectedStatus,
+                  decoration: InputDecoration(
+                    filled: true,
+                    fillColor: AppTheme.specOffWhite,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(color: AppTheme.specNavy.withValues(alpha: 0.2)),
                     ),
-                  ],
-                ),
-                if (widget.business.status == 'pending') ...[
-                  const SizedBox(height: 16),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: AppSecondaryButton(
-                          onPressed: _saving ? null : () => widget.onStatusChanged('approved'),
-                          icon: const Icon(Icons.check_rounded, size: 20),
-                          label: const Text('Approve'),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: AppDangerOutlinedButton(
-                          onPressed: _saving ? null : () => widget.onStatusChanged('rejected'),
-                          icon: const Icon(Icons.close_rounded, size: 20),
-                          label: const Text('Reject'),
-                        ),
-                      ),
-                    ],
                   ),
-                ],
+                  items: const [
+                    DropdownMenuItem(value: 'pending', child: Text('Pending')),
+                    DropdownMenuItem(value: 'approved', child: Text('Approved')),
+                    DropdownMenuItem(value: 'rejected', child: Text('Rejected')),
+                  ],
+                  onChanged: (v) {
+                    if (v != null) setState(() => _selectedStatus = v);
+                  },
+                ),
+                const SizedBox(height: 12),
+                SizedBox(
+                  width: double.infinity,
+                  child: AppSecondaryButton(
+                    onPressed: (_saving || _selectedStatus == widget.business.status)
+                        ? null
+                        : () => widget.onStatusChanged(_selectedStatus),
+                    icon: const Icon(Icons.check_circle_outline_rounded, size: 20),
+                    label: Text(_selectedStatus == widget.business.status ? 'No change' : 'Update status'),
+                  ),
+                ),
               ],
             ),
           ),
@@ -887,17 +882,6 @@ class _OverviewTabState extends State<_OverviewTab> {
         ],
       ),
     );
-  }
-
-  Color _statusColor(String status) {
-    switch (status) {
-      case 'approved':
-        return Colors.green;
-      case 'rejected':
-        return AppTheme.specRed;
-      default:
-        return AppTheme.specGold;
-    }
   }
 }
 
@@ -1634,11 +1618,11 @@ class _DealsTabState extends State<_DealsTab> {
                     padding: const EdgeInsets.all(16),
                     child: InkWell(
                       onTap: () {
-                        Navigator.of(context).push(
-                          MaterialPageRoute<void>(
-                            builder: (_) => AdminDealDetailScreen(dealId: deal.id),
-                          ),
-                        ).then((_) => _load());
+                        AdminDealDetailSlideOut.show(
+                          context,
+                          dealId: deal.id,
+                          onUpdated: _load,
+                        );
                       },
                       borderRadius: BorderRadius.circular(_cardRadius),
                       child: Column(
@@ -2195,6 +2179,14 @@ class _SubscriptionTabState extends State<_SubscriptionTab> {
                     color: AppTheme.specNavy,
                   ),
                 ),
+                if (_plans.isEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 12),
+                    child: Text(
+                      'No plans in the database. Run migrations and ensure business_plans is seeded.',
+                      style: theme.textTheme.bodySmall?.copyWith(color: AppTheme.specNavy.withValues(alpha: 0.8)),
+                    ),
+                  ),
                 const SizedBox(height: 16),
                 Text(
                   'Plan',
@@ -2205,7 +2197,10 @@ class _SubscriptionTabState extends State<_SubscriptionTab> {
                 ),
                 const SizedBox(height: 6),
                 DropdownButtonFormField<String>(
-                  initialValue: _plans.any((p) => p.id == _selectedPlanId) ? _selectedPlanId : null,
+                  value: (_selectedPlanId != null && _plans.any((p) => p.id == _selectedPlanId))
+                      ? _selectedPlanId
+                      : null,
+                  hint: Text(_plans.isEmpty ? 'No plans' : 'Select plan', style: TextStyle(color: AppTheme.specNavy)),
                   decoration: InputDecoration(
                     border: border,
                     enabledBorder: border,

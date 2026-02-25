@@ -33,13 +33,14 @@ class _AdminAddBusinessScreenState extends State<AdminAddBusinessScreen> {
   final _phoneController = TextEditingController();
   final _websiteController = TextEditingController();
 
-  /// Parish (required): businesses can only be in allowed parishes.
-  MockParish? _selectedParish;
+  /// Parish (required): businesses can only be in allowed parishes. Store id so dropdown value is always in items.
+  String? _selectedParishId;
   List<MockParish> _parishes = [];
 
   List<BusinessCategory> _categories = [];
   List<Subcategory> _subcategories = [];
-  BusinessCategory? _selectedCategory;
+  /// Store category id so dropdown value is always in items (avoids red screen).
+  String? _selectedCategoryId;
   final Set<String> _selectedSubcategoryIds = {};
   bool _categoriesLoading = true;
   bool _parishesLoading = true;
@@ -51,15 +52,19 @@ class _AdminAddBusinessScreenState extends State<AdminAddBusinessScreen> {
 
   /// CSV bulk import is admin-only.
   bool? _isAdmin;
+  bool _initialLoadDone = false;
 
   @override
-  void initState() {
-    super.initState();
-    _loadCategories();
-    _loadParishes();
-    AppDataScope.of(context).authRepository.isAdmin().then((v) {
-      if (mounted) setState(() => _isAdmin = v);
-    });
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!_initialLoadDone) {
+      _initialLoadDone = true;
+      _loadCategories();
+      _loadParishes();
+      AppDataScope.of(context).authRepository.isAdmin().then((v) {
+        if (mounted) setState(() => _isAdmin = v);
+      });
+    }
   }
 
   Future<void> _loadParishes() async {
@@ -102,9 +107,15 @@ class _AdminAddBusinessScreenState extends State<AdminAddBusinessScreen> {
     }
   }
 
-  Future<void> _onCategoryChanged(BusinessCategory? category) async {
+  Future<void> _onCategoryChanged(String? categoryId) async {
+    BusinessCategory? category;
+    if (categoryId != null) {
+      for (final c in _categories) {
+        if (c.id == categoryId) { category = c; break; }
+      }
+    }
     setState(() {
-      _selectedCategory = category;
+      _selectedCategoryId = categoryId;
       _selectedSubcategoryIds.clear();
       _subcategories = [];
       _subcategoriesLoading = category != null;
@@ -149,14 +160,14 @@ class _AdminAddBusinessScreenState extends State<AdminAddBusinessScreen> {
 
   Future<void> _submitSingle() async {
     if (!_formKey.currentState!.validate()) return;
-    if (_selectedCategory == null) {
+    if (_selectedCategoryId == null) {
       setState(() {
         _singleMessage = 'Please select a category.';
         _singleSuccess = false;
       });
       return;
     }
-    if (_selectedParish == null) {
+    if (_selectedParishId == null) {
       setState(() {
         _singleMessage = 'Please select a parish.';
         _singleSuccess = false;
@@ -177,14 +188,18 @@ class _AdminAddBusinessScreenState extends State<AdminAddBusinessScreen> {
       _singleLoading = true;
     });
     try {
+      MockParish? selectedParish;
+      for (final p in _parishes) {
+        if (p.id == _selectedParishId) { selectedParish = p; break; }
+      }
       final businessRepo = BusinessRepository();
       final businessId = await businessRepo.insertBusiness(
         name: _nameController.text.trim(),
-        categoryId: _selectedCategory!.id,
+        categoryId: _selectedCategoryId!,
         createdBy: uid,
         address: _addressController.text.trim().isEmpty ? null : _addressController.text.trim(),
-        city: _addressController.text.trim().isEmpty ? _selectedParish?.name : null,
-        parish: _selectedParish?.id,
+        city: _addressController.text.trim().isEmpty ? selectedParish?.name : null,
+        parish: _selectedParishId,
         state: _kStateLouisiana,
         phone: _phoneController.text.trim().isEmpty ? null : _phoneController.text.trim(),
         website: _websiteController.text.trim().isEmpty ? null : _websiteController.text.trim(),
@@ -317,8 +332,10 @@ class _AdminAddBusinessScreenState extends State<AdminAddBusinessScreen> {
                           padding: EdgeInsets.symmetric(vertical: 12),
                           child: Center(child: CircularProgressIndicator(color: AppTheme.specNavy)),
                         )
-                      :                       DropdownButtonFormField<MockParish>(
-                          value: _selectedParish,
+                      :                       DropdownButtonFormField<String>(
+                          value: (_selectedParishId != null && _parishes.any((p) => p.id == _selectedParishId))
+                              ? _selectedParishId
+                              : null,
                           decoration: InputDecoration(
                             labelText: 'Parish',
                             filled: true,
@@ -331,10 +348,10 @@ class _AdminAddBusinessScreenState extends State<AdminAddBusinessScreen> {
                           ),
                           hint: const Text('Select parish'),
                           items: _parishes
-                              .map((p) => DropdownMenuItem(value: p, child: Text(p.name)))
+                              .map((p) => DropdownMenuItem(value: p.id, child: Text(p.name)))
                               .toList(),
-                          onChanged: (p) => setState(() => _selectedParish = p),
-                          validator: (v) => v == null ? 'Please select a parish' : null,
+                          onChanged: (id) => setState(() => _selectedParishId = id),
+                          validator: (v) => v == null || v.isEmpty ? 'Please select a parish' : null,
                         ),
                   const SizedBox(height: 16),
                   TextFormField(
@@ -375,8 +392,10 @@ class _AdminAddBusinessScreenState extends State<AdminAddBusinessScreen> {
                       child: Center(child: CircularProgressIndicator(color: AppTheme.specNavy)),
                     )
                   else
-                    DropdownButtonFormField<BusinessCategory>(
-                      value: _selectedCategory,
+                    DropdownButtonFormField<String>(
+                      value: (_selectedCategoryId != null && _categories.any((c) => c.id == _selectedCategoryId))
+                          ? _selectedCategoryId
+                          : null,
                       hint: const Text('Select category'),
                       decoration: InputDecoration(
                         labelText: 'Category',
@@ -390,15 +409,15 @@ class _AdminAddBusinessScreenState extends State<AdminAddBusinessScreen> {
                       ),
                       items: _categories
                           .map((c) => DropdownMenuItem(
-                                value: c,
+                                value: c.id,
                                 child: Text(c.name),
                               ))
                           .toList(),
                       onChanged: _onCategoryChanged,
                       validator: (v) =>
-                          v == null ? 'Please select a category' : null,
+                          v == null || v.isEmpty ? 'Please select a category' : null,
                     ),
-                  if (_selectedCategory != null) ...[
+                  if (_selectedCategoryId != null) ...[
                     const SizedBox(height: 16),
                     if (_subcategoriesLoading)
                       const Padding(

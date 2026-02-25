@@ -199,24 +199,39 @@ class _AdminAddDealScreenState extends State<AdminAddDealScreen> {
                   child: Center(child: CircularProgressIndicator()),
                 )
               else ...[
-                DropdownButtonFormField<Business>(
-                  key: ValueKey<String>(_selectedBusiness?.id ?? ''),
-                  initialValue: _selectedBusiness,
-                  decoration: const InputDecoration(
-                    labelText: 'Business',
-                    border: OutlineInputBorder(),
-                    filled: true,
-                    fillColor: AppTheme.specWhite,
+                if (widget.initialBusinessId == null) ...[
+                  DropdownButtonFormField<Business>(
+                    value: _selectedBusiness != null && _businesses.any((b) => b.id == _selectedBusiness!.id)
+                        ? _selectedBusiness
+                        : null,
+                    decoration: const InputDecoration(
+                      labelText: 'Business',
+                      border: OutlineInputBorder(),
+                      filled: true,
+                      fillColor: AppTheme.specWhite,
+                    ),
+                    hint: const Text('Select business'),
+                    items: _businesses
+                        .map((b) => DropdownMenuItem(value: b, child: Text(b.name)))
+                        .toList(),
+                    onChanged: (b) {
+                      setState(() => _selectedBusiness = b);
+                      if (b != null) _loadTierAndCount(b.id);
+                    },
+                    validator: (v) => v == null ? 'Select a business' : null,
                   ),
-                  items: _businesses
-                      .map((b) => DropdownMenuItem(value: b, child: Text(b.name)))
-                      .toList(),
-                  onChanged: (b) {
-                    setState(() => _selectedBusiness = b);
-                    if (b != null) _loadTierAndCount(b.id);
-                  },
-                  validator: (v) => v == null ? 'Select a business' : null,
-                ),
+                ] else if (_selectedBusiness != null) ...[
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: Text(
+                      'Business: ${_selectedBusiness!.name}',
+                      style: theme.textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.w600,
+                        color: AppTheme.specNavy,
+                      ),
+                    ),
+                  ),
+                ],
                 if (_tier != null && _tierLoading == false) ...[
                   const SizedBox(height: 8),
                   Row(
@@ -263,8 +278,7 @@ class _AdminAddDealScreenState extends State<AdminAddDealScreen> {
                 ),
                 const SizedBox(height: 16),
                 DropdownButtonFormField<String>(
-                  key: ValueKey<String>('$_dealType-${_tier?.name ?? ""}'),
-                  initialValue: _dealType,
+                  value: _dealType,
                   decoration: const InputDecoration(
                     labelText: 'Deal type',
                     border: OutlineInputBorder(),

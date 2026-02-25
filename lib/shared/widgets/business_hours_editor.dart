@@ -208,87 +208,99 @@ class _BusinessHoursEditorState extends State<BusinessHoursEditor> {
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 SizedBox(
-                  width: 100,
+                  width: 88,
                   child: Text(
                     _dayLabel(d),
                     style: theme.textTheme.bodyMedium?.copyWith(
                       color: AppTheme.specNavy,
                       fontWeight: FontWeight.w500,
                     ),
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
-                Checkbox(
-                  value: !isClosed,
-                  onChanged: (v) => setState(() {
-                    _closed[d] = !(v ?? false);
-                    if (_closed[d] == true) _open24h[d] = false;
-                  }),
-                  fillColor: WidgetStateProperty.resolveWith(
-                    (Set<WidgetState> states) =>
-                        states.contains(WidgetState.selected)
-                            ? AppTheme.specNavy
-                            : null,
+                Expanded(
+                  child: SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        Checkbox(
+                          value: !isClosed,
+                          onChanged: (v) => setState(() {
+                            _closed[d] = !(v ?? false);
+                            if (_closed[d] == true) _open24h[d] = false;
+                          }),
+                          fillColor: WidgetStateProperty.resolveWith(
+                            (Set<WidgetState> states) =>
+                                states.contains(WidgetState.selected)
+                                    ? AppTheme.specNavy
+                                    : null,
+                          ),
+                        ),
+                        const Text('Open', style: TextStyle(fontSize: 12, color: AppTheme.specNavy)),
+                        const SizedBox(width: 8),
+                        if (!isClosed) ...[
+                          Checkbox(
+                            value: open24,
+                            onChanged: (v) => setState(() {
+                              _open24h[d] = v ?? false;
+                              if (_open24h[d] == true) {
+                                _openControllers[d]!.text = '12:00 AM';
+                                _closeControllers[d]!.text = '11:59 PM';
+                              }
+                            }),
+                            fillColor: WidgetStateProperty.resolveWith(
+                              (s) => s.contains(WidgetState.selected) ? AppTheme.specNavy : null,
+                            ),
+                          ),
+                          const SizedBox(width: 4),
+                          GestureDetector(
+                            onTap: () => setState(() {
+                              _open24h[d] = !open24;
+                              if (_open24h[d] == true) {
+                                _openControllers[d]!.text = '12:00 AM';
+                                _closeControllers[d]!.text = '11:59 PM';
+                              }
+                            }),
+                            child: Text('Open 24 hrs', style: theme.textTheme.bodySmall?.copyWith(color: AppTheme.specNavy)),
+                          ),
+                          const SizedBox(width: 12),
+                          if (!open24) ...[
+                            _TimeChip(
+                              label: _openControllers[d]!.text.isEmpty ? 'Open' : _openControllers[d]!.text,
+                              onTap: () async {
+                                final t = await showTimePicker(
+                                  context: context,
+                                  initialTime: _timeFromAmPm(_openControllers[d]!.text) ?? const TimeOfDay(hour: 9, minute: 0),
+                                );
+                                if (t != null && mounted) {
+                                  setState(() => _openControllers[d]!.text = _formatToAmPm(t));
+                                }
+                              },
+                            ),
+                            Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 4),
+                              child: Text('–', style: theme.textTheme.bodyMedium?.copyWith(color: AppTheme.specNavy)),
+                            ),
+                            _TimeChip(
+                              label: _closeControllers[d]!.text.isEmpty ? 'Close' : _closeControllers[d]!.text,
+                              onTap: () async {
+                                final t = await showTimePicker(
+                                  context: context,
+                                  initialTime: _timeFromAmPm(_closeControllers[d]!.text) ?? const TimeOfDay(hour: 17, minute: 0),
+                                );
+                                if (t != null && mounted) {
+                                  setState(() => _closeControllers[d]!.text = _formatToAmPm(t));
+                                }
+                              },
+                            ),
+                          ],
+                        ],
+                      ],
+                    ),
                   ),
                 ),
-                const Text('Open', style: TextStyle(fontSize: 12, color: AppTheme.specNavy)),
-                const SizedBox(width: 8),
-                if (!isClosed) ...[
-                  Checkbox(
-                    value: open24,
-                    onChanged: (v) => setState(() {
-                      _open24h[d] = v ?? false;
-                      if (_open24h[d] == true) {
-                        _openControllers[d]!.text = '12:00 AM';
-                        _closeControllers[d]!.text = '11:59 PM';
-                      }
-                    }),
-                    fillColor: WidgetStateProperty.resolveWith(
-                      (s) => s.contains(WidgetState.selected) ? AppTheme.specNavy : null,
-                    ),
-                  ),
-                  const SizedBox(width: 4),
-                  GestureDetector(
-                    onTap: () => setState(() {
-                      _open24h[d] = !open24;
-                      if (_open24h[d] == true) {
-                        _openControllers[d]!.text = '12:00 AM';
-                        _closeControllers[d]!.text = '11:59 PM';
-                      }
-                    }),
-                    child: Text('Open 24 hrs', style: theme.textTheme.bodySmall?.copyWith(color: AppTheme.specNavy)),
-                  ),
-                  const SizedBox(width: 12),
-                  if (!open24) ...[
-                    _TimeChip(
-                      label: _openControllers[d]!.text.isEmpty ? 'Open' : _openControllers[d]!.text,
-                      onTap: () async {
-                        final t = await showTimePicker(
-                          context: context,
-                          initialTime: _timeFromAmPm(_openControllers[d]!.text) ?? const TimeOfDay(hour: 9, minute: 0),
-                        );
-                        if (t != null && mounted) {
-                          setState(() => _openControllers[d]!.text = _formatToAmPm(t));
-                        }
-                      },
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 4),
-                      child: Text('–', style: theme.textTheme.bodyMedium?.copyWith(color: AppTheme.specNavy)),
-                    ),
-                    _TimeChip(
-                      label: _closeControllers[d]!.text.isEmpty ? 'Close' : _closeControllers[d]!.text,
-                      onTap: () async {
-                        final t = await showTimePicker(
-                          context: context,
-                          initialTime: _timeFromAmPm(_closeControllers[d]!.text) ?? const TimeOfDay(hour: 17, minute: 0),
-                        );
-                        if (t != null && mounted) {
-                          setState(() => _closeControllers[d]!.text = _formatToAmPm(t));
-                        }
-                      },
-                    ),
-                  ],
-                ],
               ],
             ),
           );
