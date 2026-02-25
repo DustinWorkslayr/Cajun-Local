@@ -203,6 +203,8 @@ class _AdminDealDetailSlideOutState extends State<AdminDealDetailSlideOut> {
   bool _loading = true;
   String? _error;
   bool _saving = false;
+  /// Selected status in dropdown; synced from _deal when loaded/updated.
+  String _selectedStatus = 'pending';
 
   @override
   void initState() {
@@ -215,6 +217,7 @@ class _AdminDealDetailSlideOutState extends State<AdminDealDetailSlideOut> {
     if (mounted) {
       setState(() {
         _deal = d;
+        _selectedStatus = d?.status ?? 'pending';
         _loading = false;
         _error = d == null ? 'Deal not found' : null;
       });
@@ -330,42 +333,48 @@ class _AdminDealDetailSlideOutState extends State<AdminDealDetailSlideOut> {
                           if (_deal!.endDate != null)
                             _SlideOutRow(label: 'End', value: _formatDate(_deal!.endDate)),
                           _SlideOutRow(label: 'Active', value: (_deal!.isActive == true) ? 'Yes' : 'No'),
-                          const SizedBox(height: 24),
-                          if (_deal!.status == 'pending') ...[
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: AppPrimaryButton(
-                                    onPressed: _saving ? null : () => _updateStatus('approved'),
-                                    icon: const Icon(Icons.check_rounded, size: 20),
-                                    label: const Text('Approve'),
-                                  ),
-                                ),
-                                const SizedBox(width: 12),
-                                Expanded(
-                                  child: AppDangerOutlinedButton(
-                                    onPressed: _saving ? null : () => _updateStatus('rejected'),
-                                    icon: const Icon(Icons.close_rounded, size: 20),
-                                    label: const Text('Reject'),
-                                  ),
-                                ),
-                              ],
+                          const SizedBox(height: 20),
+                          Text(
+                            'Change status',
+                            style: theme.textTheme.titleSmall?.copyWith(
+                              fontWeight: FontWeight.w700,
+                              color: AppTheme.specNavy,
                             ),
-                          ] else
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                              decoration: BoxDecoration(
-                                color: (_deal!.status == 'approved' ? Colors.green : AppTheme.specRed).withValues(alpha: 0.15),
-                                borderRadius: BorderRadius.circular(8),
+                          ),
+                          const SizedBox(height: 8),
+                          DropdownButtonFormField<String>(
+                            value: _selectedStatus,
+                            decoration: InputDecoration(
+                              filled: true,
+                              fillColor: AppTheme.specWhite,
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                borderSide: BorderSide(color: AppTheme.specNavy.withValues(alpha: 0.2)),
                               ),
-                              child: Text(
-                                _deal!.status.toUpperCase(),
-                                style: theme.textTheme.labelLarge?.copyWith(
-                                  fontWeight: FontWeight.w600,
-                                  color: _deal!.status == 'approved' ? Colors.green : AppTheme.specRed,
-                                ),
-                              ),
+                              contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                             ),
+                            items: const [
+                              DropdownMenuItem(value: 'pending', child: Text('Pending')),
+                              DropdownMenuItem(value: 'approved', child: Text('Approved')),
+                              DropdownMenuItem(value: 'rejected', child: Text('Rejected')),
+                            ],
+                            onChanged: (v) {
+                              if (v != null) setState(() => _selectedStatus = v);
+                            },
+                          ),
+                          const SizedBox(height: 12),
+                          SizedBox(
+                            width: double.infinity,
+                            child: AppPrimaryButton(
+                              onPressed: (_saving || _selectedStatus == _deal!.status)
+                                  ? null
+                                  : () => _updateStatus(_selectedStatus),
+                              icon: _saving
+                                  ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                                  : const Icon(Icons.check_circle_rounded, size: 20),
+                              label: Text(_selectedStatus == _deal!.status ? 'No change' : 'Update status'),
+                            ),
+                          ),
                         ],
                       ),
                     ),

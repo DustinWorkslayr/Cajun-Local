@@ -651,38 +651,40 @@ class _HomeHero extends StatelessWidget {
             height: _HomeScreenState._bannerMinHeight,
             child: Padding(
               padding: const EdgeInsets.fromLTRB(28, 24, 28, 24),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const AppLogo(height: 52),
-                  const SizedBox(height: 16),
-                  Text(
-                    'Discover & support local',
-                    style: theme.textTheme.titleMedium?.copyWith(
-                      color: AppTheme.specWhite.withValues(alpha: 0.9),
-                      fontWeight: FontWeight.w500,
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const AppLogo(height: 52),
+                    const SizedBox(height: 16),
+                    Text(
+                      'Discover & support local',
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        color: AppTheme.specWhite.withValues(alpha: 0.9),
+                        fontWeight: FontWeight.w500,
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    'Acadiana businesses',
-                    style: theme.textTheme.headlineMedium?.copyWith(
-                      color: AppTheme.specGold,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: -0.3,
+                    const SizedBox(height: 4),
+                    Text(
+                      'Acadiana businesses',
+                      style: theme.textTheme.headlineMedium?.copyWith(
+                        color: AppTheme.specGold,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: -0.3,
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 10),
-                  Text(
-                    'Explore restaurants, shops, events, and deals — all in one place.',
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      color: AppTheme.specWhite.withValues(alpha: 0.9),
-                      height: 1.35,
+                    const SizedBox(height: 10),
+                    Text(
+                      'Explore restaurants, shops, events, and deals — all in one place.',
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: AppTheme.specWhite.withValues(alpha: 0.9),
+                        height: 1.35,
+                      ),
                     ),
-                  ),
-                  const Spacer(),
-                  Row(
-                    children: [
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
                       AppSecondaryButton(
                         onPressed: onExplore,
                         child: const Text('Explore'),
@@ -706,9 +708,10 @@ class _HomeHero extends StatelessWidget {
                           ),
                         ),
                       ),
-                    ],
-                  ),
+                      ],
+                    ),
                 ],
+                ),
               ),
             ),
           ),

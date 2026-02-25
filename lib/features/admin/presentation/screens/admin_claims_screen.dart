@@ -287,60 +287,76 @@ class _ClaimPanelContentState extends State<_ClaimPanelContent> {
   }
 
   Future<void> _updateStatus(String status) async {
+    if (!mounted) return;
     setState(() => _updating = true);
-    final repo = BusinessClaimsRepository();
-    await repo.updateStatus(widget.claim.id, status);
-    final uid = Supabase.instance.client.auth.currentUser?.id;
-    AuditLogRepository().insert(
-      action: status == 'approved' ? 'claim_approved' : 'claim_rejected',
-      userId: uid,
-      targetTable: 'business_claims',
-      targetId: widget.claim.id,
-    );
-    if (status == 'approved') {
+    try {
+      final repo = BusinessClaimsRepository();
+      await repo.updateStatus(widget.claim.id, status);
+      final uid = Supabase.instance.client.auth.currentUser?.id;
       try {
-        await BusinessManagersRepository().insert(widget.claim.businessId, widget.claim.userId);
-        await UserRolesRepository().setRole(widget.claim.userId, 'business_owner');
-      } catch (_) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Claim approved; grant access failed. Add manager manually if needed.')),
-          );
+        await AuditLogRepository().insert(
+          action: status == 'approved' ? 'claim_approved' : 'claim_rejected',
+          userId: uid,
+          targetTable: 'business_claims',
+          targetId: widget.claim.id,
+        );
+      } catch (_) {}
+      if (status == 'approved') {
+        try {
+          await BusinessManagersRepository().insert(widget.claim.businessId, widget.claim.userId);
+          await UserRolesRepository().setRole(widget.claim.userId, 'business_owner');
+        } catch (_) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Claim approved; grant access failed. Add manager manually if needed.')),
+            );
+          }
         }
       }
-    }
-    final to = _claimantProfile?.email?.trim();
-    if (to != null && to.isNotEmpty) {
-      final businessName = widget.businessName;
-      final displayName = _claimantProfile?.displayName ?? to;
-      if (status == 'approved') {
-        await SendEmailService().send(
-          to: to,
-          template: 'claim_approved',
-          variables: {
-            'display_name': displayName,
-            'email': to,
-            'business_name': businessName,
-          },
+      final to = _claimantProfile?.email?.trim();
+      if (to != null && to.isNotEmpty) {
+        final businessName = widget.businessName;
+        final displayName = _claimantProfile?.displayName ?? to;
+        if (status == 'approved') {
+          try {
+            await SendEmailService().send(
+              to: to,
+              template: 'claim_approved',
+              variables: {
+                'display_name': displayName,
+                'email': to,
+                'business_name': businessName,
+              },
+            );
+          } catch (_) {}
+        } else if (status == 'rejected') {
+          try {
+            await SendEmailService().send(
+              to: to,
+              template: 'claim_rejected',
+              variables: {
+                'display_name': displayName,
+                'business_name': businessName,
+              },
+            );
+          } catch (_) {}
+        }
+      }
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(status == 'approved' ? 'Claim approved; user granted manager access.' : 'Claim rejected.')),
         );
-      } else if (status == 'rejected') {
-        await SendEmailService().send(
-          to: to,
-          template: 'claim_rejected',
-          variables: {
-            'display_name': displayName,
-            'business_name': businessName,
-          },
+        widget.onStatusUpdated();
+        Navigator.of(context).pop();
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to update claim: ${e.toString().replaceFirst('Exception: ', '')}')),
         );
       }
-    }
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(status == 'approved' ? 'Claim approved; user granted manager access.' : 'Claim rejected.')),
-      );
-      widget.onStatusUpdated();
-      setState(() => _updating = false);
-      Navigator.of(context).pop();
+    } finally {
+      if (mounted) setState(() => _updating = false);
     }
   }
 

@@ -18,6 +18,15 @@ class CategoryRepository {
     return (list as List).map((e) => BusinessCategory.fromJson(e as Map<String, dynamic>)).toList();
   }
 
+  /// Get category by id (for bucket lookup). Returns null if not found.
+  Future<BusinessCategory?> getById(String categoryId) async {
+    final client = _client;
+    if (client == null) return null;
+    final res = await client.from('business_categories').select().eq('id', categoryId).maybeSingle();
+    if (res == null) return null;
+    return BusinessCategory.fromJson(res as Map<String, dynamic>);
+  }
+
   Future<List<Subcategory>> listSubcategories({String? categoryId}) async {
     final client = _client;
     if (client == null) return [];

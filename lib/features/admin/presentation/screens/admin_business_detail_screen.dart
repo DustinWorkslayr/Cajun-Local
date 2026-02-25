@@ -25,6 +25,7 @@ import 'package:my_app/core/data/services/send_email_service.dart';
 import 'package:my_app/shared/widgets/app_buttons.dart';
 import 'package:my_app/shared/widgets/app_empty_state.dart';
 import 'package:my_app/shared/widgets/app_loader.dart';
+import 'package:my_app/shared/widgets/business_amenities_editor.dart';
 import 'package:my_app/shared/widgets/business_hours_editor.dart';
 import 'package:my_app/shared/widgets/business_links_editor.dart';
 import 'package:my_app/core/data/repositories/deals_repository.dart';
@@ -168,6 +169,7 @@ class _AdminBusinessDetailScreenState extends State<AdminBusinessDetailScreen> {
               Tab(icon: Icon(Icons.view_list_rounded, size: 20), text: 'Menu'),
               Tab(icon: Icon(Icons.local_offer_rounded, size: 20), text: 'Deals'),
               Tab(icon: Icon(Icons.event_rounded, size: 20), text: 'Events'),
+              Tab(icon: Icon(Icons.room_preferences_rounded, size: 20), text: 'Amenities'),
               Tab(icon: Icon(Icons.schedule_rounded, size: 20), text: 'Hours & links'),
               Tab(icon: Icon(Icons.card_membership_rounded, size: 20), text: 'Subscription'),
             ],
@@ -184,6 +186,7 @@ class _AdminBusinessDetailScreenState extends State<AdminBusinessDetailScreen> {
             _MenuTab(businessId: widget.businessId),
             _DealsTab(businessId: widget.businessId, businessName: business.name),
             _AdminEventsTab(businessId: widget.businessId, businessName: business.name),
+            _AmenitiesTab(businessId: widget.businessId, categoryId: business.categoryId),
             _HoursAndLinksTab(businessId: widget.businessId),
             _SubscriptionTab(businessId: widget.businessId, onUpdated: _load),
           ],
@@ -1835,6 +1838,97 @@ class _AdminEventsTabState extends State<_AdminEventsTab> {
                 ),
               );
             }),
+        ],
+      ),
+    );
+  }
+}
+
+// --- Amenities tab: global + category bucket; limit 4 (free) / 8 (paid) ---
+
+class _AmenitiesTab extends StatefulWidget {
+  const _AmenitiesTab({required this.businessId, required this.categoryId});
+
+  final String businessId;
+  final String categoryId;
+
+  @override
+  State<_AmenitiesTab> createState() => _AmenitiesTabState();
+}
+
+class _AmenitiesTabState extends State<_AmenitiesTab> {
+  String? _bucket;
+  bool _loading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadBucket();
+  }
+
+  Future<void> _loadBucket() async {
+    final category = await CategoryRepository().getById(widget.categoryId);
+    if (mounted) {
+      setState(() {
+        _bucket = category?.bucket;
+        _loading = false;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final padding = AppLayout.horizontalPadding(context);
+
+    if (_loading) {
+      return const Center(child: AppLoader.page());
+    }
+
+    return SingleChildScrollView(
+      padding: EdgeInsets.fromLTRB(padding.left, 16, padding.right, 24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            'Amenities',
+            style: theme.textTheme.headlineSmall?.copyWith(
+              fontWeight: FontWeight.w700,
+              color: AppTheme.specNavy,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'Global amenities plus amenities for this business\'s category (${_bucket ?? 'category'}). '
+            'Limit: 4 for free tier, 8 for active paid subscription.',
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: AppTheme.specNavy.withValues(alpha: 0.8),
+              height: 1.4,
+            ),
+          ),
+          const SizedBox(height: 24),
+          _SpecCard(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(
+                  'Select amenities',
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w700,
+                    color: AppTheme.specNavy,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                BusinessAmenitiesEditor(
+                  businessId: widget.businessId,
+                  categoryBucket: _bucket,
+                  onSaved: () {},
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 24),
         ],
       ),
     );
