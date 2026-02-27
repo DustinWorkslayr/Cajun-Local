@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:my_app/core/data/app_data_scope.dart';
+import 'package:my_app/core/data/category_icons.dart';
 import 'package:my_app/core/data/models/blog_post.dart';
 import 'package:my_app/core/data/mock_data.dart';
 import 'package:my_app/core/data/repositories/blog_posts_repository.dart';
@@ -60,7 +61,6 @@ class _HomeScreenState extends State<HomeScreen> {
   static const double _sectionTitleBottom = 12;
   static const double _sectionSpacing = 32;
   static const double _cardGap = 16;
-  static const double _horizontalCardWidthFraction = 0.82;
 
   @override
   void didChangeDependencies() {
@@ -284,48 +284,63 @@ class _HomeScreenState extends State<HomeScreen> {
                     children: [
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        crossAxisAlignment: CrossAxisAlignment.end,
                         children: [
-                          Text(
-                            'Popular Near You',
-                            style: theme.textTheme.titleLarge?.copyWith(
-                              fontWeight: FontWeight.w700,
-                              color: AppTheme.specNavy,
-                            ),
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Popular Near You',
+                                style: theme.textTheme.titleLarge?.copyWith(
+                                  fontWeight: FontWeight.w800,
+                                  color: AppTheme.specNavy,
+                                  letterSpacing: -0.2,
+                                ),
+                              ),
+                              const SizedBox(height: 6),
+                              Text(
+                                'Top local spots to discover',
+                                style: theme.textTheme.bodySmall?.copyWith(
+                                  color: AppTheme.specNavy.withValues(alpha: 0.65),
+                                ),
+                              ),
+                            ],
                           ),
                           TextButton(
-                        onPressed: () {
-                          if (widget.onNavigateToExplore != null) {
-                            widget.onNavigateToExplore!();
-                          } else {
-                            Navigator.of(context).push(
-                              MaterialPageRoute<void>(builder: (_) => const CategoriesScreen()),
-                            );
-                          }
-                        },
-                            child: Text(
-                              'See All',
-                              style: theme.textTheme.labelLarge?.copyWith(
-                                color: AppTheme.specRed,
-                                fontWeight: FontWeight.w600,
-                              ),
+                            onPressed: () {
+                              if (widget.onNavigateToExplore != null) {
+                                widget.onNavigateToExplore!();
+                              } else {
+                                Navigator.of(context).push(
+                                  MaterialPageRoute<void>(builder: (_) => const CategoriesScreen()),
+                                );
+                              }
+                            },
+                            style: TextButton.styleFrom(
+                              foregroundColor: AppTheme.specGold,
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  'See all',
+                                  style: theme.textTheme.labelLarge?.copyWith(
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                                const SizedBox(width: 4),
+                                Icon(Icons.arrow_forward_rounded, size: 18, color: AppTheme.specGold),
+                              ],
                             ),
                           ),
                         ],
                       ),
-                      const SizedBox(height: 8),
-                      Container(
-                        height: 3,
-                        width: 40,
-                        decoration: BoxDecoration(
-                          color: AppTheme.specGold.withValues(alpha: 0.8),
-                          borderRadius: BorderRadius.circular(2),
-                        ),
-                      ),
+                      const SizedBox(height: 14),
                     ],
                   ),
                 ),
               ),
-              SliverToBoxAdapter(child: SizedBox(height: _sectionTitleBottom)),
               isTablet
                   ? SliverPadding(
                       padding: EdgeInsets.fromLTRB(padding.left, 0, padding.right, _sectionSpacing),
@@ -334,7 +349,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           crossAxisCount: 3,
                           mainAxisSpacing: _cardGap,
                           crossAxisSpacing: _cardGap,
-                          childAspectRatio: 0.75,
+                          childAspectRatio: 0.72,
                         ),
                         delegate: SliverChildBuilderDelegate(
                           (context, index) {
@@ -359,18 +374,19 @@ class _HomeScreenState extends State<HomeScreen> {
                     )
                   : SliverToBoxAdapter(
                       child: SizedBox(
-                        height: 220,
+                        height: 252,
                         child: ListView.builder(
                           scrollDirection: Axis.horizontal,
                           padding: EdgeInsets.only(
                             left: padding.left,
                             right: padding.right,
-                            bottom: 8,
+                            bottom: 4,
                           ),
+                          clipBehavior: Clip.none,
                           itemCount: spots.length,
                           itemBuilder: (context, index) {
                             final spot = spots[index];
-                            final cardWidth = screenWidth * _horizontalCardWidthFraction;
+                            final cardWidth = (screenWidth - padding.left - padding.right - _cardGap * 2) * 0.72;
                             return Padding(
                               padding: EdgeInsets.only(right: _cardGap),
                               child: AnimatedEntrance(
@@ -393,7 +409,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                     ),
 
-              // ——— Local Latests ———
+              // ——— Local Stories (blog) ———
               SliverToBoxAdapter(
                 child: Padding(
                   padding: EdgeInsets.fromLTRB(padding.left, _sectionSpacing, padding.right, 0),
@@ -402,13 +418,27 @@ class _HomeScreenState extends State<HomeScreen> {
                     children: [
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        crossAxisAlignment: CrossAxisAlignment.end,
                         children: [
-                          Text(
-                            'Local Latests',
-                            style: theme.textTheme.titleLarge?.copyWith(
-                              fontWeight: FontWeight.w700,
-                              color: AppTheme.specNavy,
-                            ),
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Local Stories',
+                                style: theme.textTheme.titleLarge?.copyWith(
+                                  fontWeight: FontWeight.w800,
+                                  color: AppTheme.specNavy,
+                                  letterSpacing: -0.2,
+                                ),
+                              ),
+                              const SizedBox(height: 6),
+                              Text(
+                                'News and stories from Acadiana',
+                                style: theme.textTheme.bodySmall?.copyWith(
+                                  color: AppTheme.specNavy.withValues(alpha: 0.65),
+                                ),
+                              ),
+                            ],
                           ),
                           TextButton(
                             onPressed: () {
@@ -416,30 +446,31 @@ class _HomeScreenState extends State<HomeScreen> {
                                 MaterialPageRoute<void>(builder: (_) => const NewsScreen()),
                               );
                             },
-                            child: Text(
-                              'See All',
-                              style: theme.textTheme.labelLarge?.copyWith(
-                                color: AppTheme.specRed,
-                                fontWeight: FontWeight.w600,
-                              ),
+                            style: TextButton.styleFrom(
+                              foregroundColor: AppTheme.specGold,
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  'See all',
+                                  style: theme.textTheme.labelLarge?.copyWith(
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                                const SizedBox(width: 4),
+                                Icon(Icons.arrow_forward_rounded, size: 18, color: AppTheme.specGold),
+                              ],
                             ),
                           ),
                         ],
                       ),
-                      const SizedBox(height: 8),
-                      Container(
-                        height: 3,
-                        width: 40,
-                        decoration: BoxDecoration(
-                          color: AppTheme.specGold.withValues(alpha: 0.8),
-                          borderRadius: BorderRadius.circular(2),
-                        ),
-                      ),
+                      const SizedBox(height: 14),
                     ],
                   ),
                 ),
               ),
-              SliverToBoxAdapter(child: SizedBox(height: _sectionTitleBottom)),
               SliverToBoxAdapter(
                 child: FutureBuilder<List<BlogPost>>(
                   future: _latestPostsFuture,
@@ -470,7 +501,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             ),
                           ),
                           child: Text(
-                            'No news yet. Check back soon.',
+                            'No stories yet. Check back soon.',
                             style: theme.textTheme.bodyMedium?.copyWith(
                               color: AppTheme.specNavy.withValues(alpha: 0.6),
                             ),
@@ -488,7 +519,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             crossAxisCount: 2,
                             mainAxisSpacing: _cardGap,
                             crossAxisSpacing: _cardGap,
-                            childAspectRatio: 1.1,
+                            childAspectRatio: 1.05,
                           ),
                           itemCount: posts.length,
                           itemBuilder: (context, index) {
@@ -510,31 +541,39 @@ class _HomeScreenState extends State<HomeScreen> {
                         ),
                       );
                     }
-                    // Mobile: full-width stacked cards (vertical card section per spec)
+                    // Mobile: horizontal scroll for compact, swipeable showcase
+                    final blogCardWidth = (screenWidth - padding.left - padding.right - _cardGap * 2) * 0.78;
                     return Padding(
-                      padding: EdgeInsets.fromLTRB(padding.left, 0, padding.right, _sectionSpacing),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          for (var i = 0; i < posts.length; i++)
-                            Padding(
-                              padding: EdgeInsets.only(bottom: i < posts.length - 1 ? _cardGap : 0),
-                              child: AnimatedEntrance(
-                                delay: Duration(milliseconds: 100 + (i * 60)),
-                                child: _LatestPostCard(
-                                  post: posts[i],
-                                  onTap: () {
-                                    Navigator.of(context).push(
-                                      MaterialPageRoute<void>(
-                                        builder: (_) => NewsPostDetailScreen(postId: posts[i].id),
-                                      ),
-                                    );
-                                  },
-                                ),
+                      padding: EdgeInsets.only(bottom: _sectionSpacing),
+                      child: SizedBox(
+                        height: 268,
+                        child: ListView.builder(
+                        scrollDirection: Axis.horizontal,
+                        padding: EdgeInsets.only(left: padding.left, right: padding.right, bottom: 4),
+                        clipBehavior: Clip.none,
+                        itemCount: posts.length,
+                        itemBuilder: (context, index) {
+                          final post = posts[index];
+                          return Padding(
+                            padding: EdgeInsets.only(right: _cardGap),
+                            child: AnimatedEntrance(
+                              delay: Duration(milliseconds: 100 + (index * 60)),
+                              child: _LatestPostCard(
+                                post: post,
+                                onTap: () {
+                                  Navigator.of(context).push(
+                                    MaterialPageRoute<void>(
+                                      builder: (_) => NewsPostDetailScreen(postId: post.id),
+                                    ),
+                                  );
+                                },
+                                cardWidth: blogCardWidth,
                               ),
                             ),
-                        ],
+                          );
+                        },
                       ),
+                    ),
                     );
                   },
                 ),
@@ -819,7 +858,8 @@ class _PopularCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    const radius = 14.0;
+    const radius = 18.0;
+    final hasImage = spot.logoUrl != null && spot.logoUrl!.trim().isNotEmpty;
 
     return Material(
       color: Colors.transparent,
@@ -831,10 +871,11 @@ class _PopularCard extends StatelessWidget {
           decoration: BoxDecoration(
             color: AppTheme.specWhite,
             borderRadius: BorderRadius.circular(radius),
+            border: Border.all(color: AppTheme.specNavy.withValues(alpha: 0.06)),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withValues(alpha: 0.07),
-                blurRadius: 12,
+                color: Colors.black.withValues(alpha: 0.06),
+                blurRadius: 16,
                 offset: const Offset(0, 4),
               ),
             ],
@@ -844,13 +885,42 @@ class _PopularCard extends StatelessWidget {
             children: [
               ClipRRect(
                 borderRadius: const BorderRadius.vertical(top: Radius.circular(radius)),
-                child: SizedBox(
-                  height: 105,
-                  child: _placeholderImage(),
+                child: Stack(
+                  children: [
+                    SizedBox(
+                      height: 120,
+                      width: double.infinity,
+                      child: hasImage
+                          ? Image.network(
+                              spot.logoUrl!,
+                              fit: BoxFit.cover,
+                              errorBuilder: (_, _, _) => _placeholderImage(),
+                            )
+                          : _placeholderImage(),
+                    ),
+                    Positioned(
+                      bottom: 0,
+                      left: 0,
+                      right: 0,
+                      child: Container(
+                        height: 4,
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.centerLeft,
+                            end: Alignment.centerRight,
+                            colors: [
+                              AppTheme.specGold,
+                              AppTheme.specGold.withValues(alpha: 0.6),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -859,6 +929,7 @@ class _PopularCard extends StatelessWidget {
                       style: theme.textTheme.titleSmall?.copyWith(
                         fontWeight: FontWeight.w700,
                         color: AppTheme.specNavy,
+                        height: 1.25,
                       ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
@@ -868,31 +939,27 @@ class _PopularCard extends StatelessWidget {
                       Text(
                         spot.subtitle,
                         style: theme.textTheme.bodySmall?.copyWith(
-                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                          color: AppTheme.specNavy.withValues(alpha: 0.7),
                         ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
                     ],
-                    const SizedBox(height: 6),
+                    const SizedBox(height: 8),
                     Row(
                       children: [
-                        Icon(Icons.star_rounded, size: 16, color: AppTheme.specGold),
+                        Icon(Icons.location_on_outlined, size: 14, color: AppTheme.specGold),
                         const SizedBox(width: 4),
-                        Text(
-                          '4.5',
-                          style: theme.textTheme.labelSmall?.copyWith(
-                            fontWeight: FontWeight.w600,
-                            color: AppTheme.specNavy,
+                        Expanded(
+                          child: Text(
+                            'View listing',
+                            style: theme.textTheme.labelSmall?.copyWith(
+                              fontWeight: FontWeight.w600,
+                              color: AppTheme.specGold,
+                            ),
                           ),
                         ),
-                        const Spacer(),
-                        Text(
-                          '0.4 mi',
-                          style: theme.textTheme.labelSmall?.copyWith(
-                            color: Theme.of(context).colorScheme.onSurfaceVariant,
-                          ),
-                        ),
+                        Icon(Icons.arrow_forward_rounded, size: 16, color: AppTheme.specNavy.withValues(alpha: 0.5)),
                       ],
                     ),
                   ],
@@ -907,29 +974,46 @@ class _PopularCard extends StatelessWidget {
 
   Widget _placeholderImage() {
     return Container(
-      color: AppTheme.specNavy.withValues(alpha: 0.08),
-      child: Icon(Icons.store_rounded, size: 40, color: AppTheme.specNavy.withValues(alpha: 0.3)),
+      color: AppTheme.specNavy.withValues(alpha: 0.06),
+      child: Center(
+        child: Icon(Icons.store_rounded, size: 44, color: AppTheme.specNavy.withValues(alpha: 0.25)),
+      ),
     );
   }
 }
 
 class _LatestPostCard extends StatelessWidget {
-  const _LatestPostCard({required this.post, required this.onTap});
+  const _LatestPostCard({required this.post, required this.onTap, this.cardWidth});
 
   final BlogPost post;
   final VoidCallback onTap;
+  /// When set (e.g. horizontal scroll), use this width; otherwise full width for grid.
+  final double? cardWidth;
 
   static String _formatDate(DateTime? d) {
     if (d == null) return '';
+    final now = DateTime.now();
+    final diff = now.difference(d);
+    if (diff.inDays == 0) return 'Today';
+    if (diff.inDays == 1) return 'Yesterday';
+    if (diff.inDays < 7) return '${diff.inDays} days ago';
     return '${d.month}/${d.day}/${d.year}';
+  }
+
+  static String _shortExcerpt(String? excerpt, {int maxLen = 72}) {
+    if (excerpt == null || excerpt.trim().isEmpty) return '';
+    final t = excerpt.trim().replaceAll(RegExp(r'\s+'), ' ');
+    if (t.length <= maxLen) return t;
+    return '${t.substring(0, maxLen).trim()}…';
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    const radius = 14.0;
+    const radius = 18.0;
     final hasCover = post.coverImageUrl != null && post.coverImageUrl!.isNotEmpty;
     final dateStr = _formatDate(post.publishedAt ?? post.createdAt);
+    final excerpt = _shortExcerpt(post.excerpt);
 
     return Material(
       color: Colors.transparent,
@@ -937,13 +1021,15 @@ class _LatestPostCard extends StatelessWidget {
         onTap: onTap,
         borderRadius: BorderRadius.circular(radius),
         child: Container(
+          width: cardWidth,
           decoration: BoxDecoration(
             color: AppTheme.specWhite,
             borderRadius: BorderRadius.circular(radius),
+            border: Border.all(color: AppTheme.specNavy.withValues(alpha: 0.06)),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withValues(alpha: 0.07),
-                blurRadius: 12,
+                color: Colors.black.withValues(alpha: 0.06),
+                blurRadius: 16,
                 offset: const Offset(0, 4),
               ),
             ],
@@ -953,20 +1039,43 @@ class _LatestPostCard extends StatelessWidget {
             children: [
               ClipRRect(
                 borderRadius: const BorderRadius.vertical(top: Radius.circular(radius)),
-                child: SizedBox(
-                  height: 105,
-                  child: hasCover
-                      ? Image.network(
-                          post.coverImageUrl!,
-                          fit: BoxFit.cover,
-                          width: double.infinity,
-                          errorBuilder: (_, _, _) => _placeholderCover(),
-                        )
-                      : _placeholderCover(),
+                child: Stack(
+                  children: [
+                    SizedBox(
+                      height: 128,
+                      width: double.infinity,
+                      child: hasCover
+                          ? Image.network(
+                              post.coverImageUrl!,
+                              fit: BoxFit.cover,
+                              width: double.infinity,
+                              errorBuilder: (_, _, _) => _placeholderCover(),
+                            )
+                          : _placeholderCover(),
+                    ),
+                    Positioned(
+                      bottom: 0,
+                      left: 0,
+                      right: 0,
+                      child: Container(
+                        height: 4,
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.centerLeft,
+                            end: Alignment.centerRight,
+                            colors: [
+                              AppTheme.specGold,
+                              AppTheme.specGold.withValues(alpha: 0.6),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -975,22 +1084,45 @@ class _LatestPostCard extends StatelessWidget {
                       style: theme.textTheme.titleSmall?.copyWith(
                         fontWeight: FontWeight.w700,
                         color: AppTheme.specNavy,
+                        height: 1.28,
                       ),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                     ),
-                    if (dateStr.isNotEmpty) ...[
+                    if (excerpt.isNotEmpty) ...[
                       const SizedBox(height: 6),
+                      Text(
+                        excerpt,
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: AppTheme.specNavy.withValues(alpha: 0.7),
+                          height: 1.35,
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                    if (dateStr.isNotEmpty) ...[
+                      const SizedBox(height: 8),
                       Row(
                         children: [
-                          Icon(Icons.calendar_today_rounded, size: 14, color: AppTheme.specNavy.withValues(alpha: 0.6)),
+                          Icon(Icons.schedule_rounded, size: 14, color: AppTheme.specNavy.withValues(alpha: 0.55)),
                           const SizedBox(width: 4),
                           Text(
                             dateStr,
                             style: theme.textTheme.labelSmall?.copyWith(
-                              color: AppTheme.specNavy.withValues(alpha: 0.7),
+                              color: AppTheme.specNavy.withValues(alpha: 0.65),
                             ),
                           ),
+                          const Spacer(),
+                          Text(
+                            'Read',
+                            style: theme.textTheme.labelSmall?.copyWith(
+                              fontWeight: FontWeight.w600,
+                              color: AppTheme.specGold,
+                            ),
+                          ),
+                          const SizedBox(width: 2),
+                          Icon(Icons.arrow_forward_rounded, size: 14, color: AppTheme.specGold),
                         ],
                       ),
                     ],
@@ -1006,8 +1138,10 @@ class _LatestPostCard extends StatelessWidget {
 
   Widget _placeholderCover() {
     return Container(
-      color: AppTheme.specNavy.withValues(alpha: 0.08),
-      child: Icon(Icons.article_rounded, size: 40, color: AppTheme.specNavy.withValues(alpha: 0.3)),
+      color: AppTheme.specNavy.withValues(alpha: 0.06),
+      child: Center(
+        child: Icon(Icons.article_rounded, size: 44, color: AppTheme.specNavy.withValues(alpha: 0.25)),
+      ),
     );
   }
 }
@@ -1017,25 +1151,6 @@ class _CategoryCard extends StatelessWidget {
 
   final MockCategory category;
   final VoidCallback onTap;
-
-  static IconData _iconForName(String name) {
-    switch (name) {
-      case 'restaurant':
-        return Icons.restaurant_rounded;
-      case 'music_note':
-        return Icons.music_note_rounded;
-      case 'store':
-        return Icons.store_rounded;
-      case 'terrain':
-        return Icons.terrain_rounded;
-      case 'local_cafe':
-        return Icons.local_cafe_rounded;
-      case 'category':
-        return Icons.category_rounded;
-      default:
-        return Icons.category_rounded;
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -1063,7 +1178,7 @@ class _CategoryCard extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Icon(
-                _iconForName(category.iconName),
+                getCategoryIconData(category.iconName),
                 size: 40,
                 color: AppTheme.specNavy,
               ),

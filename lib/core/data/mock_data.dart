@@ -6,6 +6,7 @@ class ListingFilters {
   const ListingFilters({
     this.searchQuery = '',
     this.categoryId,
+    this.categoryIds,
     this.subcategoryIds = const {},
     this.parishIds = const {},
     this.amenityIds = const {},
@@ -16,6 +17,8 @@ class ListingFilters {
 
   final String searchQuery;
   final String? categoryId;
+  /// When non-null and non-empty, include only listings whose category is in this set (e.g. all "eat" bucket categories).
+  final Set<String>? categoryIds;
   final Set<String> subcategoryIds;
   final Set<String> parishIds;
   /// Filter to businesses that have at least one of these amenity IDs.
@@ -27,6 +30,7 @@ class ListingFilters {
   ListingFilters copyWith({
     String? searchQuery,
     Object? categoryId = _unchanged,
+    Set<String>? categoryIds,
     Set<String>? subcategoryIds,
     Set<String>? parishIds,
     Set<String>? amenityIds,
@@ -37,6 +41,7 @@ class ListingFilters {
     return ListingFilters(
       searchQuery: searchQuery ?? this.searchQuery,
       categoryId: categoryId == _unchanged ? this.categoryId : categoryId as String?,
+      categoryIds: categoryIds ?? this.categoryIds,
       subcategoryIds: subcategoryIds ?? this.subcategoryIds,
       parishIds: parishIds ?? this.parishIds,
       amenityIds: amenityIds ?? this.amenityIds,
@@ -85,11 +90,14 @@ class MockSpot {
     required this.name,
     required this.subtitle,
     this.categoryId,
+    this.logoUrl,
   });
   final String id;
   final String name;
   final String subtitle;
   final String? categoryId;
+  /// Business logo URL for featured/popular card image.
+  final String? logoUrl;
 }
 
 /// Coupon or deal offered by a business. Only active deals shown on Deals page.

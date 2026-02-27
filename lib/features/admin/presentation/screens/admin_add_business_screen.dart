@@ -333,7 +333,7 @@ class _AdminAddBusinessScreenState extends State<AdminAddBusinessScreen> {
                           child: Center(child: CircularProgressIndicator(color: AppTheme.specNavy)),
                         )
                       :                       DropdownButtonFormField<String>(
-                          value: (_selectedParishId != null && _parishes.any((p) => p.id == _selectedParishId))
+                          initialValue: (_selectedParishId != null && _parishes.any((p) => p.id == _selectedParishId))
                               ? _selectedParishId
                               : null,
                           decoration: InputDecoration(
@@ -393,7 +393,7 @@ class _AdminAddBusinessScreenState extends State<AdminAddBusinessScreen> {
                     )
                   else
                     DropdownButtonFormField<String>(
-                      value: (_selectedCategoryId != null && _categories.any((c) => c.id == _selectedCategoryId))
+                      initialValue: (_selectedCategoryId != null && _categories.any((c) => c.id == _selectedCategoryId))
                           ? _selectedCategoryId
                           : null,
                       hint: const Text('Select category'),

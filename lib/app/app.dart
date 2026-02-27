@@ -7,6 +7,7 @@ import 'package:my_app/core/data/repositories/favorites_repository.dart';
 import 'package:my_app/core/data/repositories/user_plans_repository.dart';
 import 'package:my_app/core/data/repositories/user_subscriptions_repository.dart';
 import 'package:my_app/core/favorites/favorites_scope.dart';
+import 'package:my_app/core/revenuecat/revenuecat_service.dart';
 import 'package:my_app/core/subscription/user_tier_service.dart';
 import 'package:my_app/core/supabase/supabase_config.dart';
 import 'package:my_app/core/theme/theme.dart';
@@ -16,7 +17,10 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 /// Root MaterialApp for Cajun Local.
 class CajunLocalApp extends StatefulWidget {
-  const CajunLocalApp({super.key});
+  const CajunLocalApp({super.key, this.revenueCatService});
+
+  /// RevenueCat service (initialized in main). Null on web or if not configured.
+  final RevenueCatService? revenueCatService;
 
   @override
   State<CajunLocalApp> createState() => _CajunLocalAppState();
@@ -49,7 +53,9 @@ class _CajunLocalAppState extends State<CajunLocalApp> {
       }
       _userTierService.refresh();
       _loadFavoritesWhenSignedIn();
+      widget.revenueCatService?.logIn(_authRepository.currentUserId);
     });
+    widget.revenueCatService?.logIn(_authRepository.currentUserId);
   }
 
   Future<void> _loadFavoritesWhenSignedIn() async {
@@ -75,6 +81,7 @@ class _CajunLocalAppState extends State<CajunLocalApp> {
       authRepository: _authRepository,
       favoritesRepository: _favoritesRepository,
       userTierService: _userTierService,
+      revenueCatService: widget.revenueCatService,
       child: FavoritesScope(
         favoriteIds: _favoriteIds,
         child: MaterialApp(

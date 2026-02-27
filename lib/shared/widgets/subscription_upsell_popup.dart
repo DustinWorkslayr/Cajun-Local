@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:my_app/core/data/app_data_scope.dart';
+import 'package:my_app/core/revenuecat/revenuecat_service.dart';
 import 'package:my_app/core/theme/theme.dart';
 import 'package:my_app/shared/widgets/app_logo.dart';
 
 /// Cajun+ Membership subscription upsell popup. Matches the design:
 /// logo, title, tagline, feature list with gold checkmarks, gold CTAs, footer.
+/// When [onSubscribe] / [onStartFreeTrial] are null, presents RevenueCat Paywall if available.
 class SubscriptionUpsellPopup extends StatelessWidget {
   const SubscriptionUpsellPopup({
     super.key,
@@ -17,18 +20,32 @@ class SubscriptionUpsellPopup extends StatelessWidget {
   static const double _cardRadius = 24;
   static const String _price = '\$2.99';
 
-  /// Shows the upsell as a centered dialog. Call from Profile or any entry point.
+  /// Shows the upsell as a centered dialog. When callbacks are null, presents RevenueCat Paywall (Cajun+).
   static Future<void> show(
     BuildContext context, {
     VoidCallback? onSubscribe,
     VoidCallback? onStartFreeTrial,
   }) {
+    final scope = AppDataScope.of(context);
+    void defaultSubscribe() {
+      Navigator.of(context).pop();
+      scope.revenueCatService?.presentPaywall().then((result) {
+        if (context.mounted &&
+            (result == PaywallPresentationResult.purchased ||
+                result == PaywallPresentationResult.restored)) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Welcome to Cajun+!')),
+          );
+        }
+      });
+    }
+
     return showDialog<void>(
       context: context,
       barrierColor: Colors.black54,
-      builder: (context) => SubscriptionUpsellPopup(
-        onSubscribe: onSubscribe,
-        onStartFreeTrial: onStartFreeTrial,
+      builder: (dialogContext) => SubscriptionUpsellPopup(
+        onSubscribe: onSubscribe ?? defaultSubscribe,
+        onStartFreeTrial: onStartFreeTrial ?? defaultSubscribe,
       ),
     );
   }

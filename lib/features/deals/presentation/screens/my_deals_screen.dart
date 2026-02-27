@@ -106,11 +106,13 @@ class _MyDealsScreenState extends State<MyDealsScreen> {
         });
       }
     } catch (e) {
-      if (mounted) setState(() {
-        _error = e.toString();
-        _loading = false;
-        _items = [];
-      });
+      if (mounted) {
+        setState(() {
+          _error = e.toString();
+          _loading = false;
+          _items = [];
+        });
+      }
     }
   }
 

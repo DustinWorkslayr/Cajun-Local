@@ -241,6 +241,7 @@ class _AdCard extends StatelessWidget {
       case 'expired':
         return AppTheme.specRed;
       case 'pending_payment':
+      case 'pending_approval':
         return AppTheme.specGold;
       default:
         return AppTheme.specNavy;
@@ -511,6 +512,7 @@ class _AdDetailSlideOut extends StatelessWidget {
       case 'expired':
         return AppTheme.specRed;
       case 'pending_payment':
+      case 'pending_approval':
         return AppTheme.specGold;
       default:
         return AppTheme.specNavy;

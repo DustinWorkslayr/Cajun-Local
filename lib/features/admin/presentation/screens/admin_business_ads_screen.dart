@@ -50,10 +50,11 @@ class _AdminBusinessAdsScreenState extends State<AdminBusinessAdsScreen> {
     const statuses = [
       'draft',
       'pending_payment',
+      'pending_approval',
       'active',
       'paused',
       'expired',
-      'rejected'
+      'rejected',
     ];
 
     return Scaffold(
@@ -200,6 +201,7 @@ class AdminAdDetailSlideOut extends StatefulWidget {
       context: context,
       barrierColor: Colors.black54,
       barrierDismissible: true,
+      barrierLabel: 'Dismiss',
       transitionBuilder: (ctx, a1, a2, child) {
         return SlideTransition(
           position: Tween<Offset>(begin: const Offset(1, 0), end: Offset.zero).animate(
@@ -377,6 +379,7 @@ class _AdminAdDetailSlideOutState extends State<AdminAdDetailSlideOut> {
       case 'expired':
         return AppTheme.specRed;
       case 'pending_payment':
+      case 'pending_approval':
         return AppTheme.specGold;
       default:
         return AppTheme.specNavy;
@@ -426,8 +429,8 @@ class _AdminAdDetailSlideOutState extends State<AdminAdDetailSlideOut> {
         ? (_ad.clicks / _ad.impressions * 100).toStringAsFixed(1)
         : null;
 
-    final canApprove = _ad.status == 'pending_payment';
-    final canReject = _ad.status == 'pending_payment' || _ad.status == 'draft';
+    final canApprove = _ad.status == 'pending_payment' || _ad.status == 'pending_approval';
+    final canReject = _ad.status == 'pending_payment' || _ad.status == 'pending_approval' || _ad.status == 'draft';
     final canPause = _ad.status == 'active';
     final canResume = _ad.status == 'paused';
 
@@ -447,9 +450,13 @@ class _AdminAdDetailSlideOutState extends State<AdminAdDetailSlideOut> {
                 ),
               ),
               IconButton(
-                onPressed: widget.onClose,
+                onPressed: () {
+                  Navigator.of(context).pop();
+                  widget.onUpdated();
+                },
                 icon: const Icon(Icons.close_rounded),
                 color: nav,
+                tooltip: 'Close',
               ),
             ],
           ),
@@ -461,6 +468,11 @@ class _AdminAdDetailSlideOutState extends State<AdminAdDetailSlideOut> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 _sectionTitle(theme, nav, 'Preview'),
+                const SizedBox(height: 4),
+                Text(
+                  'This is how the ad will look when shown to users (only Active ads are showcased).',
+                  style: theme.textTheme.bodySmall?.copyWith(color: sub),
+                ),
                 const SizedBox(height: 8),
                 _AdPreviewCard(ad: _ad),
                 const SizedBox(height: 20),
@@ -674,6 +686,11 @@ class _AdminAdDetailSlideOutState extends State<AdminAdDetailSlideOut> {
                 ],
                 const SizedBox(height: 24),
                 _sectionTitle(theme, nav, 'Change status'),
+                const SizedBox(height: 4),
+                Text(
+                  'Only ads with status Active are shown to users. Approve to showcase.',
+                  style: theme.textTheme.bodySmall?.copyWith(color: sub),
+                ),
                 const SizedBox(height: 10),
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
@@ -687,7 +704,7 @@ class _AdminAdDetailSlideOutState extends State<AdminAdDetailSlideOut> {
                       value: _ad.status,
                       isExpanded: true,
                       icon: const Icon(Icons.arrow_drop_down_rounded),
-                      items: const ['draft', 'pending_payment', 'active', 'paused', 'expired', 'rejected']
+                      items: const ['draft', 'pending_payment', 'pending_approval', 'active', 'paused', 'expired', 'rejected']
                           .map((s) => DropdownMenuItem(value: s, child: Text(BusinessAd.statusLabel(s))))
                           .toList(),
                       onChanged: _updating
@@ -756,7 +773,7 @@ class _AdminAdDetailSlideOutState extends State<AdminAdDetailSlideOut> {
 
 }
 
-/// Preview card showing how the ad looks in the app.
+/// Preview card showing how the ad looks in the app (matches Explore sponsored style).
 class _AdPreviewCard extends StatelessWidget {
   const _AdPreviewCard({required this.ad});
 
@@ -767,42 +784,45 @@ class _AdPreviewCard extends StatelessWidget {
     final theme = Theme.of(context);
     final nav = AppTheme.specNavy;
     return Container(
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: AppTheme.specWhite,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: nav.withValues(alpha: 0.15)),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: AppTheme.specGold.withValues(alpha: 0.3)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.06),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
         ],
       ),
-      clipBehavior: Clip.antiAlias,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Container(
-            height: 120,
-            color: AppTheme.specGold.withValues(alpha: 0.15),
+            width: 64,
+            height: 64,
+            decoration: BoxDecoration(
+              color: AppTheme.specNavy.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            clipBehavior: Clip.antiAlias,
             child: ad.imageUrl != null && ad.imageUrl!.isNotEmpty
                 ? Image.network(
                     ad.imageUrl!,
                     fit: BoxFit.cover,
-                    width: double.infinity,
-                    errorBuilder: (_, _, _) => const Center(
-                      child: Icon(Icons.campaign_rounded, color: AppTheme.specNavy, size: 40),
-                    ),
+                    width: 64,
+                    height: 64,
+                    errorBuilder: (_, _, _) => const Icon(Icons.campaign_rounded, color: AppTheme.specGold, size: 32),
                   )
-                : const Center(
-                    child: Icon(Icons.campaign_rounded, color: AppTheme.specNavy, size: 40),
-                  ),
+                : const Icon(Icons.campaign_rounded, color: AppTheme.specGold, size: 32),
           ),
-          Padding(
-            padding: const EdgeInsets.all(12),
+          const SizedBox(width: 16),
+          Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
                   'Sponsored',
@@ -811,7 +831,7 @@ class _AdPreviewCard extends StatelessWidget {
                     fontWeight: FontWeight.w600,
                   ),
                 ),
-                const SizedBox(height: 4),
+                const SizedBox(height: 2),
                 Text(
                   ad.headline?.isNotEmpty == true ? ad.headline! : 'Ad headline',
                   style: theme.textTheme.titleSmall?.copyWith(
@@ -820,7 +840,7 @@ class _AdPreviewCard extends StatelessWidget {
                   ),
                 ),
                 if (ad.placement != null && ad.placement!.isNotEmpty) ...[
-                  const SizedBox(height: 4),
+                  const SizedBox(height: 6),
                   Text(
                     AdPackage.placementLabel(ad.placement!),
                     style: theme.textTheme.bodySmall?.copyWith(

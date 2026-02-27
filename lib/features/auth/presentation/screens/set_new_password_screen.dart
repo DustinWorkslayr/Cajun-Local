@@ -299,7 +299,9 @@ class _SetNewPasswordScreenState extends State<SetNewPasswordScreen> {
                                                         if (!(_formKey
                                                                 .currentState
                                                                 ?.validate() ??
-                                                            false)) return;
+                                                            false)) {
+                                                          return;
+                                                        }
                                                         _submit();
                                                       },
                                                 child: _loading

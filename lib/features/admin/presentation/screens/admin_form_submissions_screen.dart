@@ -174,7 +174,7 @@ class AdminFormSubmissionDetailSlideOut extends StatefulWidget {
           child: child,
         );
       },
-      pageBuilder: (ctx, _, __) {
+      pageBuilder: (ctx, _, _) {
         final panelWidth =
             (MediaQuery.sizeOf(ctx).width * 0.92).clamp(0.0, 420.0);
         return Material(

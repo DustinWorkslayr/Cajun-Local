@@ -215,6 +215,7 @@ class ListingDataSource {
         name: b.name,
         subtitle: b.tagline ?? b.name,
         categoryId: b.categoryId,
+        logoUrl: b.logoUrl,
       );
 
   /// Filter listings (search, category, subcategory, parish, amenities, dealOnly). Listing with no parish set matches any parish filter.
@@ -231,7 +232,11 @@ class ListingDataSource {
         final descMatch = l.description.isNotEmpty && l.description.toLowerCase().contains(q);
         if (!nameMatch && !taglineMatch && !categoryMatch && !descMatch) return false;
       }
-      if (filters.categoryId != null && l.categoryId != filters.categoryId) return false;
+      if (filters.categoryIds != null && filters.categoryIds!.isNotEmpty) {
+        if (!filters.categoryIds!.contains(l.categoryId)) return false;
+      } else if (filters.categoryId != null && l.categoryId != filters.categoryId) {
+        return false;
+      }
       if (filters.subcategoryIds.isNotEmpty && (l.subcategoryId == null || !filters.subcategoryIds.contains(l.subcategoryId))) return false;
       if (filters.parishIds.isNotEmpty && l.parishIds.isNotEmpty && !l.parishIds.any((pid) => filters.parishIds.contains(pid))) return false;
       return true;

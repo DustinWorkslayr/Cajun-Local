@@ -154,7 +154,7 @@ class EmailTemplateSlideOut extends StatefulWidget {
           child: child,
         );
       },
-      pageBuilder: (ctx, _, __) => Material(
+      pageBuilder: (ctx, _, _) => Material(
         color: Colors.transparent,
         child: Align(
           alignment: Alignment.centerRight,

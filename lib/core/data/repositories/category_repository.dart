@@ -24,7 +24,7 @@ class CategoryRepository {
     if (client == null) return null;
     final res = await client.from('business_categories').select().eq('id', categoryId).maybeSingle();
     if (res == null) return null;
-    return BusinessCategory.fromJson(res as Map<String, dynamic>);
+    return BusinessCategory.fromJson(res);
   }
 
   Future<List<Subcategory>> listSubcategories({String? categoryId}) async {

@@ -142,6 +142,38 @@ class _SignInScreenState extends State<SignInScreen> {
     }
   }
 
+  Future<void> _signInWithGoogle() async {
+    final auth = AppDataScope.of(context).authRepository;
+    if (!auth.isConfigured) {
+      setState(() {
+        _errorMessage = 'Sign-in is not configured.';
+      });
+      return;
+    }
+    setState(() {
+      _errorMessage = null;
+      _loading = true;
+    });
+    try {
+      await auth.signInWithGoogle();
+      if (mounted) setState(() => _loading = false);
+    } on AuthException catch (e) {
+      if (mounted) {
+        setState(() {
+          _errorMessage = e.message;
+          _loading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _errorMessage = e.toString();
+          _loading = false;
+        });
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -406,6 +438,41 @@ class _SignInScreenState extends State<SignInScreen> {
                                             fontSize: 16,
                                           ),
                                         ),
+                                ),
+                                const SizedBox(height: 20),
+                                Row(
+                                  children: [
+                                    Expanded(child: Divider(color: colorScheme.outlineVariant)),
+                                    Padding(
+                                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                                      child: Text(
+                                        'or',
+                                        style: theme.textTheme.bodySmall?.copyWith(
+                                          color: colorScheme.onSurfaceVariant,
+                                        ),
+                                      ),
+                                    ),
+                                    Expanded(child: Divider(color: colorScheme.outlineVariant)),
+                                  ],
+                                ),
+                                const SizedBox(height: 20),
+                                OutlinedButton.icon(
+                                  onPressed: _loading
+                                      ? null
+                                      : _signInWithGoogle,
+                                  icon: Icon(
+                                    Icons.g_mobiledata_rounded,
+                                    size: 24,
+                                    color: colorScheme.onSurface,
+                                  ),
+                                  label: const Text('Sign in with Google'),
+                                  style: OutlinedButton.styleFrom(
+                                    padding: const EdgeInsets.symmetric(vertical: 14),
+                                    side: BorderSide(color: colorScheme.outline),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                  ),
                                 ),
                                 const SizedBox(height: 20),
                                 Center(

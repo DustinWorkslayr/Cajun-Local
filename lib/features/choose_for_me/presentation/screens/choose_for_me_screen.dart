@@ -27,7 +27,8 @@ class _ChooseForMeScreenState extends State<ChooseForMeScreen> with TickerProvid
   List<MockParish> _parishes = [];
   Set<String> _subcategoryIds = {};
   bool _parishesLoaded = false;
-  MockCategory? _foodCategory;
+  /// All categories in the "eat" bucket (food & dining, etc.).
+  List<MockCategory> _eatCategories = [];
 
   MockListing? _winner;
   List<String> _segmentLabels = [];
@@ -112,33 +113,34 @@ class _ChooseForMeScreenState extends State<ChooseForMeScreen> with TickerProvid
     // Entrance already started in initState; no need to forward again.
   }
 
-  /// Use the "Food & dining" category for the spin wheel (by name or id).
+  /// Load all categories in the "eat" bucket for the spin wheel.
+  static const String _eatBucket = 'eat';
+
   Future<void> _loadCategories() async {
     try {
       final ds = AppDataScope.of(context).dataSource;
       final categories = await ds.getCategories();
       if (!mounted) return;
-      MockCategory? food;
-      final nameLower = (String s) => s.toLowerCase().trim();
-      for (final c in categories) {
-        final n = nameLower(c.name);
-        if (n == 'food & dining' || n == 'food and dining' || c.id == 'food') {
-          food = c;
-          break;
-        }
-      }
-      food ??= categories.where((c) {
-        final n = nameLower(c.name);
-        return n.contains('food') || n.contains('dining') || n.contains('restaurant');
-      }).firstOrNull;
-      food ??= categories.isNotEmpty ? categories.first : null;
+      final eat = categories
+          .where((c) => (c.bucket ?? '').toLowerCase() == _eatBucket)
+          .toList();
       if (!mounted) return;
-      setState(() {
-        _foodCategory = food;
-      });
+      setState(() => _eatCategories = eat);
     } catch (_) {
-      if (mounted) setState(() => _foodCategory = null);
+      if (mounted) setState(() => _eatCategories = []);
     }
+  }
+
+  Set<String> get _eatCategoryIds =>
+      Set.from(_eatCategories.map((c) => c.id));
+
+  /// All subcategories from eat-bucket categories (deduped by id).
+  List<MockSubcategory> get _eatSubcategories {
+    final seen = <String>{};
+    return _eatCategories
+        .expand((c) => c.subcategories)
+        .where((s) => seen.add(s.id))
+        .toList();
   }
 
   double _targetRotation = 0;
@@ -150,16 +152,16 @@ class _ChooseForMeScreenState extends State<ChooseForMeScreen> with TickerProvid
       );
       return;
     }
-    if (_foodCategory == null) {
+    if (_eatCategoryIds.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Food category not available.')),
+        const SnackBar(content: Text('No eat categories available. Try again later.')),
       );
       return;
     }
 
     final ds = AppDataScope.of(context).dataSource;
     final filters = ListingFilters(
-      categoryId: _foodCategory!.id,
+      categoryIds: _eatCategoryIds,
       parishIds: _parishIds,
       subcategoryIds: _subcategoryIds,
     );
@@ -170,7 +172,7 @@ class _ChooseForMeScreenState extends State<ChooseForMeScreen> with TickerProvid
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Unable to load restaurants. Check your connection or try again later.'),
+          content: Text('Unable to load places. Check your connection or try again later.'),
         ),
       );
       setState(() => _spinning = false);
@@ -182,7 +184,7 @@ class _ChooseForMeScreenState extends State<ChooseForMeScreen> with TickerProvid
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text(
-            'No restaurants in your selection. Try different areas or subcategories.',
+            'No places in your selection. Try different areas or cuisine types.',
           ),
         ),
       );
@@ -248,7 +250,7 @@ class _ChooseForMeScreenState extends State<ChooseForMeScreen> with TickerProvid
     final tCuisine = _stagger(0.45, 0.72);
     final tButton = _stagger(0.6, 0.88);
     final pulseScale = 1.0 + 0.04 * Curves.easeInOut.transform(_pulseController.value);
-    final canSpin = !_spinning && _parishIds.isNotEmpty;
+    final canSpin = !_spinning && _parishIds.isNotEmpty && _eatCategoryIds.isNotEmpty;
 
     return Scaffold(
       backgroundColor: AppTheme.specOffWhite,
@@ -399,7 +401,7 @@ class _ChooseForMeScreenState extends State<ChooseForMeScreen> with TickerProvid
                 ),
               ),
               const SizedBox(height: 24),
-              if (_foodCategory != null && _foodCategory!.subcategories.isNotEmpty)
+              if (_eatSubcategories.isNotEmpty)
                 AnimatedBuilder(
                   animation: _entranceController,
                   builder: (context, child) {
@@ -412,7 +414,7 @@ class _ChooseForMeScreenState extends State<ChooseForMeScreen> with TickerProvid
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Cuisine (optional)',
+                        'Cuisine / type (optional)',
                         style: theme.textTheme.titleSmall?.copyWith(
                           fontWeight: FontWeight.w700,
                           color: nav,
@@ -422,7 +424,7 @@ class _ChooseForMeScreenState extends State<ChooseForMeScreen> with TickerProvid
                       Wrap(
                         spacing: 10,
                         runSpacing: 10,
-                        children: _foodCategory!.subcategories.map((s) {
+                        children: _eatSubcategories.map((s) {
                           final selected = _subcategoryIds.contains(s.id);
                           return TweenAnimationBuilder<double>(
                             key: ValueKey('${s.id}-$selected'),
@@ -462,7 +464,7 @@ class _ChooseForMeScreenState extends State<ChooseForMeScreen> with TickerProvid
                     ],
                   ),
                 ),
-              if (_foodCategory != null && _foodCategory!.subcategories.isNotEmpty)
+              if (_eatSubcategories.isNotEmpty)
                 const SizedBox(height: 24),
               AnimatedBuilder(
                 animation: Listenable.merge([_entranceController, _pulseController]),
@@ -476,7 +478,7 @@ class _ChooseForMeScreenState extends State<ChooseForMeScreen> with TickerProvid
                   );
                 },
                 child: AppSecondaryButton(
-                  onPressed: _spinning || _parishIds.isEmpty ? null : _spin,
+                  onPressed: _spinning || _parishIds.isEmpty || _eatCategoryIds.isEmpty ? null : _spin,
                   icon: _spinning
                       ? const SizedBox(
                           width: 20,

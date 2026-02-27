@@ -165,7 +165,7 @@ class AdminDealDetailSlideOut extends StatefulWidget {
           child: child,
         );
       },
-      pageBuilder: (ctx, _, __) {
+      pageBuilder: (ctx, _, _) {
         final panelWidth = (MediaQuery.sizeOf(ctx).width * 0.92).clamp(0.0, 420.0);
         return Material(
           color: Colors.transparent,
@@ -343,7 +343,7 @@ class _AdminDealDetailSlideOutState extends State<AdminDealDetailSlideOut> {
                           ),
                           const SizedBox(height: 8),
                           DropdownButtonFormField<String>(
-                            value: _selectedStatus,
+                            initialValue: _selectedStatus,
                             decoration: InputDecoration(
                               filled: true,
                               fillColor: AppTheme.specWhite,

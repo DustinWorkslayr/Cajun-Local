@@ -7,6 +7,8 @@ class BusinessSubscription {
     required this.id,
     required this.businessId,
     required this.planId,
+    this.planType,
+    this.revenuecatProductId,
     this.status = 'active',
     this.billingInterval = 'monthly',
     this.currentPeriodStart,
@@ -21,6 +23,10 @@ class BusinessSubscription {
   final String id;
   final String businessId;
   final String planId;
+  /// Standardized: free | local_plus | partner (RevenueCat).
+  final String? planType;
+  /// e.g. local_plus_monthly, local_partner_monthly.
+  final String? revenuecatProductId;
   final String status;
   final String billingInterval;
   final DateTime? currentPeriodStart;
@@ -36,6 +42,8 @@ class BusinessSubscription {
       id: json['id'] as String,
       businessId: json['business_id'] as String,
       planId: json['plan_id'] as String,
+      planType: json['plan_type'] as String?,
+      revenuecatProductId: json['revenuecat_product_id'] as String?,
       status: json['status'] as String? ?? 'active',
       billingInterval: json['billing_interval'] as String? ?? 'monthly',
       currentPeriodStart: json['current_period_start'] != null
@@ -62,6 +70,8 @@ class BusinessSubscription {
         'id': id,
         'business_id': businessId,
         'plan_id': planId,
+        if (planType != null) 'plan_type': planType,
+        if (revenuecatProductId != null) 'revenuecat_product_id': revenuecatProductId,
         'status': status,
         'billing_interval': billingInterval,
         if (currentPeriodStart != null)

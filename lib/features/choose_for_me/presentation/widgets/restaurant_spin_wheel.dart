@@ -63,7 +63,7 @@ class _WheelPainter extends CustomPainter {
     final radius = math.min(size.width, size.height) / 2 - _strokeWidth;
     final rect = Rect.fromCircle(center: center, radius: radius);
 
-    final n = math.min(_segmentCount, labels.length > 0 ? labels.length : 1);
+    final n = math.min(_segmentCount, labels.isNotEmpty ? labels.length : 1);
     final sweepAngle = 2 * math.pi / n;
     // So segment 0 is at top (12 o'clock): start at -pi/2.
     const startAngle = -math.pi / 2;

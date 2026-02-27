@@ -3,6 +3,7 @@ import 'package:my_app/core/data/repositories/category_repository.dart';
 import 'package:my_app/shared/widgets/app_buttons.dart';
 import 'package:my_app/core/theme/app_layout.dart';
 import 'package:my_app/core/theme/theme.dart';
+import 'package:uuid/uuid.dart';
 
 /// Bucket options for grouping categories (hire, eat, shop, explore).
 const _kBucketOptions = [
@@ -45,7 +46,7 @@ class _AdminAddCategoryScreenState extends State<AdminAddCategoryScreen> {
     try {
       final name = _nameController.text.trim();
       final sortOrder = int.tryParse(_sortOrderController.text.trim()) ?? 0;
-      final id = 'cat-${DateTime.now().millisecondsSinceEpoch}-${name.hashCode.abs()}';
+      final id = const Uuid().v4();
       await CategoryRepository().insertCategory({
         'id': id,
         'name': name,

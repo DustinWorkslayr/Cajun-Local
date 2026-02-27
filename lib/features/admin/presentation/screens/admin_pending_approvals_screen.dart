@@ -407,6 +407,7 @@ class _AdminPendingApprovalsScreenState extends State<AdminPendingApprovalsScree
                     approving: _approving,
                     onOpen: () => _openSlideOut(business),
                     onApproveAll: () async {
+                      final state = this;
                       setState(() => _approving = true);
                       try {
                         final uid = AppDataScope.of(scaffoldContext).authRepository.currentUserId;
@@ -445,14 +446,14 @@ class _AdminPendingApprovalsScreenState extends State<AdminPendingApprovalsScree
                             targetId: e.id,
                           );
                         }
-                        if (mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
+                        if (state.mounted) {
+                          ScaffoldMessenger.maybeOf(state.context)?.showSnackBar(
                             SnackBar(content: Text('Approved ${business.totalCount} for ${business.businessName}')),
                           );
                           _load();
                         }
                       } finally {
-                        if (mounted) setState(() => _approving = false);
+                        if (state.mounted) setState(() => _approving = false);
                       }
                     },
                   );

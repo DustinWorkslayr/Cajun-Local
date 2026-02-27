@@ -570,7 +570,7 @@ class _OverviewTabState extends State<_OverviewTab> {
                   )
                 else ...[
                   DropdownButtonFormField<BusinessCategory>(
-                    value: _selectedCategory,
+                    initialValue: _selectedCategory,
                     decoration: InputDecoration(
                       border: border,
                       contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
@@ -772,7 +772,7 @@ class _OverviewTabState extends State<_OverviewTab> {
                   )
                 else
                   DropdownButtonFormField<String>(
-                    value: _parishes.any((p) => p.id == _selectedPrimaryParishId) ? _selectedPrimaryParishId : null,
+                    initialValue: _parishes.any((p) => p.id == _selectedPrimaryParishId) ? _selectedPrimaryParishId : null,
                     decoration: InputDecoration(
                       border: border,
                       contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
@@ -842,7 +842,7 @@ class _OverviewTabState extends State<_OverviewTab> {
                 ),
                 const SizedBox(height: 12),
                 DropdownButtonFormField<String>(
-                  value: _selectedStatus,
+                  initialValue: _selectedStatus,
                   decoration: InputDecoration(
                     filled: true,
                     fillColor: AppTheme.specOffWhite,
@@ -993,6 +993,7 @@ class _ImagesTabState extends State<_ImagesTab> {
       }
       return;
     }
+    if (!mounted) return;
     final ext = file.extension ?? 'jpg';
     final uid = AppDataScope.of(context).authRepository.currentUserId;
     setState(() => _uploadingGallery = true);
@@ -2291,7 +2292,7 @@ class _SubscriptionTabState extends State<_SubscriptionTab> {
                 ),
                 const SizedBox(height: 6),
                 DropdownButtonFormField<String>(
-                  value: (_selectedPlanId != null && _plans.any((p) => p.id == _selectedPlanId))
+                  initialValue: (_selectedPlanId != null && _plans.any((p) => p.id == _selectedPlanId))
                       ? _selectedPlanId
                       : null,
                   hint: Text(_plans.isEmpty ? 'No plans' : 'Select plan', style: TextStyle(color: AppTheme.specNavy)),

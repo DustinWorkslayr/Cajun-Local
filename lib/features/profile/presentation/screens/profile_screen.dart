@@ -1133,14 +1133,30 @@ class _ProfileContentState extends State<_ProfileContent>
                   if (isPaid) ...[
                     const SizedBox(height: 10),
                     TextButton(
-                      onPressed: widget.onOpenCustomerPortal,
+                      onPressed: scope.revenueCatService != null
+                          ? () async {
+                              await scope.revenueCatService!.presentCustomerCenter(
+                                onRestoreCompleted: (info) {
+                                  if (context.mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(content: Text('Purchases restored')),
+                                    );
+                                  }
+                                },
+                              );
+                            }
+                          : widget.onOpenCustomerPortal,
                       style: TextButton.styleFrom(
                         foregroundColor: AppTheme.specNavy,
                         padding: EdgeInsets.zero,
                         minimumSize: Size.zero,
                         tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                       ),
-                      child: const Text('Open billing portal'),
+                      child: Text(
+                        scope.revenueCatService != null
+                            ? 'Manage subscription'
+                            : 'Open billing portal',
+                      ),
                     ),
                   ],
                 ],
@@ -1214,18 +1230,23 @@ class _ProfileContentState extends State<_ProfileContent>
           const SizedBox(height: 16),
           AppPrimaryButton(
             onPressed: () {
+              final rc = AppDataScope.of(context).revenueCatService;
               SubscriptionUpsellPopup.show(
                 context,
-                onSubscribe: () {
-                  Navigator.of(context).pop();
-                  widget.onStartStripeCheckout?.call();
-                },
-                onStartFreeTrial: () {
-                  Navigator.of(context).pop();
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Free trial coming soon.')),
-                  );
-                },
+                onSubscribe: rc != null
+                    ? null
+                    : () {
+                        Navigator.of(context).pop();
+                        widget.onStartStripeCheckout?.call();
+                      },
+                onStartFreeTrial: rc != null
+                    ? null
+                    : () {
+                        Navigator.of(context).pop();
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Free trial coming soon.')),
+                        );
+                      },
               );
             },
             expanded: false,

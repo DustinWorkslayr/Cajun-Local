@@ -59,6 +59,19 @@ class AuthRepository {
     return client.auth.signInWithPassword(email: email, password: password);
   }
 
+  /// Sign in with Google (OAuth). Requires Google provider enabled in Supabase Dashboard
+  /// and redirect URL (e.g. cajunlocal://auth/callback) added in Dashboard → Auth → URL Configuration.
+  Future<void> signInWithGoogle() async {
+    final client = _client;
+    if (client == null) throw StateError('Supabase not configured');
+    await client.auth.signInWithOAuth(
+      OAuthProvider.google,
+      redirectTo: kIsWeb ? null : _oauthRedirectUrl,
+    );
+  }
+
+  static const String _oauthRedirectUrl = 'cajunlocal://auth/callback';
+
   /// Send a password reset email. User must open the link in the same device
   /// (or use the same redirect URL) so the app can receive the deep link.
   Future<void> resetPasswordForEmail(String email) async {

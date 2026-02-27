@@ -27,7 +27,7 @@ class BusinessAd {
   final String id;
   final String businessId;
   final String packageId;
-  /// draft, pending_payment, active, paused, expired, rejected
+  /// draft, pending_payment, pending_approval, active, paused, expired, rejected
   final String status;
   final DateTime? startDate;
   final DateTime? endDate;
@@ -96,6 +96,8 @@ class BusinessAd {
         return 'Draft';
       case 'pending_payment':
         return 'Pending payment';
+      case 'pending_approval':
+        return 'Pending approval';
       case 'active':
         return 'Active';
       case 'paused':

@@ -201,7 +201,7 @@ class _AdminAddDealScreenState extends State<AdminAddDealScreen> {
               else ...[
                 if (widget.initialBusinessId == null) ...[
                   DropdownButtonFormField<Business>(
-                    value: _selectedBusiness != null && _businesses.any((b) => b.id == _selectedBusiness!.id)
+                    initialValue: _selectedBusiness != null && _businesses.any((b) => b.id == _selectedBusiness!.id)
                         ? _selectedBusiness
                         : null,
                     decoration: const InputDecoration(
@@ -278,7 +278,7 @@ class _AdminAddDealScreenState extends State<AdminAddDealScreen> {
                 ),
                 const SizedBox(height: 16),
                 DropdownButtonFormField<String>(
-                  value: _dealType,
+                  initialValue: _dealType,
                   decoration: const InputDecoration(
                     labelText: 'Deal type',
                     border: OutlineInputBorder(),

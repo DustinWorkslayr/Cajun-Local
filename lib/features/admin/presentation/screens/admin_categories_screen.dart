@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:my_app/core/data/category_icons.dart';
 import 'package:my_app/core/data/models/business_category.dart';
 import 'package:my_app/core/data/models/subcategory.dart';
 import 'package:my_app/core/data/repositories/category_repository.dart';
@@ -24,17 +25,6 @@ const _kBucketOptions = [
   ('eat', 'Eat'),
   ('shop', 'Shop'),
   ('explore', 'Explore'),
-];
-
-/// Icon options for category (value = name stored in DB, used on home).
-const _kCategoryIconOptions = [
-  ('', 'Default'),
-  ('restaurant', 'Restaurant'),
-  ('music_note', 'Music'),
-  ('store', 'Store'),
-  ('terrain', 'Outdoors'),
-  ('local_cafe', 'Cafe'),
-  ('category', 'General'),
 ];
 
 /// Admin categories: reorderable list, auto-increment sort order for new,
@@ -122,7 +112,7 @@ class _AdminCategoriesScreenState extends State<AdminCategoriesScreen> {
     setState(() => _loading = true);
     try {
       final sortOrder = _categories.length;
-      final id = 'cat-${DateTime.now().millisecondsSinceEpoch}-${result.name.trim().hashCode.abs()}';
+      final id = const Uuid().v4();
       await _repo.insertCategory({
         'id': id,
         'name': result.name.trim(),
@@ -386,16 +376,19 @@ class _AddCategoryDialogState extends State<_AddCategoryDialog> {
               onChanged: (v) => setState(() => _selectedBucket = v ?? 'explore'),
             ),
             const SizedBox(height: 16),
-            DropdownButtonFormField<String>(
-              initialValue: _selectedIcon ?? '',
-              decoration: const InputDecoration(
-                labelText: 'Category icon',
-                border: OutlineInputBorder(),
-              ),
-              items: _kCategoryIconOptions
-                  .map((e) => DropdownMenuItem(value: e.$1, child: Text(e.$2)))
-                  .toList(),
-              onChanged: (v) => setState(() => _selectedIcon = v),
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: Icon(getCategoryIconData(_selectedIcon?.isEmpty ?? true ? null : _selectedIcon), color: Theme.of(context).colorScheme.primary),
+              title: const Text('Category icon'),
+              subtitle: Text(_selectedIcon == null || _selectedIcon!.isEmpty ? 'Default' : kCategoryIconOptions.firstWhere((o) => o.name == _selectedIcon, orElse: () => kCategoryIconOptions.first).label),
+              trailing: const Icon(Icons.chevron_right_rounded),
+              onTap: () async {
+                final picked = await showDialog<String>(
+                  context: context,
+                  builder: (ctx) => _CategoryIconPickerDialog(selectedIconName: _selectedIcon ?? ''),
+                );
+                if (picked != null && mounted) setState(() => _selectedIcon = picked.isEmpty ? null : picked);
+              },
             ),
           ],
         ),
@@ -425,6 +418,58 @@ class _AddCategoryDialogState extends State<_AddCategoryDialog> {
   }
 }
 
+/// Full-screen or dialog grid of category icons to choose from.
+class _CategoryIconPickerDialog extends StatelessWidget {
+  const _CategoryIconPickerDialog({required this.selectedIconName});
+
+  final String selectedIconName;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return AlertDialog(
+      title: const Text('Choose icon'),
+      content: SizedBox(
+        width: double.maxFinite,
+        child: SingleChildScrollView(
+          child: Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: kCategoryIconOptions.map((opt) {
+              final isSelected = (selectedIconName.isEmpty && opt.name.isEmpty) || selectedIconName == opt.name;
+              return Material(
+                color: isSelected ? theme.colorScheme.primaryContainer : theme.colorScheme.surfaceContainerHighest,
+                borderRadius: BorderRadius.circular(12),
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(12),
+                  onTap: () => Navigator.of(context).pop(opt.name),
+                  child: Padding(
+                    padding: const EdgeInsets.all(12),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(getCategoryIconData(opt.name.isEmpty ? null : opt.name), size: 28, color: theme.colorScheme.onSurface),
+                        const SizedBox(height: 4),
+                        SizedBox(width: 64, child: Text(opt.label, style: theme.textTheme.labelSmall, textAlign: TextAlign.center, maxLines: 2, overflow: TextOverflow.ellipsis)),
+                      ],
+                    ),
+                  ),
+                ),
+              );
+            }).toList(),
+          ),
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(selectedIconName),
+          child: const Text('Cancel'),
+        ),
+      ],
+    );
+  }
+}
+
 class _EditCategoryDialog extends StatefulWidget {
   const _EditCategoryDialog({required this.category});
 
@@ -447,8 +492,8 @@ class _EditCategoryDialogState extends State<_EditCategoryDialog> {
     _selectedBucket = validBuckets.contains(widget.category.bucket)
         ? widget.category.bucket
         : 'explore';
-    final validIcons = _kCategoryIconOptions.map((e) => e.$1).toSet();
-    _selectedIcon = widget.category.icon != null && validIcons.contains(widget.category.icon)
+    final validIconNames = kCategoryIconOptions.map((e) => e.name).toSet();
+    _selectedIcon = widget.category.icon != null && validIconNames.contains(widget.category.icon)
         ? widget.category.icon!
         : '';
   }
@@ -492,16 +537,19 @@ class _EditCategoryDialogState extends State<_EditCategoryDialog> {
               onChanged: (v) => setState(() => _selectedBucket = v ?? 'explore'),
             ),
             const SizedBox(height: 16),
-            DropdownButtonFormField<String>(
-              initialValue: _selectedIcon ?? '',
-              decoration: const InputDecoration(
-                labelText: 'Category icon',
-                border: OutlineInputBorder(),
-              ),
-              items: _kCategoryIconOptions
-                  .map((e) => DropdownMenuItem(value: e.$1, child: Text(e.$2)))
-                  .toList(),
-              onChanged: (v) => setState(() => _selectedIcon = v),
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: Icon(getCategoryIconData(_selectedIcon?.isEmpty ?? true ? null : _selectedIcon), color: Theme.of(context).colorScheme.primary),
+              title: const Text('Category icon'),
+              subtitle: Text(_selectedIcon == null || _selectedIcon!.isEmpty ? 'Default' : kCategoryIconOptions.firstWhere((o) => o.name == _selectedIcon, orElse: () => kCategoryIconOptions.first).label),
+              trailing: const Icon(Icons.chevron_right_rounded),
+              onTap: () async {
+                final picked = await showDialog<String>(
+                  context: context,
+                  builder: (ctx) => _CategoryIconPickerDialog(selectedIconName: _selectedIcon ?? ''),
+                );
+                if (picked != null && mounted) setState(() => _selectedIcon = picked.isEmpty ? null : picked);
+              },
             ),
           ],
         ),
