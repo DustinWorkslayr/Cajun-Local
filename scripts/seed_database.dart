@@ -41,6 +41,7 @@ Future<void> main() async {
     await _seedBusinessParishes(client);
     await _seedBusinessSubcategories(client);
     await _seedBusinessHours(client);
+    await _seedBusinessAmenities(client);
     await _seedDeals(client);
     await _seedBlogPosts(client);
     await _seedNotificationBanners(client);
@@ -162,6 +163,37 @@ Future<void> _seedBusinessHours(SupabaseClient client) async {
   }
   await client.from('business_hours').upsert(rows, onConflict: 'business_id,day_of_week');
   print('  business_hours');
+}
+
+// Amenity IDs from migration 20260227200000_amenities_system.sql (global, eat, shop, explore).
+Future<void> _seedBusinessAmenities(SupabaseClient client) async {
+  const global1 = 'a0000001-0001-4001-8001-000000000001'; // Online Booking
+  const global2 = 'a0000001-0001-4001-8001-000000000002'; // Walk-Ins Welcome
+  const global6 = 'a0000001-0001-4001-8001-000000000006';  // Accepts Credit Cards
+  const global12 = 'a0000001-0001-4001-8001-000000000012'; // Family Friendly
+  const eat5 = 'a0000002-0002-4002-8002-000000000005';    // Takeout
+  const eat6 = 'a0000002-0002-4002-8002-000000000006';    // Dine-In
+  const explore2 = 'a0000005-0005-4005-8005-000000000002'; // Self-Guided
+  const explore7 = 'a0000005-0005-4005-8005-000000000007'; // Event Hosting
+  const shop2 = 'a0000004-0004-4004-8004-000000000002';    // In-Store Pickup
+  const shop4 = 'a0000004-0004-4004-8004-000000000004';    // Shipping Available
+  const shop8 = 'a0000004-0004-4004-8004-000000000008';    // Gift Cards Available
+
+  await client.from('business_amenities').upsert([
+    {'business_id': _biz1, 'amenity_id': global1},
+    {'business_id': _biz1, 'amenity_id': global2},
+    {'business_id': _biz1, 'amenity_id': eat5},
+    {'business_id': _biz1, 'amenity_id': eat6},
+    {'business_id': _biz2, 'amenity_id': global1},
+    {'business_id': _biz2, 'amenity_id': global12},
+    {'business_id': _biz2, 'amenity_id': explore2},
+    {'business_id': _biz2, 'amenity_id': explore7},
+    {'business_id': _biz3, 'amenity_id': global6},
+    {'business_id': _biz3, 'amenity_id': shop2},
+    {'business_id': _biz3, 'amenity_id': shop4},
+    {'business_id': _biz3, 'amenity_id': shop8},
+  ], onConflict: 'business_id,amenity_id');
+  print('  business_amenities');
 }
 
 Future<void> _seedDeals(SupabaseClient client) async {
