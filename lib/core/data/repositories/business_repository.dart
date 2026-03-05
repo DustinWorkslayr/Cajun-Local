@@ -9,15 +9,84 @@ class BusinessRepository {
       SupabaseConfig.isConfigured ? Supabase.instance.client : null;
 
   static const _approved = 'approved';
-  static const _limit = 2000;
+  static const _defaultPageSize = 50;
+  static const _maxPageSize = 200;
 
-  Future<List<Business>> listApproved({String? categoryId}) async {
+  /// Paginated approved businesses. [limit] capped at [_maxPageSize].
+  /// When [parishIds] is non-empty, only businesses whose primary parish or service-area parishes (business_parishes) match are returned.
+  Future<List<Business>> listApproved({
+    String? categoryId,
+    Set<String>? parishIds,
+    int limit = _defaultPageSize,
+    int offset = 0,
+  }) async {
     final client = _client;
     if (client == null) return [];
+    final cappedLimit = limit.clamp(1, _maxPageSize);
+    List<String>? allowedIds;
+    if (parishIds != null && parishIds.isNotEmpty) {
+      allowedIds = await _approvedBusinessIdsInParishes(client, parishIds, categoryId);
+      if (allowedIds.isEmpty) return [];
+    }
     var q = client.from('businesses').select().eq('status', _approved);
     if (categoryId != null) q = q.eq('category_id', categoryId);
-    final list = await q.order('name').limit(_limit);
+    if (allowedIds != null) q = q.inFilter('id', allowedIds);
+    final list = await q.order('name').range(offset, offset + cappedLimit - 1);
     return (list as List).map((e) => Business.fromJson(e as Map<String, dynamic>)).toList();
+  }
+
+  /// Returns approved business IDs that are in at least one of [parishIds] (primary parish or business_parishes). Optional [categoryId] filter.
+  Future<List<String>> _approvedBusinessIdsInParishes(
+    SupabaseClient client,
+    Set<String> parishIds,
+    String? categoryId,
+  ) async {
+    final list = parishIds.toList();
+    final fromPrimary = await client
+        .from('businesses')
+        .select('id')
+        .eq('status', _approved)
+        .inFilter('parish', list);
+    final fromServiceAreas = await client
+        .from('business_parishes')
+        .select('business_id')
+        .inFilter('parish_id', list);
+    final ids = <String>{};
+    for (final row in fromPrimary as List) {
+      ids.add((row as Map<String, dynamic>)['id'] as String);
+    }
+    for (final row in fromServiceAreas as List) {
+      ids.add((row as Map<String, dynamic>)['business_id'] as String);
+    }
+    if (ids.isEmpty) return [];
+    if (categoryId == null) return ids.toList();
+    final withCategory = await client
+        .from('businesses')
+        .select('id')
+        .eq('status', _approved)
+        .eq('category_id', categoryId)
+        .inFilter('id', ids.toList());
+    return (withCategory as List)
+        .map((e) => (e as Map<String, dynamic>)['id'] as String)
+        .toList();
+  }
+
+  /// Total count of approved businesses with optional [categoryId] and [parishIds] filter (for pagination).
+  Future<int> listApprovedCount({String? categoryId, Set<String>? parishIds}) async {
+    final client = _client;
+    if (client == null) return 0;
+    if (parishIds != null && parishIds.isNotEmpty) {
+      final ids = await _approvedBusinessIdsInParishes(client, parishIds, categoryId);
+      return ids.length;
+    }
+    var q = client.from('businesses').select().eq('status', _approved);
+    if (categoryId != null) q = q.eq('category_id', categoryId);
+    try {
+      final res = await q.count();
+      return res.count;
+    } catch (_) {
+      return 0;
+    }
   }
 
   Future<Business?> getById(String id) async {
@@ -37,14 +106,42 @@ class BusinessRepository {
     return Business.fromJson(Map<String, dynamic>.from(res));
   }
 
-  /// Admin: list businesses with optional status filter (pending, approved, rejected).
-  Future<List<Business>> listForAdmin({String? status}) async {
+  /// Admin: list businesses with optional status and search. Paginated.
+  Future<List<Business>> listForAdmin({
+    String? status,
+    String? search,
+    int limit = _defaultPageSize,
+    int offset = 0,
+  }) async {
     final client = _client;
     if (client == null) return [];
+    final cappedLimit = limit.clamp(1, _maxPageSize);
     var q = client.from('businesses').select();
     if (status != null) q = q.eq('status', status);
-    final list = await q.order('name').limit(_limit);
+    if (search != null && search.trim().isNotEmpty) {
+      final term = '%${search.trim()}%';
+      q = q.or('name.ilike.$term,city.ilike.$term,state.ilike.$term,address.ilike.$term');
+    }
+    final list = await q.order('name').range(offset, offset + cappedLimit - 1);
     return (list as List).map((e) => Business.fromJson(e as Map<String, dynamic>)).toList();
+  }
+
+  /// Admin: total count with optional [status] and [search] filter.
+  Future<int> listForAdminCount({String? status, String? search}) async {
+    final client = _client;
+    if (client == null) return 0;
+    var q = client.from('businesses').select();
+    if (status != null) q = q.eq('status', status);
+    if (search != null && search.trim().isNotEmpty) {
+      final term = '%${search.trim()}%';
+      q = q.or('name.ilike.$term,city.ilike.$term,state.ilike.$term,address.ilike.$term');
+    }
+    try {
+      final res = await q.count();
+      return res.count;
+    } catch (_) {
+      return 0;
+    }
   }
 
   /// Admin: get business by id (any status).

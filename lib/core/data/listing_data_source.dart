@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:my_app/core/auth/auth_repository.dart';
 import 'package:my_app/core/data/mock_data.dart';
 import 'package:my_app/core/data/models/business.dart';
@@ -21,11 +22,26 @@ import 'package:my_app/core/data/repositories/user_punch_cards_repository.dart';
 import 'package:my_app/core/supabase/supabase_config.dart';
 import 'package:my_app/core/utils/hours_format.dart';
 
+/// In-memory cache entry with TTL. Used by ListingDataSource for listing by id, categories, parishes.
+class _CacheEntry<T> {
+  _CacheEntry({required this.data, required this.expiresAt});
+  final T data;
+  final DateTime expiresAt;
+  bool get isExpired => DateTime.now().isAfter(expiresAt);
+}
+
 /// Single data entry point: uses Supabase repos when configured.
 /// When Supabase is not configured, methods throw so the UI shows "Loading data failed" instead of mock data.
 class ListingDataSource {
   /// Error message thrown when backend is not configured; UI should show this or "Loading data failed".
   static const String kNotConfiguredMessage = 'Loading data failed. Backend is not configured.';
+
+  /// TTL for in-memory cache (listing by id, categories, parishes). Back navigation and tab switch can use cache.
+  static const Duration _cacheTtl = Duration(seconds: 90);
+
+  final Map<String, _CacheEntry<MockListing>> _listingCache = {};
+  _CacheEntry<List<MockCategory>>? _categoriesCache;
+  _CacheEntry<List<MockParish>>? _parishesCache;
 
   ListingDataSource({
     AuthRepository? authRepository,
@@ -85,22 +101,51 @@ class ListingDataSource {
     ));
   }
 
-  /// Featured spots (first N approved businesses).
+  /// Featured spots (first N approved businesses), enriched with category and subcategory names.
   Future<List<MockSpot>> getFeaturedSpots() async {
     if (!useSupabase) return Future.error(StateError(kNotConfiguredMessage));
     final list = await _business.listApproved();
     const limit = 10;
-    return list.take(limit).map(_businessToSpot).toList();
+    final take = list.take(limit).toList();
+    if (take.isEmpty) return [];
+    final categories = await _category.listCategories();
+    final catMap = {for (final c in categories) c.id: c.name};
+    final subNameMap = <String, String>{};
+    for (final c in categories) {
+      final subs = await _category.listSubcategories(categoryId: c.id);
+      for (final s in subs) {
+        subNameMap[s.id] = s.name;
+      }
+    }
+    final result = <MockSpot>[];
+    for (final b in take) {
+      final subIds = await _category.getSubcategoryIdsForBusiness(b.id);
+      final firstSubName = subIds.isEmpty ? null : subNameMap[subIds.first];
+      result.add(MockSpot(
+        id: b.id,
+        name: b.name,
+        subtitle: b.tagline ?? b.name,
+        categoryId: b.categoryId,
+        logoUrl: b.logoUrl,
+        categoryName: catMap[b.categoryId],
+        subcategoryName: firstSubName,
+        rating: null,
+      ));
+    }
+    return result;
   }
 
   /// Categories with subcategories (from business_categories + subcategories). Includes bucket for amenity filters.
   Future<List<MockCategory>> getCategories() async {
     if (!useSupabase) return Future.error(StateError(kNotConfiguredMessage));
+    if (_categoriesCache != null && !_categoriesCache!.isExpired) {
+      return _categoriesCache!.data;
+    }
     final categories = await _category.listCategories();
     final result = <MockCategory>[];
     for (final c in categories) {
       final subs = await _category.listSubcategories(categoryId: c.id);
-      final count = await _business.listApproved(categoryId: c.id).then((l) => l.length);
+      final count = await _business.listApprovedCount(categoryId: c.id);
       result.add(MockCategory(
         id: c.id,
         name: c.name,
@@ -110,6 +155,7 @@ class ListingDataSource {
         bucket: c.bucket,
       ));
     }
+    _categoriesCache = _CacheEntry(data: result, expiresAt: DateTime.now().add(_cacheTtl));
     return result;
   }
 
@@ -118,10 +164,22 @@ class ListingDataSource {
     return icon;
   }
 
-  /// All approved listings (for filter count / list).
-  Future<List<MockListing>> getListings() async {
+  /// One page of approved listings. Use for Explore "load more". [limit] default 50.
+  /// When [parishIds] is non-empty, only businesses in those parishes (primary or business_parishes) are returned.
+  Future<({List<MockListing> list, bool hasMore})> getListingsPage({
+    int limit = 50,
+    int offset = 0,
+    String? categoryId,
+    Set<String>? parishIds,
+  }) async {
     if (!useSupabase) return Future.error(StateError(kNotConfiguredMessage));
-    final list = await _business.listApproved();
+    final list = await _business.listApproved(
+      limit: limit,
+      offset: offset,
+      categoryId: categoryId,
+      parishIds: parishIds,
+    );
+    final hasMore = list.length >= limit;
     final categories = await _category.listCategories();
     final catMap = {for (final c in categories) c.id: c.name};
     final businessIds = list.map((b) => b.id).toList();
@@ -133,12 +191,20 @@ class ListingDataSource {
       final amenityNames = amenityNamesByBusiness[b.id] ?? [];
       result.add(await _businessToMockListing(b, hours, subIds.isEmpty ? null : subIds.first, catMap[b.categoryId], amenityNames));
     }
-    return result;
+    return (list: result, hasMore: hasMore);
   }
 
-  /// One listing by id.
+  /// All approved listings (first page only, for backward compat). Prefer [getListingsPage] for Explore.
+  Future<List<MockListing>> getListings() async {
+    final page = await getListingsPage(limit: 500, offset: 0);
+    return page.list;
+  }
+
+  /// One listing by id. Uses in-memory cache with TTL so back navigation and favorites can avoid refetch.
   Future<MockListing?> getListingById(String id) async {
     if (!useSupabase) return Future.error(StateError(kNotConfiguredMessage));
+    final cached = _listingCache[id];
+    if (cached != null && !cached.isExpired) return cached.data;
     final b = await _business.getById(id);
     if (b == null) return null;
     final hours = await _hours.getForBusiness(b.id);
@@ -153,7 +219,24 @@ class ListingDataSource {
     }
     final amenityNamesMap = await _amenities.getAmenityNamesForBusinesses([b.id]);
     final amenityNames = amenityNamesMap[b.id] ?? [];
-    return _businessToMockListing(b, hours, subIds.isEmpty ? null : subIds.first, catName ?? b.categoryId, amenityNames);
+    final listing = await _businessToMockListing(b, hours, subIds.isEmpty ? null : subIds.first, catName ?? b.categoryId, amenityNames);
+    _listingCache[id] = _CacheEntry(data: listing, expiresAt: DateTime.now().add(_cacheTtl));
+    return listing;
+  }
+
+  /// Call after updating a listing so detail and list see fresh data on next load.
+  void invalidateListingCache(String id) {
+    _listingCache.remove(id);
+  }
+
+  /// Call when categories may have changed (e.g. admin). Optional; TTL will expire anyway.
+  void invalidateCategoriesCache() {
+    _categoriesCache = null;
+  }
+
+  /// Call when parishes may have changed. Optional; TTL will expire anyway.
+  void invalidateParishesCache() {
+    _parishesCache = null;
   }
 
   Future<MockListing> _businessToMockListing(Business b, List<BusinessHours> hours, String? subcategoryId, String? categoryName, [List<String> amenityNames = const []]) async {
@@ -210,18 +293,71 @@ class ListingDataSource {
     return dayOfWeek[0].toUpperCase() + dayOfWeek.substring(1).toLowerCase();
   }
 
-  static MockSpot _businessToSpot(Business b) => MockSpot(
-        id: b.id,
-        name: b.name,
-        subtitle: b.tagline ?? b.name,
-        categoryId: b.categoryId,
-        logoUrl: b.logoUrl,
-      );
 
   /// Filter listings (search, category, subcategory, parish, amenities, dealOnly). Listing with no parish set matches any parish filter.
+  /// When filters specify a single category (and optionally parishes), fetches from the DB with those filters so Choose for me and similar flows see matching businesses.
   Future<List<MockListing>> filterListings(ListingFilters filters, {bool openNowOnly = false}) async {
     if (!useSupabase) return Future.error(StateError(kNotConfiguredMessage));
-    final list = await getListings();
+    final String? singleCategoryId = filters.categoryIds != null && filters.categoryIds!.length == 1
+        ? filters.categoryIds!.single
+        : filters.categoryId;
+    final List<MockListing> list = singleCategoryId != null
+        ? await _getListingsForCategoryAndParish(
+            categoryId: singleCategoryId,
+            parishIds: filters.parishIds,
+          )
+        : await getListings();
+    Set<String>? amenityIds;
+    Set<String>? dealListingIds;
+    if (filters.amenityIds.isNotEmpty) {
+      amenityIds = (await _amenities.getBusinessIdsWithAnyAmenity(filters.amenityIds)).toSet();
+    }
+    if (filters.dealOnly) {
+      final deals = await getActiveDeals();
+      dealListingIds = deals.map((d) => d.listingId).toSet();
+    }
+    return filterListingsInMemory(
+      list,
+      filters,
+      openNowOnly: openNowOnly,
+      businessIdsWithAnyAmenity: amenityIds,
+      listingIdsWithDeals: dealListingIds,
+    );
+  }
+
+  /// Fetches approved listings for a single category and optional parishes by paginating until we have enough or no more (for filterListings / Choose for me).
+  static const int _filterFetchMax = 500;
+
+  Future<List<MockListing>> _getListingsForCategoryAndParish({
+    required String categoryId,
+    Set<String> parishIds = const {},
+  }) async {
+    final accumulated = <MockListing>[];
+    var offset = 0;
+    const pageSize = 200;
+    while (accumulated.length < _filterFetchMax) {
+      final page = await getListingsPage(
+        limit: pageSize,
+        offset: offset,
+        categoryId: categoryId,
+        parishIds: parishIds.isEmpty ? null : parishIds,
+      );
+      accumulated.addAll(page.list);
+      if (!page.hasMore || page.list.length < pageSize) break;
+      offset += page.list.length;
+    }
+    return accumulated;
+  }
+
+  /// Synchronous in-memory filter for Explore: instant filter changes without refetch.
+  /// Pass [businessIdsWithAnyAmenity] when [filters.amenityIds] is non-empty; pass [listingIdsWithDeals] when [filters.dealOnly] is true.
+  static List<MockListing> filterListingsInMemory(
+    List<MockListing> list,
+    ListingFilters filters, {
+    bool openNowOnly = false,
+    Set<String>? businessIdsWithAnyAmenity,
+    Set<String>? listingIdsWithDeals,
+  }) {
     var result = list.where((l) {
       if (openNowOnly && !l.isOpenNow) return false;
       if (filters.searchQuery.isNotEmpty) {
@@ -237,18 +373,22 @@ class ListingDataSource {
       } else if (filters.categoryId != null && l.categoryId != filters.categoryId) {
         return false;
       }
-      if (filters.subcategoryIds.isNotEmpty && (l.subcategoryId == null || !filters.subcategoryIds.contains(l.subcategoryId))) return false;
-      if (filters.parishIds.isNotEmpty && l.parishIds.isNotEmpty && !l.parishIds.any((pid) => filters.parishIds.contains(pid))) return false;
+      if (filters.subcategoryIds.isNotEmpty &&
+          (l.subcategoryId == null || !filters.subcategoryIds.contains(l.subcategoryId))) {
+        return false;
+      }
+      if (filters.parishIds.isNotEmpty &&
+          l.parishIds.isNotEmpty &&
+          !l.parishIds.any((pid) => filters.parishIds.contains(pid))) {
+        return false;
+      }
       return true;
     }).toList();
-    if (filters.amenityIds.isNotEmpty) {
-      final idsWithAmenity = await _amenities.getBusinessIdsWithAnyAmenity(filters.amenityIds);
-      result = result.where((l) => idsWithAmenity.contains(l.id)).toList();
+    if (filters.amenityIds.isNotEmpty && businessIdsWithAnyAmenity != null) {
+      result = result.where((l) => businessIdsWithAnyAmenity.contains(l.id)).toList();
     }
-    if (filters.dealOnly && result.isNotEmpty) {
-      final deals = await getActiveDeals();
-      final idsWithDeals = deals.map((d) => d.listingId).toSet();
-      result = result.where((l) => idsWithDeals.contains(l.id)).toList();
+    if (filters.dealOnly && listingIdsWithDeals != null) {
+      result = result.where((l) => listingIdsWithDeals.contains(l.id)).toList();
     }
     if (filters.minRating != null) {
       result = result.where((l) => l.rating != null && l.rating! >= filters.minRating!).toList();
@@ -318,6 +458,26 @@ class ListingDataSource {
     if (!useSupabase) return Future.error(StateError(kNotConfiguredMessage));
     final list = await _events.listApproved(businessId: listingId);
     return list.map(_eventToMock).toList();
+  }
+
+  /// Upcoming approved events (event_date >= today) with business name, for home strip. Limit applied after date filter.
+  Future<List<(MockEvent, String)>> getUpcomingEvents({int limit = 6}) async {
+    if (!useSupabase) return Future.error(StateError(kNotConfiguredMessage));
+    final list = await _events.listApproved();
+    final now = DateTime.now();
+    final startOfToday = DateTime(now.year, now.month, now.day);
+    final upcoming = list.where((e) {
+      final local = e.eventDate.isUtc ? e.eventDate.toLocal() : e.eventDate;
+      final eventDay = DateTime(local.year, local.month, local.day);
+      return !eventDay.isBefore(startOfToday);
+    }).take(limit).toList();
+    final result = <(MockEvent, String)>[];
+    for (final e in upcoming) {
+      final business = await _business.getById(e.businessId);
+      final name = business?.name ?? 'Local business';
+      result.add((_eventToMock(e), name));
+    }
+    return result;
   }
 
   Future<List<MockPunchCard>> getPunchCardsForListing(String listingId) async {
@@ -466,15 +626,21 @@ class ListingDataSource {
     );
   }
 
-  /// Allowed parishes (from DB when configured). Falls back to [MockData.parishes] when not configured, DB empty, or on error.
+  /// Allowed parishes from DB only. Returns empty when not configured, DB empty, or on error. No mock fallback.
   Future<List<MockParish>> getParishes() async {
-    if (!useSupabase) return List<MockParish>.from(MockData.parishes);
+    if (!useSupabase) return <MockParish>[];
+    if (_parishesCache != null && !_parishesCache!.isExpired) {
+      return _parishesCache!.data;
+    }
     try {
       final list = await ParishRepository().listParishes();
-      if (list.isEmpty) return List<MockParish>.from(MockData.parishes);
-      return list.map((p) => MockParish(id: p.id, name: p.name)).toList();
-    } catch (_) {
-      return List<MockParish>.from(MockData.parishes);
+      final result = list.map((p) => MockParish(id: p.id, name: p.name)).toList();
+      _parishesCache = _CacheEntry(data: result, expiresAt: DateTime.now().add(_cacheTtl));
+      return result;
+    } catch (e, st) {
+      debugPrint('ListingDataSource.getParishes failed: $e');
+      debugPrint(st.toString());
+      return <MockParish>[];
     }
   }
 
@@ -522,6 +688,7 @@ class ListingDataSource {
       longitude: longitude,
     );
     if (parishIds != null) await _business.setBusinessParishes(id, parishIds);
+    invalidateListingCache(id);
   }
 
   /// Set subcategories for a business. Replaces existing.
