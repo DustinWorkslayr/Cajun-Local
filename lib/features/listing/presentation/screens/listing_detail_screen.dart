@@ -1,12 +1,16 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:my_app/core/auth/auth_repository.dart';
 import 'package:my_app/core/data/app_data_scope.dart';
 import 'package:my_app/core/data/listing_data_source.dart';
+import 'package:my_app/core/data/deal_type_icons.dart';
 import 'package:my_app/core/data/mock_data.dart';
 import 'package:my_app/core/data/models/user_deal.dart';
+import 'package:my_app/core/data/models/business.dart';
 import 'package:my_app/core/data/models/business_claim.dart';
+import 'package:my_app/core/data/models/business_image.dart';
 import 'package:my_app/core/data/repositories/business_claims_repository.dart';
 import 'package:my_app/core/data/repositories/business_managers_repository.dart';
 import 'package:my_app/core/data/repositories/favorites_repository.dart';
@@ -23,7 +27,7 @@ import 'package:my_app/core/favorites/favorites_scope.dart';
 import 'package:my_app/core/subscription/resolved_permissions.dart';
 import 'package:my_app/core/theme/app_layout.dart';
 import 'package:my_app/shared/widgets/app_buttons.dart';
-import 'package:my_app/shared/widgets/subscription_upsell_popup.dart';
+import 'package:my_app/core/revenuecat/present_subscription_paywall.dart';
 import 'package:my_app/core/theme/theme.dart';
 import 'package:my_app/features/listing/presentation/screens/claim_business_screen.dart';
 import 'package:my_app/features/my_listings/presentation/screens/listing_edit_screen.dart';
@@ -131,6 +135,41 @@ class _ListingDetailBodyState extends State<_ListingDetailBody> {
   Future<_DetailData?> _load(ListingDataSource ds, String? userId, FavoritesRepository favRepo) async {
     final listing = await ds.getListingById(widget.listingId);
     if (listing == null) return null;
+
+    // Run all independent fetches in parallel for faster load.
+    final listingDataFutures = [
+      ds.getMenuForListing(widget.listingId),
+      ds.getSocialLinksForListing(widget.listingId),
+      ds.getDealsForListing(widget.listingId),
+      ds.getPunchCardsForListing(widget.listingId),
+      ds.getApprovedEventsForListing(widget.listingId),
+    ];
+    final supabaseFutures = <Future<dynamic>>[];
+    if (ds.useSupabase) {
+      supabaseFutures
+        ..add(BusinessRepository().getByIdForAdmin(widget.listingId))
+        ..add(BusinessImagesRepository().getApprovedForBusiness(widget.listingId))
+        ..add(BusinessSubscriptionsRepository().getByBusinessId(widget.listingId))
+        ..add(favRepo.getCountForBusiness(widget.listingId))
+        ..add(ReviewsRepository().listForAdmin(
+          businessId: widget.listingId,
+          status: 'approved',
+        ));
+      if (userId != null) {
+        supabaseFutures
+          ..add(BusinessClaimsRepository().getForUserAndBusiness(userId, widget.listingId))
+          ..add(ds.getCurrentUser());
+      }
+    }
+
+    final allFutures = [
+      Future.wait(listingDataFutures),
+      supabaseFutures.isEmpty ? Future<dynamic>.value(<dynamic>[]) : Future.wait(supabaseFutures),
+    ];
+    final results = await Future.wait(allFutures);
+    final listingResults = results[0] as List;
+    final supabaseResults = results[1] as List<dynamic>;
+
     String? bannerImageUrl;
     String? logoUrl;
     List<String> imageUrls = const [];
@@ -139,61 +178,48 @@ class _ListingDetailBodyState extends State<_ListingDetailBody> {
     String? contactFormTemplate;
     double? listingLatitude;
     double? listingLongitude;
-    if (ds.useSupabase) {
-      final business = await BusinessRepository().getByIdForAdmin(widget.listingId);
-      logoUrl = business?.logoUrl;
-      contactFormTemplate = business?.contactFormTemplate;
-      listingLatitude = business?.latitude;
-      listingLongitude = business?.longitude;
-      final images = await BusinessImagesRepository().getApprovedForBusiness(widget.listingId);
-      imageUrls = images.map((e) => e.url).toList();
-      bannerImageUrl = business?.bannerUrl ?? (imageUrls.isNotEmpty ? imageUrls.first : null);
-      if (userId != null) {
-        userClaim = await BusinessClaimsRepository().getForUserAndBusiness(userId, widget.listingId);
-      }
-      isPartner = await BusinessSubscriptionsRepository().isPartnerBusiness(widget.listingId);
-    }
     int favoritesCount = 0;
-    if (ds.useSupabase) {
-      favoritesCount = await favRepo.getCountForBusiness(widget.listingId);
-    }
     List<Review> reviews = const [];
     double averageRating = 0;
     int reviewCount = 0;
     String? subscriptionTier;
-    if (ds.useSupabase) {
-      final reviewsList = await ReviewsRepository().listForAdmin(
-        businessId: widget.listingId,
-        status: 'approved',
-      );
+    bool isOwnerOrManager = false;
+
+    if (ds.useSupabase && supabaseResults.isNotEmpty) {
+      int i = 0;
+      final business = supabaseResults[i++] as Business?;
+      logoUrl = business?.logoUrl;
+      contactFormTemplate = business?.contactFormTemplate;
+      listingLatitude = business?.latitude;
+      listingLongitude = business?.longitude;
+      final images = supabaseResults[i++] as List<BusinessImage>;
+      imageUrls = images.map((e) => e.url).toList();
+      bannerImageUrl = business?.bannerUrl ?? (imageUrls.isNotEmpty ? imageUrls.first : null);
+      final sub = supabaseResults[i++] as dynamic; // BusinessSubscriptionWithPlan?
+      subscriptionTier = sub?.planTier as String?;
+      isPartner = (subscriptionTier?.toLowerCase() == 'enterprise');
+      favoritesCount = supabaseResults[i++] as int;
+      final reviewsList = supabaseResults[i++] as List<Review>;
       reviews = reviewsList;
       reviewCount = reviews.length;
       if (reviews.isNotEmpty) {
         final sum = reviews.fold<int>(0, (s, r) => s + r.rating);
         averageRating = sum / reviews.length;
       }
-      final sub = await BusinessSubscriptionsRepository().getByBusinessId(widget.listingId);
-      subscriptionTier = sub?.planTier;
+      if (userId != null && i < supabaseResults.length) {
+        userClaim = supabaseResults[i++] as BusinessClaim?;
+        final user = supabaseResults[i++] as MockUser;
+        isOwnerOrManager = user.ownedListingIds.contains(widget.listingId);
+      }
     }
-    final results = await Future.wait([
-      ds.getMenuForListing(widget.listingId),
-      ds.getSocialLinksForListing(widget.listingId),
-      ds.getDealsForListing(widget.listingId),
-      ds.getPunchCardsForListing(widget.listingId),
-      ds.getApprovedEventsForListing(widget.listingId),
-    ]);
-    bool isOwnerOrManager = false;
-    if (userId != null) {
-      final user = await ds.getCurrentUser();
-      isOwnerOrManager = user.ownedListingIds.contains(widget.listingId);
-    }
+
     return _DetailData(
       listing: listing,
-      menuItems: results[0] as List<MockMenuItem>,
-      socialLinks: results[1] as List<MockSocialLink>,
-      deals: results[2] as List<MockDeal>,
-      punchCards: results[3] as List<MockPunchCard>,
-      events: results[4] as List<MockEvent>,
+      menuItems: listingResults[0] as List<MockMenuItem>,
+      socialLinks: listingResults[1] as List<MockSocialLink>,
+      deals: listingResults[2] as List<MockDeal>,
+      punchCards: listingResults[3] as List<MockPunchCard>,
+      events: listingResults[4] as List<MockEvent>,
       bannerImageUrl: bannerImageUrl,
       logoUrl: logoUrl,
       imageUrls: imageUrls,
@@ -467,7 +493,7 @@ class _ListingDetailContent extends StatelessWidget {
                       if (scope.dataSource.useSupabase &&
                           perms.wouldExceedFavoritesLimit(ids.length)) {
                         if (!context.mounted) return;
-                        await SubscriptionUpsellPopup.show(context);
+                        await presentSubscriptionPaywall(context);
                         return;
                       }
                       next.add(listing.id);
@@ -498,18 +524,20 @@ class _ListingDetailContent extends StatelessWidget {
               PageView.builder(
                 itemCount: data.imageUrls.length,
                 itemBuilder: (context, index) {
-                  return Image.network(
-                    data.imageUrls[index],
+                  return CachedNetworkImage(
+                    imageUrl: data.imageUrls[index],
                     fit: BoxFit.cover,
-                    errorBuilder: (_, _, _) => _heroGradient(),
+                    placeholder: (_, _) => _heroGradient(),
+                    errorWidget: (_, _, _) => _heroGradient(),
                   );
                 },
               )
             else if (singleImageUrl != null)
-              Image.network(
-                singleImageUrl,
+              CachedNetworkImage(
+                imageUrl: singleImageUrl,
                 fit: BoxFit.cover,
-                errorBuilder: (_, _, _) => _heroGradient(),
+                placeholder: (_, _) => _heroGradient(),
+                errorWidget: (_, _, _) => _heroGradient(),
               )
             else
               _heroGradient(),
@@ -533,10 +561,11 @@ class _ListingDetailContent extends StatelessWidget {
                   ),
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(12),
-                    child: Image.network(
-                      data.logoUrl!,
+                    child: CachedNetworkImage(
+                      imageUrl: data.logoUrl!,
                       fit: BoxFit.cover,
-                      errorBuilder: (_, _, _) => const SizedBox.shrink(),
+                      placeholder: (_, _) => const SizedBox.shrink(),
+                      errorWidget: (_, _, _) => const SizedBox.shrink(),
                     ),
                   ),
                 ),
@@ -947,7 +976,7 @@ class _ActionRow extends StatelessWidget {
                     if (scope.dataSource.useSupabase &&
                         perms.wouldExceedFavoritesLimit(ids.length)) {
                       if (!context.mounted) return;
-                      await SubscriptionUpsellPopup.show(context);
+                      await presentSubscriptionPaywall(context);
                       return;
                     }
                     next.add(listing.id);
@@ -1074,24 +1103,21 @@ class _FeaturedDealCardState extends State<_FeaturedDealCard> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          if (widget.deal.discount != null)
-            Padding(
-              padding: const EdgeInsets.only(bottom: 8),
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                decoration: BoxDecoration(
-                  color: nav.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Text(
-                  widget.deal.discount!,
-                  style: theme.textTheme.labelMedium?.copyWith(
-                    fontWeight: FontWeight.w700,
-                    color: nav,
-                  ),
-                ),
+          Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: nav.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(
+                DealTypeIcons.iconFor(widget.deal.dealType),
+                size: 24,
+                color: nav,
               ),
             ),
+          ),
           Text(
             widget.deal.title,
             style: theme.textTheme.titleLarge?.copyWith(
@@ -1152,14 +1178,14 @@ class _FeaturedDealCardState extends State<_FeaturedDealCard> {
                   if (uid == null) return;
                   final canClaim = scope.userTierService.value?.canClaimDeals ?? false;
                   if (!canClaim) {
-                    await SubscriptionUpsellPopup.show(context);
+                    await presentSubscriptionPaywall(context);
                     return;
                   }
                   await UserDealsRepository(authRepository: scope.authRepository).claim(uid, widget.deal.id);
                   if (mounted) setState(() => _claimed = true);
                   widget.onReload();
                 } : null,
-                onClaimUpsell: widget.isSignedIn ? () => SubscriptionUpsellPopup.show(context) : null,
+                onClaimUpsell: widget.isSignedIn ? () => presentSubscriptionPaywall(context) : null,
               );
             },
             expanded: false,
@@ -2755,7 +2781,7 @@ class _DealsBlockState extends State<_DealsBlock> {
                           }
                         : null,
                     onClaimUpsell: uid != null && !canClaimDeals
-                        ? () => SubscriptionUpsellPopup.show(context)
+                        ? () => presentSubscriptionPaywall(context)
                         : null,
                   );
                 },
@@ -2774,24 +2800,18 @@ class _DealsBlockState extends State<_DealsBlock> {
                     children: [
                       Row(
                         children: [
-                          if (deal.discount != null)
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 8,
-                                vertical: 4,
-                              ),
-                              decoration: BoxDecoration(
-                                color: AppTheme.specGold.withValues(alpha: 0.25),
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: Text(
-                                deal.discount!,
-                                style: theme.textTheme.labelMedium?.copyWith(
-                                  fontWeight: FontWeight.w700,
-                                  color: AppTheme.specNavy,
-                                ),
-                              ),
+                          Container(
+                            padding: const EdgeInsets.all(6),
+                            decoration: BoxDecoration(
+                              color: AppTheme.specGold.withValues(alpha: 0.25),
+                              borderRadius: BorderRadius.circular(8),
                             ),
+                            child: Icon(
+                              DealTypeIcons.iconFor(deal.dealType),
+                              size: 18,
+                              color: AppTheme.specNavy,
+                            ),
+                          ),
                           const SizedBox(width: 10),
                           Expanded(
                             child: Text(

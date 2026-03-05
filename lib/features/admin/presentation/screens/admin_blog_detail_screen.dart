@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:my_app/core/data/app_data_scope.dart';
 import 'package:my_app/core/data/models/blog_post.dart';
+import 'package:my_app/core/data/models/parish.dart';
 import 'package:my_app/core/data/repositories/audit_log_repository.dart';
 import 'package:my_app/core/data/repositories/blog_posts_repository.dart';
+import 'package:my_app/core/data/repositories/parish_repository.dart';
 import 'package:my_app/features/admin/presentation/screens/admin_add_blog_post_screen.dart';
 
 class AdminBlogDetailScreen extends StatefulWidget {
@@ -16,6 +18,7 @@ class AdminBlogDetailScreen extends StatefulWidget {
 
 class _AdminBlogDetailScreenState extends State<AdminBlogDetailScreen> {
   BlogPost? _post;
+  List<Parish> _parishes = [];
   bool _loading = true;
   String? _error;
 
@@ -27,14 +30,24 @@ class _AdminBlogDetailScreenState extends State<AdminBlogDetailScreen> {
 
   Future<void> _load() async {
     final repo = BlogPostsRepository();
-    final p = await repo.getById(widget.postId);
+    final parishRepo = ParishRepository();
+    final results = await Future.wait([repo.getById(widget.postId), parishRepo.listParishes()]);
+    final p = results[0] as BlogPost?;
+    final parishes = results[1] as List<Parish>;
     if (mounted) {
       setState(() {
         _post = p;
+        _parishes = parishes;
         _loading = false;
         if (p == null) _error = 'Post not found';
       });
     }
+  }
+
+  String _parishLabel(BlogPost post) {
+    if (post.isAllParishes) return 'All parishes';
+    final idToName = {for (final x in _parishes) x.id: x.name};
+    return post.parishIds!.map((id) => idToName[id] ?? id).join(', ');
   }
 
   Future<void> _updateStatus(String status) async {
@@ -88,6 +101,7 @@ class _AdminBlogDetailScreenState extends State<AdminBlogDetailScreen> {
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
                       _DetailRow(label: 'Status', value: _post!.status),
+                      _DetailRow(label: 'Parish visibility', value: _parishLabel(_post!)),
                       _DetailRow(label: 'Title', value: _post!.title),
                       _DetailRow(label: 'Slug', value: _post!.slug),
                       if (_post!.authorId != null) _DetailRow(label: 'Author ID', value: _post!.authorId!),

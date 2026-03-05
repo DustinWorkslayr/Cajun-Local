@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:my_app/core/auth/auth_repository.dart';
+import 'package:my_app/core/data/deal_type_icons.dart';
 import 'package:my_app/core/data/app_data_scope.dart';
 import 'package:my_app/core/data/mock_data.dart';
 import 'package:my_app/core/data/models/user_deal.dart';
@@ -16,7 +17,7 @@ import 'package:my_app/features/listing/presentation/screens/listing_detail_scre
 import 'package:my_app/shared/widgets/animated_entrance.dart';
 import 'package:my_app/shared/widgets/deal_detail_popup.dart';
 import 'package:my_app/shared/widgets/app_buttons.dart';
-import 'package:my_app/shared/widgets/subscription_upsell_popup.dart';
+import 'package:my_app/core/revenuecat/present_subscription_paywall.dart';
 
 /// Deal type filter options: value (null = all) and label.
 const List<({String? value, String label})> _dealTypeFilterOptions = [
@@ -209,7 +210,7 @@ class _DiscountsTabState extends State<_DiscountsTab> {
       ]).then((results) {
         if (mounted) {
           setState(() {
-            _parishIds = Set.from(results[0] as List<String>);
+            _parishIds = results[0] as Set<String>;
             _parishes = results[1] as List<MockParish>;
             _load();
           });
@@ -326,6 +327,7 @@ class _DiscountsTabState extends State<_DiscountsTab> {
                         flex: 2,
                         child: AppSecondaryButton(
                           onPressed: () {
+                            UserParishPreferences.setPreferredParishIds(selected);
                             setState(() {
                               _parishIds = selected;
                               _load();
@@ -556,7 +558,7 @@ class _DiscountsTabState extends State<_DiscountsTab> {
                       child: Material(
                         color: Colors.transparent,
                         child: InkWell(
-                          onTap: () => SubscriptionUpsellPopup.show(context),
+                          onTap: () => presentSubscriptionPaywall(context),
                           borderRadius: BorderRadius.circular(_cardRadius),
                           child: Container(
                             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
@@ -614,7 +616,7 @@ class _DiscountsTabState extends State<_DiscountsTab> {
                       child: isMemberOnlyLocked
                           ? _LockedDealCard(
                               deal: deal,
-                              onTap: () => SubscriptionUpsellPopup.show(context),
+                              onTap: () => presentSubscriptionPaywall(context),
                             )
                           : FutureBuilder<MockListing?>(
                               future: dataSource.getListingById(deal.listingId),
@@ -675,7 +677,7 @@ class _DiscountsTabState extends State<_DiscountsTab> {
                                             }
                                           : null,
                                       onClaimUpsell: uid != null && !canClaimDeals
-                                          ? () => SubscriptionUpsellPopup.show(context)
+                                          ? () => presentSubscriptionPaywall(context)
                                           : null,
                                     );
                                   },
@@ -726,17 +728,15 @@ class _LockedDealCard extends StatelessWidget {
                     Row(
                       children: [
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                          padding: const EdgeInsets.all(8),
                           decoration: BoxDecoration(
                             color: AppTheme.specGold.withValues(alpha: 0.25),
                             borderRadius: BorderRadius.circular(10),
                           ),
-                          child: Text(
-                            deal.discount ?? 'Member only',
-                            style: theme.textTheme.labelLarge?.copyWith(
-                              fontWeight: FontWeight.w700,
-                              color: AppTheme.specNavy,
-                            ),
+                          child: Icon(
+                            DealTypeIcons.iconFor(deal.dealType),
+                            size: 20,
+                            color: AppTheme.specNavy,
                           ),
                         ),
                         const SizedBox(width: 12),
@@ -834,18 +834,16 @@ class _DealCard extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                    padding: const EdgeInsets.all(10),
                     decoration: BoxDecoration(
                       color: AppTheme.specGold.withValues(alpha: 0.28),
                       borderRadius: BorderRadius.circular(10),
                       border: Border.all(color: AppTheme.specGold.withValues(alpha: 0.5)),
                     ),
-                    child: Text(
-                      deal.discount ?? 'Deal',
-                      style: theme.textTheme.labelLarge?.copyWith(
-                        fontWeight: FontWeight.w800,
-                        color: AppTheme.specNavy,
-                      ),
+                    child: Icon(
+                      DealTypeIcons.iconFor(deal.dealType),
+                      size: 24,
+                      color: AppTheme.specNavy,
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -949,7 +947,7 @@ class _LoyaltyTabState extends State<_LoyaltyTab> {
       ]).then((results) {
         if (mounted) {
           setState(() {
-            _parishIds = Set.from(results[0] as List<String>);
+            _parishIds = results[0] as Set<String>;
             _parishes = results[1] as List<MockParish>;
             _load();
           });
@@ -1056,6 +1054,7 @@ class _LoyaltyTabState extends State<_LoyaltyTab> {
                         flex: 2,
                         child: AppSecondaryButton(
                           onPressed: () {
+                            UserParishPreferences.setPreferredParishIds(selected);
                             setState(() {
                               _parishIds = selected;
                               _load();

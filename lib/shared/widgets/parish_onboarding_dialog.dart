@@ -5,20 +5,26 @@ import 'package:my_app/core/theme/theme.dart';
 import 'package:my_app/shared/widgets/app_buttons.dart';
 import 'package:my_app/shared/widgets/app_logo.dart';
 
-/// First-time onboarding: welcoming flow — pick parishes, what you hope for, optional support.
+/// First-time onboarding or parish selector: pick parishes; optionally a second step for interests.
 /// Caller saves parish IDs via UserParishPreferences and dismisses on completion.
+/// Use [initialParishIds] when re-opening to change parishes (e.g. from home chip).
+/// Use [parishOnly: true] to show only the parish step with a "Done" button.
 class ParishOnboardingDialog extends StatefulWidget {
   const ParishOnboardingDialog({
     super.key,
     required this.onComplete,
-    this.onSupportTap,
+    this.initialParishIds,
+    this.parishOnly = false,
   });
 
   /// Called with selected parish IDs when user finishes the flow. Caller saves and dismisses.
   final void Function(Set<String> selectedParishIds) onComplete;
 
-  /// Optional. When user taps "Start Free Trial" on the support step (e.g. open pay screen).
-  final VoidCallback? onSupportTap;
+  /// Pre-select these parish IDs (e.g. current preferences when re-opening to change parishes).
+  final Set<String>? initialParishIds;
+
+  /// If true, only show the parish step; footer shows "Done" and completes immediately.
+  final bool parishOnly;
 
   @override
   State<ParishOnboardingDialog> createState() => _ParishOnboardingDialogState();
@@ -26,10 +32,9 @@ class ParishOnboardingDialog extends StatefulWidget {
 
 class _ParishOnboardingDialogState extends State<ParishOnboardingDialog>
     with SingleTickerProviderStateMixin {
-  static const int _totalSteps = 3;
   int _step = 0;
 
-  final Set<String> _selectedParishIds = {};
+  late Set<String> _selectedParishIds;
   final Set<String> _selectedInterests = {};
   List<MockParish> _parishes = [];
   bool _parishesLoaded = false;
@@ -38,9 +43,12 @@ class _ParishOnboardingDialogState extends State<ParishOnboardingDialog>
   late Animation<double> _entranceScale;
   late Animation<double> _entranceOpacity;
 
+  int get _totalSteps => widget.parishOnly ? 1 : 2;
+
   @override
   void initState() {
     super.initState();
+    _selectedParishIds = Set.from(widget.initialParishIds ?? []);
     _entranceController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 350),
@@ -89,11 +97,6 @@ class _ParishOnboardingDialogState extends State<ParishOnboardingDialog>
 
   void _finish() {
     widget.onComplete(Set.from(_selectedParishIds));
-  }
-
-  void _onSupportThenFinish() {
-    widget.onSupportTap?.call();
-    _finish();
   }
 
   @override
@@ -154,9 +157,7 @@ class _ParishOnboardingDialogState extends State<ParishOnboardingDialog>
                             key: ValueKey<int>(_step),
                             child: _step == 0
                                 ? _buildParishStep(theme)
-                                : _step == 1
-                                    ? _buildInterestsStep(theme)
-                                    : _buildSupportStep(theme),
+                                : _buildInterestsStep(theme),
                           ),
                         ),
                       ),
@@ -173,7 +174,6 @@ class _ParishOnboardingDialogState extends State<ParishOnboardingDialog>
   }
 
   Widget _buildHeader(ThemeData theme) {
-    final isSupportStep = _step == 2;
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.fromLTRB(24, 20, 24, 16),
@@ -204,29 +204,27 @@ class _ParishOnboardingDialogState extends State<ParishOnboardingDialog>
               letterSpacing: 0.5,
             ),
           ),
-          if (!isSupportStep) ...[
-            const SizedBox(height: 12),
-            Text(
-              _step == 0
-                  ? 'Pick the parishes to explore'
-                  : 'What do you hope to get from the app?',
-              style: theme.textTheme.titleLarge?.copyWith(
-                color: AppTheme.specNavy,
-                fontWeight: FontWeight.w700,
-              ),
-              textAlign: TextAlign.center,
+          const SizedBox(height: 12),
+          Text(
+            _step == 0
+                ? 'Pick the parishes to explore'
+                : 'What do you hope to get from the app?',
+            style: theme.textTheme.titleLarge?.copyWith(
+              color: AppTheme.specNavy,
+              fontWeight: FontWeight.w700,
             ),
-            const SizedBox(height: 6),
-            Text(
-              _step == 0
-                  ? "Choose one or more areas — we'll show you local businesses and events there. You can change this anytime in Filters."
-                  : "Select what you're most excited about. We'll use this to tailor your experience.",
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: AppTheme.specNavy.withValues(alpha: 0.8),
-              ),
-              textAlign: TextAlign.center,
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 6),
+          Text(
+            _step == 0
+                ? "Choose one or more areas — we'll show you local businesses and events there. You can change this anytime in Filters."
+                : "Select what you're most excited about. We'll use this to tailor your experience.",
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: AppTheme.specNavy.withValues(alpha: 0.8),
             ),
-          ],
+            textAlign: TextAlign.center,
+          ),
         ],
       ),
     );
@@ -314,157 +312,12 @@ class _ParishOnboardingDialogState extends State<ParishOnboardingDialog>
     );
   }
 
-  static const String _price = '\$2.99';
-
-  Widget _buildSupportStep(ThemeData theme) {
-    final nav = AppTheme.specNavy;
-    final sub = nav.withValues(alpha: 0.75);
-    final gray = nav.withValues(alpha: 0.6);
-
-    return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(24, 16, 24, 16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Text(
-            'Cajun+ Membership',
-            style: theme.textTheme.headlineMedium?.copyWith(
-              fontWeight: FontWeight.w800,
-              color: nav,
-              letterSpacing: -0.3,
-            ),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 10),
-          Text(
-            'Support Local. Stay Cajun.',
-            style: theme.textTheme.bodyLarge?.copyWith(
-              color: sub,
-              height: 1.4,
-            ),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 4),
-          RichText(
-            textAlign: TextAlign.center,
-            text: TextSpan(
-              style: theme.textTheme.bodyLarge?.copyWith(color: sub, height: 1.4),
-              children: [
-                const TextSpan(text: 'Get full access for '),
-                TextSpan(
-                  text: '$_price/month',
-                  style: TextStyle(
-                    fontWeight: FontWeight.w700,
-                    color: nav,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 20),
-          _OnboardingFeatureRow(label: 'Submit / request new businesses'),
-          const SizedBox(height: 10),
-          _OnboardingFeatureRow(label: 'Save unlimited favorites'),
-          const SizedBox(height: 10),
-          _OnboardingFeatureRow(label: 'AI-powered business requests'),
-          const SizedBox(height: 10),
-          _OnboardingFeatureRow(label: 'Early access to new features'),
-          const SizedBox(height: 20),
-          Container(
-            padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 16),
-            decoration: BoxDecoration(
-              color: AppTheme.specGold.withValues(alpha: 0.25),
-              borderRadius: BorderRadius.circular(24),
-              border: Border.all(color: AppTheme.specGold.withValues(alpha: 0.6)),
-            ),
-            child: Text(
-              '$_price/mo • Cancel anytime',
-              style: theme.textTheme.titleSmall?.copyWith(
-                color: nav,
-                fontWeight: FontWeight.w700,
-              ),
-              textAlign: TextAlign.center,
-            ),
-          ),
-          const SizedBox(height: 14),
-          Material(
-            color: Colors.transparent,
-            child: InkWell(
-              onTap: _onSupportThenFinish,
-              borderRadius: BorderRadius.circular(14),
-              child: Container(
-                width: double.infinity,
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [
-                      AppTheme.specGold,
-                      AppTheme.specGold.withValues(alpha: 0.92),
-                    ],
-                  ),
-                  borderRadius: BorderRadius.circular(14),
-                  boxShadow: [
-                    BoxShadow(
-                      color: AppTheme.specGold.withValues(alpha: 0.4),
-                      blurRadius: 8,
-                      offset: const Offset(0, 2),
-                    ),
-                  ],
-                ),
-                child: Center(
-                  child: Text(
-                    'Start Free Trial',
-                    style: theme.textTheme.titleMedium?.copyWith(
-                      color: nav,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(height: 14),
-          Text(
-            'Secure payment via App Store / Google Play. Cancel anytime.',
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: gray,
-              height: 1.3,
-            ),
-            textAlign: TextAlign.center,
-          ),
-        ],
-      ),
-    );
-  }
-
   Widget _buildFooter(ThemeData theme) {
     const padding = EdgeInsets.fromLTRB(20, 12, 20, 20);
 
-    if (_step == 2) {
-      return Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Divider(height: 1),
-          Padding(
-            padding: padding,
-            child: TextButton(
-              onPressed: _finish,
-              child: Text(
-                'Maybe later',
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  color: AppTheme.specNavy.withValues(alpha: 0.8),
-                ),
-              ),
-            ),
-          ),
-        ],
-      );
-    }
-
     if (_step == 0) {
       final canContinue = _selectedParishIds.isNotEmpty;
+      final isDone = widget.parishOnly;
       return Column(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -472,9 +325,13 @@ class _ParishOnboardingDialogState extends State<ParishOnboardingDialog>
           Padding(
             padding: padding,
             child: AppSecondaryButton(
-              onPressed: canContinue ? _next : null,
+              onPressed: canContinue ? (isDone ? _finish : _next) : null,
               expanded: true,
-              child: Text(canContinue ? 'Continue' : 'Select at least one parish'),
+              child: Text(
+                canContinue
+                    ? (isDone ? 'Done' : 'Continue')
+                    : 'Select at least one parish',
+              ),
             ),
           ),
         ],
@@ -492,43 +349,6 @@ class _ParishOnboardingDialogState extends State<ParishOnboardingDialog>
             onPressed: _next,
             expanded: true,
             child: const Text('Continue'),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _OnboardingFeatureRow extends StatelessWidget {
-  const _OnboardingFeatureRow({required this.label});
-
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final nav = AppTheme.specNavy;
-
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Container(
-          width: 24,
-          height: 24,
-          decoration: const BoxDecoration(
-            color: AppTheme.specGold,
-            shape: BoxShape.circle,
-          ),
-          child: Icon(Icons.check_rounded, size: 16, color: nav),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Text(
-            label,
-            style: theme.textTheme.bodyMedium?.copyWith(
-              color: nav.withValues(alpha: 0.9),
-              height: 1.35,
-            ),
           ),
         ),
       ],

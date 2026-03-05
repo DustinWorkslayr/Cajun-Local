@@ -7,7 +7,9 @@ import 'package:my_app/core/data/models/business_image.dart';
 import 'package:my_app/core/data/mock_data.dart';
 import 'package:my_app/core/data/models/menu_item.dart';
 import 'package:my_app/core/data/models/menu_section.dart';
+import 'package:my_app/core/data/models/business_manager_entry.dart';
 import 'package:my_app/core/data/repositories/business_images_repository.dart';
+import 'package:my_app/core/data/repositories/business_managers_repository.dart';
 import 'package:my_app/core/data/repositories/business_repository.dart';
 import 'package:my_app/core/data/repositories/business_subscriptions_repository.dart';
 import 'package:my_app/core/data/repositories/deals_repository.dart';
@@ -17,6 +19,7 @@ import 'package:my_app/core/data/services/business_images_storage_service.dart';
 import 'package:my_app/core/data/services/storage_upload_constants.dart';
 import 'package:my_app/core/subscription/business_tier_service.dart';
 import 'package:my_app/core/supabase/supabase_config.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:my_app/core/theme/app_layout.dart';
 import 'package:my_app/core/theme/theme.dart';
 import 'package:my_app/shared/widgets/business_tier_upgrade_dialog.dart';
@@ -55,7 +58,7 @@ class _ListingEditScreenState extends State<ListingEditScreen>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 7, vsync: this);
+    _tabController = TabController(length: 8, vsync: this);
     _tabController.addListener(() {
       if (_tabController.indexIsChanging) return;
       if (mounted && _selectedIndex != _tabController.index) {
@@ -179,6 +182,8 @@ class _ListingEditScreenState extends State<ListingEditScreen>
         return _FormSubmissionsPaywallTab();
       case 6:
         return _MoreTab(listingId: widget.listingId, hasPaidTier: _isPaidBusinessTier(businessTier));
+      case 7:
+        return _AccountAccessTab(listingId: widget.listingId);
       default:
         return _OverviewTab(listingId: widget.listingId, businessTier: businessTier);
     }
@@ -271,6 +276,7 @@ class _ListingEditScreenState extends State<ListingEditScreen>
                     NavigationRailDestination(icon: Icon(Icons.event_rounded), label: Text('Events')),
                     NavigationRailDestination(icon: Icon(Icons.inbox_rounded), label: Text('Messages')),
                     NavigationRailDestination(icon: Icon(Icons.monetization_on_rounded), label: Text('More')),
+                    NavigationRailDestination(icon: Icon(Icons.people_rounded), label: Text('Team')),
                   ],
                 ),
                 Expanded(
@@ -355,6 +361,7 @@ class _ListingEditScreenState extends State<ListingEditScreen>
                 Tab(icon: Icon(Icons.event_rounded, size: 20), text: 'Events'),
                 Tab(icon: Icon(Icons.inbox_rounded, size: 20), text: 'Messages'),
                 Tab(icon: Icon(Icons.monetization_on_rounded, size: 20), text: 'More'),
+                Tab(icon: Icon(Icons.people_rounded, size: 20), text: 'Team'),
               ],
             ),
             actions: [
@@ -403,6 +410,7 @@ class _ListingEditScreenState extends State<ListingEditScreen>
                           )
                         : const _FormSubmissionsPaywallTab(),
                     _MoreTab(listingId: widget.listingId, hasPaidTier: _isPaidBusinessTier(snapshot.data?.$6)),
+                    _AccountAccessTab(listingId: widget.listingId),
                   ],
                 ),
               ),
@@ -3235,6 +3243,236 @@ class _MoreTab extends StatelessWidget {
         ],
         const SizedBox(height: 24),
       ],
+    );
+  }
+}
+
+/// Full-tab view for account access (list users, add by email, remove). Managers only (RLS).
+class _AccountAccessTab extends StatelessWidget {
+  const _AccountAccessTab({required this.listingId});
+
+  final String listingId;
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView(
+      padding: const EdgeInsets.all(24),
+      children: [
+        _AccountAccessSection(listingId: listingId),
+      ],
+    );
+  }
+}
+
+/// Account access: list users with access, add by email, remove. Managers only (RLS).
+class _AccountAccessSection extends StatefulWidget {
+  const _AccountAccessSection({required this.listingId});
+
+  final String listingId;
+
+  @override
+  State<_AccountAccessSection> createState() => _AccountAccessSectionState();
+}
+
+class _AccountAccessSectionState extends State<_AccountAccessSection> {
+  late Future<List<BusinessManagerEntry>> _managersFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _managersFuture = BusinessManagersRepository().listManagersForBusiness(widget.listingId);
+  }
+
+  void _refresh() {
+    setState(() {
+      _managersFuture = BusinessManagersRepository().listManagersForBusiness(widget.listingId);
+    });
+  }
+
+  Future<void> _addByEmail() async {
+    final theme = Theme.of(context);
+    final nav = AppTheme.specNavy;
+    final sub = nav.withValues(alpha: 0.8);
+    final controller = TextEditingController();
+    final formKey = GlobalKey<FormState>();
+
+    final added = await showDialog<bool>(
+      context: context,
+      builder: (ctx) {
+        return AlertDialog(
+          title: Text('Add user access', style: TextStyle(color: nav)),
+          content: Form(
+            key: formKey,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(
+                  'Enter the email of someone who has a Cajun Local account. They will be able to manage this listing.',
+                  style: theme.textTheme.bodySmall?.copyWith(color: sub),
+                ),
+                const SizedBox(height: 16),
+                TextFormField(
+                  controller: controller,
+                  keyboardType: TextInputType.emailAddress,
+                  decoration: const InputDecoration(
+                    labelText: 'Email',
+                    hintText: 'colleague@example.com',
+                  ),
+                  validator: (v) {
+                    if (v == null || v.trim().isEmpty) return 'Enter an email';
+                    return null;
+                  },
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(false),
+              child: Text('Cancel', style: TextStyle(color: sub)),
+            ),
+            FilledButton(
+              onPressed: () async {
+                if (!formKey.currentState!.validate()) return;
+                final email = controller.text.trim();
+                final userId = await BusinessManagersRepository().lookupUserByEmail(widget.listingId, email);
+                if (!ctx.mounted) return;
+                if (userId == null) {
+                  ScaffoldMessenger.of(ctx).showSnackBar(
+                    SnackBar(content: Text('No account found with that email. They must sign up first.')),
+                  );
+                  return;
+                }
+                try {
+                  await BusinessManagersRepository().insert(widget.listingId, userId, role: 'owner');
+                  if (!ctx.mounted) return;
+                  Navigator.of(ctx).pop(true);
+                } catch (e) {
+                  if (!ctx.mounted) return;
+                  ScaffoldMessenger.of(ctx).showSnackBar(
+                    SnackBar(content: Text('Could not add user: $e')),
+                  );
+                }
+              },
+              child: const Text('Add'),
+            ),
+          ],
+        );
+      },
+    );
+    if (added == true && mounted) _refresh();
+  }
+
+  Future<void> _removeAccess(BusinessManagerEntry entry) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Remove access?'),
+        content: Text(
+          '${entry.displayName ?? entry.email ?? entry.userId} will no longer be able to manage this listing.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            style: FilledButton.styleFrom(backgroundColor: AppTheme.specRed),
+            child: const Text('Remove'),
+          ),
+        ],
+      ),
+    );
+    if (confirm != true || !mounted) return;
+    try {
+      await BusinessManagersRepository().delete(widget.listingId, entry.userId);
+      if (mounted) _refresh();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Access removed')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Could not remove: $e')),
+        );
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final nav = AppTheme.specNavy;
+    final sub = nav.withValues(alpha: 0.8);
+    final currentUserId = Supabase.instance.client.auth.currentUser?.id;
+
+    return _MoreSection(
+      title: 'Account access',
+      icon: Icons.people_rounded,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            'Users with access can edit this listing, manage deals, and view form submissions.',
+            style: theme.textTheme.bodySmall?.copyWith(color: sub),
+          ),
+          const SizedBox(height: 12),
+          FutureBuilder<List<BusinessManagerEntry>>(
+            future: _managersFuture,
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting && !snapshot.hasData) {
+                return const Padding(
+                  padding: EdgeInsets.all(16),
+                  child: Center(child: CircularProgressIndicator(color: AppTheme.specNavy)),
+                );
+              }
+              final list = snapshot.data ?? [];
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  ...list.map((e) {
+                    final isCurrent = e.userId == currentUserId;
+                    final label = e.displayName?.isNotEmpty == true
+                        ? e.displayName!
+                        : (e.email?.isNotEmpty == true ? e.email! : 'User');
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 8),
+                      child: Row(
+                        children: [
+                          Icon(Icons.person_rounded, size: 20, color: nav.withValues(alpha: 0.8)),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              isCurrent ? '$label (you)' : label,
+                              style: theme.textTheme.bodyMedium?.copyWith(color: nav),
+                            ),
+                          ),
+                          if (!isCurrent)
+                            IconButton(
+                              icon: Icon(Icons.remove_circle_outline, color: AppTheme.specRed, size: 22),
+                              onPressed: () => _removeAccess(e),
+                              tooltip: 'Remove access',
+                            ),
+                        ],
+                      ),
+                    );
+                  }),
+                  const SizedBox(height: 12),
+                  AppSecondaryButton(
+                    onPressed: _addByEmail,
+                    icon: const Icon(Icons.person_add_rounded, size: 20),
+                    label: const Text('Add user by email'),
+                  ),
+                ],
+              );
+            },
+          ),
+        ],
+      ),
     );
   }
 }

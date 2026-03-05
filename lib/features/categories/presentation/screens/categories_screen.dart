@@ -1,12 +1,14 @@
 import 'dart:async';
 import 'dart:math' show cos, Random, sin;
 
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:shimmer/shimmer.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:my_app/core/data/app_data_scope.dart';
+import 'package:my_app/core/data/listing_data_source.dart';
 import 'package:my_app/core/data/mock_data.dart';
 import 'package:my_app/core/data/models/amenity.dart';
 import 'package:my_app/core/data/models/category_banner.dart';
@@ -16,7 +18,7 @@ import 'package:my_app/core/data/repositories/business_subscriptions_repository.
 import 'package:my_app/core/data/repositories/category_banners_repository.dart';
 import 'package:my_app/core/favorites/favorites_scope.dart';
 import 'package:my_app/core/subscription/resolved_permissions.dart';
-import 'package:my_app/shared/widgets/subscription_upsell_popup.dart';
+import 'package:my_app/core/revenuecat/present_subscription_paywall.dart';
 import 'package:my_app/core/preferences/user_parish_preferences.dart';
 import 'package:my_app/core/theme/app_layout.dart';
 import 'package:my_app/core/theme/theme.dart';
@@ -38,8 +40,8 @@ class CategoriesScreen extends StatefulWidget {
   State<CategoriesScreen> createState() => _CategoriesScreenState();
 }
 
-/// Max listings to show on Explore in one go (show all loaded results; backend caps at 1000–2000).
-const int _kExploreDisplayMax = 2000;
+/// Page size for server-side "load more" on Explore.
+const int _kExplorePageSize = 50;
 
 class _CategoriesScreenState extends State<CategoriesScreen> with TickerProviderStateMixin {
   late ListingFilters _filters;
@@ -47,17 +49,23 @@ class _CategoriesScreenState extends State<CategoriesScreen> with TickerProvider
   late TabController _listMapTabController;
   late TextEditingController _searchController;
   Timer? _searchDebounce;
-  /// Full filtered list plus tiers and sponsored IDs (loaded once per filter change).
-  Future<(List<MockListing>, Map<String, String>, Set<String>)>? _listingsFuture;
-  String? _lastListingsFilterKey;
-  int _displayLimit = _kExploreDisplayMax;
-  /// Last successful list (partitioned and shuffled); shown while refetching so results don't go blank.
-  List<MockListing>? _lastFilteredList;
-  /// Identity of the raw list we last processed, so we only partition/shuffle once per load.
-  List<MockListing>? _lastShuffledListRef;
-  /// Cached tier map and sponsored IDs from last successful load (for list/map).
+  /// Initial page load; then "load more" appends pages.
+  Future<void>? _initialLoadFuture;
+  /// Cached list from backend (pages appended on load more); filters applied in memory.
+  List<MockListing>? _fullListCache;
+  int _nextOffset = 0;
+  bool _hasMoreFromServer = true;
+  bool _loadingMore = false;
   Map<String, String> _lastTierMap = const {};
   Set<String> _lastSponsoredIds = const {};
+  /// Lazy-loaded when user first applies deal-only or amenity filter.
+  Set<String>? _dealListingIds;
+  Set<String>? _cachedAmenityBusinessIds;
+  Set<String> _cachedAmenityIds = const {};
+  /// Result of in-memory filter + partition/shuffle; shown without reload.
+  List<MockListing>? _lastFilteredList;
+  /// When true, we're fetching deal or amenity sets for the first time (show previous list).
+  bool _loadingAuxiliaryFilters = false;
 
   @override
   void initState() {
@@ -68,16 +76,12 @@ class _CategoriesScreenState extends State<CategoriesScreen> with TickerProvider
     );
     _searchController = TextEditingController(text: widget.initialSearch ?? '');
     _listMapTabController = TabController(length: 2, vsync: this);
-    // Apply user's saved parish preferences when Explore loads.
+    // Apply user's saved parish preferences when Explore loads (no refetch; filters applied in memory).
     UserParishPreferences.getPreferredParishIds().then((ids) {
       if (!mounted) return;
       setState(() {
-        _filters = ListingFilters(
-          searchQuery: _filters.searchQuery,
-          categoryId: _filters.categoryId,
-          parishIds: ids,
-        );
-        _lastListingsFilterKey = null;
+        _filters = _filters.copyWith(parishIds: ids);
+        _applyFiltersFromCache();
       });
     });
   }
@@ -86,12 +90,18 @@ class _CategoriesScreenState extends State<CategoriesScreen> with TickerProvider
   void didUpdateWidget(CategoriesScreen oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (widget.initialCategoryId != oldWidget.initialCategoryId) {
-      setState(() => _filters = _filters.copyWith(categoryId: widget.initialCategoryId));
+      setState(() {
+        _filters = _filters.copyWith(categoryId: widget.initialCategoryId);
+        _applyFiltersFromCache();
+      });
     }
     if (widget.initialSearch != oldWidget.initialSearch &&
         widget.initialSearch != _searchController.text) {
       _searchController.text = widget.initialSearch ?? '';
-      setState(() => _filters = _filters.copyWith(searchQuery: widget.initialSearch ?? ''));
+      setState(() {
+        _filters = _filters.copyWith(searchQuery: widget.initialSearch ?? '');
+        _applyFiltersFromCache();
+      });
     }
   }
 
@@ -107,13 +117,19 @@ class _CategoriesScreenState extends State<CategoriesScreen> with TickerProvider
     final trimmed = value.trim();
     _searchDebounce?.cancel();
     if (trimmed.isEmpty) {
-      setState(() => _filters = _filters.copyWith(searchQuery: ''));
+      setState(() {
+        _filters = _filters.copyWith(searchQuery: '');
+        _applyFiltersFromCache();
+      });
       return;
     }
     _searchDebounce = Timer(const Duration(milliseconds: 300), () {
       if (!mounted) return;
       final current = _searchController.text.trim();
-      setState(() => _filters = _filters.copyWith(searchQuery: current));
+      setState(() {
+        _filters = _filters.copyWith(searchQuery: current);
+        _applyFiltersFromCache();
+      });
     });
   }
 
@@ -122,9 +138,11 @@ class _CategoriesScreenState extends State<CategoriesScreen> with TickerProvider
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    if (_filterPanelDataFuture == null) {
-      final ds = AppDataScope.of(context).dataSource;
-      _filterPanelDataFuture = Future.wait([
+    final ds = AppDataScope.of(context).dataSource;
+    if (_fullListCache != null && !_loadingAuxiliaryFilters && ds.useSupabase) {
+      _maybeLoadAuxiliaryFilters(ds);
+    }
+    _filterPanelDataFuture ??= Future.wait([
         ds.getCategories(),
         ds.getParishes(),
       ]).then((results) {
@@ -133,6 +151,8 @@ class _CategoriesScreenState extends State<CategoriesScreen> with TickerProvider
         final totalCount = categories.fold<int>(0, (s, c) => s + c.count);
         return (totalCount, categories, parishes);
       });
+    if (_initialLoadFuture == null && ds.useSupabase) {
+      _initialLoadFuture = _performInitialLoad(ds);
     }
     _approvedBannersFuture ??= CategoryBannersRepository().listApproved();
   }
@@ -157,10 +177,20 @@ class _CategoriesScreenState extends State<CategoriesScreen> with TickerProvider
         totalCount: totalCount,
         onApply: (filters, openNowOnly) {
           UserParishPreferences.setPreferredParishIds(filters.parishIds);
+          final ds = AppDataScope.of(context).dataSource;
+          final categoryChanged = filters.categoryId != _filters.categoryId;
           setState(() {
             _filters = filters;
             _searchController.text = filters.searchQuery;
             _openNowOnly = openNowOnly;
+            if (categoryChanged) {
+              _fullListCache = null;
+              _nextOffset = 0;
+              _hasMoreFromServer = true;
+              _initialLoadFuture = _performInitialLoad(ds);
+            } else {
+              _applyFiltersFromCache();
+            }
           });
           Navigator.of(ctx).pop();
         },
@@ -202,41 +232,135 @@ class _CategoriesScreenState extends State<CategoriesScreen> with TickerProvider
     return [...partners, ...rest];
   }
 
-  void _ensureListingsFuture(String filterKey, dynamic dataSource) {
-    if (_lastListingsFilterKey == filterKey) return;
-    _lastListingsFilterKey = filterKey;
-    _displayLimit = _kExploreDisplayMax;
-    _lastShuffledListRef = null;
-    _listingsFuture = _loadListingsWithTiersAndSponsored(dataSource);
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) setState(() {});
+  /// Load first page; tiers and sponsored IDs. "Load more" appends via [_loadMoreListings].
+  Future<void> _performInitialLoad(ListingDataSource dataSource) async {
+    if (!dataSource.useSupabase) return;
+    final page = await dataSource.getListingsPage(
+      limit: _kExplorePageSize,
+      offset: 0,
+      categoryId: _filters.categoryId,
+    );
+    if (!mounted) return;
+    final list = page.list;
+    if (list.isEmpty) {
+      setState(() {
+        _fullListCache = [];
+        _nextOffset = 0;
+        _hasMoreFromServer = false;
+        _lastTierMap = {};
+        _lastSponsoredIds = {};
+        _lastFilteredList = [];
+      });
+      return;
+    }
+    final ids = list.map((l) => l.id).toList();
+    final tierMap = dataSource.useSupabase
+        ? await BusinessSubscriptionsRepository().getActivePlanTiersForBusinesses(ids)
+        : <String, String>{};
+    final sponsoredIds = dataSource.useSupabase
+        ? await BusinessAdsRepository().getActiveSponsoredBusinessIdsForExplore()
+        : <String>{};
+    if (!mounted) return;
+    setState(() {
+      _fullListCache = list;
+      _nextOffset = list.length;
+      _hasMoreFromServer = page.hasMore;
+      _lastTierMap = tierMap;
+      _lastSponsoredIds = sponsoredIds;
+      _applyFiltersFromCache();
     });
   }
 
-  Future<(List<MockListing>, Map<String, String>, Set<String>)> _loadListingsWithTiersAndSponsored(
-    dynamic dataSource,
-  ) async {
-    final list = await dataSource.filterListings(_filters, openNowOnly: _openNowOnly) as List<MockListing>;
-    if (list.isEmpty) {
-      return (list, <String, String>{}, <String>{});
+  /// Append next page from server (Explore "load more").
+  Future<void> _loadMoreListings(ListingDataSource dataSource) async {
+    if (_loadingMore || !_hasMoreFromServer || _fullListCache == null) return;
+    setState(() => _loadingMore = true);
+    final page = await dataSource.getListingsPage(
+      limit: _kExplorePageSize,
+      offset: _nextOffset,
+      categoryId: _filters.categoryId,
+    );
+    if (!mounted) return;
+    final existingIds = _fullListCache!.map((l) => l.id).toSet();
+    final newList = page.list.where((l) => !existingIds.contains(l.id)).toList();
+    final ids = newList.map((l) => l.id).toList();
+    Map<String, String> newTiers = {};
+    if (ids.isNotEmpty && dataSource.useSupabase) {
+      newTiers = await BusinessSubscriptionsRepository().getActivePlanTiersForBusinesses(ids);
     }
-    final ids = list.map((l) => l.id).toList();
-    final tierFuture = dataSource.useSupabase
-        ? BusinessSubscriptionsRepository().getActivePlanTiersForBusinesses(ids)
-        : Future<Map<String, String>>.value(<String, String>{});
-    final sponsoredFuture = dataSource.useSupabase
-        ? BusinessAdsRepository().getActiveSponsoredBusinessIdsForExplore()
-        : Future<Set<String>>.value(<String>{});
-    final tierMap = await tierFuture;
-    final sponsoredIds = await sponsoredFuture;
-    return (list, tierMap, sponsoredIds);
+    if (!mounted) return;
+    setState(() {
+      _fullListCache = [..._fullListCache!, ...newList];
+      _nextOffset += page.list.length;
+      _hasMoreFromServer = page.hasMore;
+      _loadingMore = false;
+      if (newTiers.isNotEmpty) {
+        _lastTierMap = {..._lastTierMap, ...newTiers};
+      }
+      _applyFiltersFromCache();
+    });
+  }
+
+  /// Apply current filters to cached list in memory (no network). Instant.
+  void _applyFiltersFromCache() {
+    if (_fullListCache == null) return;
+    final amenitySet = _filters.amenityIds.isNotEmpty ? _cachedAmenityBusinessIds : null;
+    final dealSet = _filters.dealOnly ? _dealListingIds : null;
+    final filtered = ListingDataSource.filterListingsInMemory(
+      _fullListCache!,
+      _filters,
+      openNowOnly: _openNowOnly,
+      businessIdsWithAnyAmenity: amenitySet,
+      listingIdsWithDeals: dealSet,
+    );
+    _lastFilteredList = _partitionAndShuffle(filtered, _lastTierMap, _lastSponsoredIds);
+  }
+
+  /// Ensure deal listing IDs are loaded when user first applies deal-only filter.
+  Future<void> _ensureDealListingIds(ListingDataSource dataSource) async {
+    if (_dealListingIds != null || !dataSource.useSupabase) return;
+    final deals = await dataSource.getActiveDeals();
+    if (!mounted) return;
+    setState(() {
+      _dealListingIds = deals.map((d) => d.listingId).toSet();
+      _loadingAuxiliaryFilters = false;
+      _applyFiltersFromCache();
+    });
+  }
+
+  /// Ensure amenity business IDs are loaded when user first applies amenity filter.
+  Future<void> _ensureAmenityBusinessIds(ListingDataSource dataSource) async {
+    if (_filters.amenityIds.isEmpty) return;
+    final key = _filters.amenityIds;
+    if (_setEquals(key, _cachedAmenityIds)) return;
+    final ids = await AmenitiesRepository().getBusinessIdsWithAnyAmenity(key);
+    if (!mounted) return;
+    setState(() {
+      _cachedAmenityIds = Set<String>.from(key);
+      _cachedAmenityBusinessIds = ids;
+      _loadingAuxiliaryFilters = false;
+      _applyFiltersFromCache();
+    });
+  }
+
+  static bool _setEquals<T>(Set<T> a, Set<T> b) =>
+      a.length == b.length && a.every((x) => b.contains(x));
+
+  void _maybeLoadAuxiliaryFilters(ListingDataSource dataSource) {
+    if (!dataSource.useSupabase || _loadingAuxiliaryFilters || _fullListCache == null) return;
+    if (_filters.dealOnly && _dealListingIds == null) {
+      setState(() => _loadingAuxiliaryFilters = true);
+      _ensureDealListingIds(dataSource);
+    } else if (_filters.amenityIds.isNotEmpty &&
+        !_setEquals(_filters.amenityIds, _cachedAmenityIds)) {
+      setState(() => _loadingAuxiliaryFilters = true);
+      _ensureAmenityBusinessIds(dataSource);
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     final dataSource = AppDataScope.of(context).dataSource;
-    final filterKey = '${_filters.searchQuery}_${_filters.categoryId}_${_filters.subcategoryIds.length}_${_filters.parishIds.length}_${_filters.dealOnly}_${_filters.minRating}_${_filters.maxDistanceMiles}_$_openNowOnly';
-    _ensureListingsFuture(filterKey, dataSource);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -248,7 +372,10 @@ class _CategoriesScreenState extends State<CategoriesScreen> with TickerProvider
             children: [
               _TopBar(
                 openNowOnly: _openNowOnly,
-                onOpenNowChanged: (v) => setState(() => _openNowOnly = v),
+                onOpenNowChanged: (v) => setState(() {
+                  _openNowOnly = v;
+                  _applyFiltersFromCache();
+                }),
                 onFilterTap: _openFilterSheet,
                 listMapTabController: _listMapTabController,
               ),
@@ -277,7 +404,6 @@ class _CategoriesScreenState extends State<CategoriesScreen> with TickerProvider
                   child: _buildListAndMap(
                     context,
                     dataSource,
-                    filterKey,
                     banners: banners,
                     categoryNames: categoryNames,
                     subcategoryNames: subcategoryNames,
@@ -291,36 +417,70 @@ class _CategoriesScreenState extends State<CategoriesScreen> with TickerProvider
     );
   }
 
+  Future<void> _onRefresh() async {
+    final dataSource = AppDataScope.of(context).dataSource;
+    setState(() {
+      _fullListCache = null;
+      _lastFilteredList = null;
+      _nextOffset = 0;
+      _hasMoreFromServer = true;
+      _dealListingIds = null;
+      _cachedAmenityBusinessIds = null;
+      _cachedAmenityIds = const {};
+      _initialLoadFuture = _performInitialLoad(dataSource);
+    });
+    await _initialLoadFuture;
+  }
+
   Widget _buildListAndMap(
     BuildContext context,
-    dynamic dataSource,
-    String filterKey, {
+    ListingDataSource dataSource, {
     required List<CategoryBanner> banners,
     required Map<String, String> categoryNames,
     required Map<String, String> subcategoryNames,
   }) {
-    return FutureBuilder<(List<MockListing>, Map<String, String>, Set<String>)>(
-      key: ValueKey(filterKey),
-      future: _listingsFuture,
-      builder: (context, snapshot) {
-        final triple = snapshot.data;
-        final fullList = triple?.$1;
-        final tierMap = triple?.$2 ?? _lastTierMap;
-        final sponsoredIds = triple?.$3 ?? _lastSponsoredIds;
-        if (fullList != null && fullList != _lastShuffledListRef) {
-          _lastShuffledListRef = fullList;
-          _lastTierMap = tierMap;
-          _lastSponsoredIds = sponsoredIds;
-          _lastFilteredList = _partitionAndShuffle(fullList, tierMap, sponsoredIds);
-        }
-        final isLoading = snapshot.connectionState == ConnectionState.waiting;
-        if (isLoading && fullList == null && _lastFilteredList == null) {
-          return _ListLoadingSkeleton(padding: AppLayout.horizontalPadding(context));
-        }
-        final list = _lastFilteredList ?? fullList ?? const [];
-        final displayList = list.take(_displayLimit).toList();
-        final hasMore = list.length > _displayLimit;
-        if (list.isEmpty) {
+    if (_fullListCache == null) {
+      return FutureBuilder<void>(
+        future: _initialLoadFuture,
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting ||
+              snapshot.connectionState == ConnectionState.active) {
+            return _ListLoadingSkeleton(padding: AppLayout.horizontalPadding(context));
+          }
+          return _buildListAndMapContent(
+            context,
+            dataSource,
+            list: _lastFilteredList ?? const [],
+            banners: banners,
+            categoryNames: categoryNames,
+            subcategoryNames: subcategoryNames,
+          );
+        },
+      );
+    }
+    final list = _lastFilteredList ?? const [];
+    return _buildListAndMapContent(
+      context,
+      dataSource,
+      list: list,
+      banners: banners,
+      categoryNames: categoryNames,
+      subcategoryNames: subcategoryNames,
+    );
+  }
+
+  Widget _buildListAndMapContent(
+    BuildContext context,
+    ListingDataSource dataSource, {
+    required List<MockListing> list,
+    required List<CategoryBanner> banners,
+    required Map<String, String> categoryNames,
+    required Map<String, String> subcategoryNames,
+  }) {
+    final displayList = list;
+    final hasMore = _hasMoreFromServer;
+    final isLoadingMore = _loadingAuxiliaryFilters || _loadingMore;
+    if (list.isEmpty) {
           final t = Theme.of(context);
           final hasSearch = _filters.searchQuery.isNotEmpty;
           return Center(
@@ -360,7 +520,10 @@ class _CategoriesScreenState extends State<CategoriesScreen> with TickerProvider
                       TextButton.icon(
                         onPressed: () {
                           _searchController.clear();
-                          setState(() => _filters = _filters.copyWith(searchQuery: ''));
+                          setState(() {
+                            _filters = _filters.copyWith(searchQuery: '');
+                            _applyFiltersFromCache();
+                          });
                         },
                         icon: const Icon(Icons.clear_rounded, size: 20),
                         label: const Text('Clear search'),
@@ -371,36 +534,33 @@ class _CategoriesScreenState extends State<CategoriesScreen> with TickerProvider
               ),
             ),
           );
-        }
-        final countsFuture = dataSource.useSupabase && displayList.isNotEmpty
-            ? AppDataScope.of(context).favoritesRepository.getCountsForBusinesses(displayList.map((l) => l.id).toList())
-            : Future<Map<String, int>>.value({});
-        return FutureBuilder<Map<String, int>>(
-          future: countsFuture,
-          builder: (context, countSnap) {
-            final favoritesCounts = countSnap.data ?? {};
-            return TabBarView(
-              controller: _listMapTabController,
-              children: [
-                _ListViewList(
-                  list: displayList,
-                  tierMap: tierMap,
-                  sponsoredIds: sponsoredIds,
-                  favoritesCounts: favoritesCounts,
-                  banners: banners,
-                  categoryNames: categoryNames,
-                  subcategoryNames: subcategoryNames,
-                  featuredCount: 5,
-                  hasMore: hasMore,
-                  isLoadingMore: isLoading && fullList != null,
-                  onLoadMore: hasMore
-                      ? () => setState(() => _displayLimit += _kExploreDisplayMax)
-                      : null,
-                ),
-                _MapView(list: list),
-              ],
-            );
-          },
+    }
+    final countsFuture = dataSource.useSupabase && displayList.isNotEmpty
+        ? AppDataScope.of(context).favoritesRepository.getCountsForBusinesses(displayList.map((l) => l.id).toList())
+        : Future<Map<String, int>>.value({});
+    return FutureBuilder<Map<String, int>>(
+      future: countsFuture,
+      builder: (context, countSnap) {
+        final favoritesCounts = countSnap.data ?? {};
+        return TabBarView(
+          controller: _listMapTabController,
+          children: [
+            _ListViewList(
+              list: displayList,
+              tierMap: _lastTierMap,
+              sponsoredIds: _lastSponsoredIds,
+              favoritesCounts: favoritesCounts,
+              banners: banners,
+              categoryNames: categoryNames,
+              subcategoryNames: subcategoryNames,
+              featuredCount: 5,
+              hasMore: hasMore,
+              isLoadingMore: isLoadingMore,
+              onLoadMore: hasMore ? () => _loadMoreListings(dataSource) : null,
+              onRefresh: _onRefresh,
+            ),
+            _MapView(list: list, subcategoryNames: subcategoryNames),
+          ],
         );
       },
     );
@@ -773,10 +933,11 @@ class _BannerCard extends StatelessWidget {
         fit: StackFit.expand,
         children: [
           if (banner.imageUrl.isNotEmpty)
-            Image.network(
-              banner.imageUrl,
+            CachedNetworkImage(
+              imageUrl: banner.imageUrl,
               fit: BoxFit.cover,
-              errorBuilder: (_, error, stackTrace) => _bannerPlaceholder(),
+              placeholder: (_, _) => _bannerPlaceholder(),
+              errorWidget: (_, _, _) => _bannerPlaceholder(),
             )
           else
             _bannerPlaceholder(),
@@ -1400,6 +1561,7 @@ class _ListViewList extends StatelessWidget {
     this.hasMore = false,
     this.isLoadingMore = false,
     this.onLoadMore,
+    this.onRefresh,
   });
 
   final List<MockListing> list;
@@ -1413,6 +1575,7 @@ class _ListViewList extends StatelessWidget {
   final bool hasMore;
   final bool isLoadingMore;
   final VoidCallback? onLoadMore;
+  final Future<void> Function()? onRefresh;
 
   static const double _cardRadius = 18;
   static const int _sponsoredInlineEvery = 6;
@@ -1423,12 +1586,10 @@ class _ListViewList extends StatelessWidget {
     final padding = AppLayout.horizontalPadding(context);
     final hasBanners = banners.isNotEmpty;
 
-    return Container(
-      color: AppTheme.specOffWhite,
-      child: ListView(
-        padding: EdgeInsets.fromLTRB(padding.left, 8, padding.right, 16),
-        children: [
-          if (isLoadingMore) ...[
+    final listView = ListView(
+      padding: EdgeInsets.fromLTRB(padding.left, 8, padding.right, 16),
+      children: [
+        if (isLoadingMore) ...[
             Center(
               child: Padding(
                 padding: const EdgeInsets.symmetric(vertical: 8),
@@ -1485,8 +1646,11 @@ class _ListViewList extends StatelessWidget {
             ),
           ],
         ],
-      ),
     );
+    final body = onRefresh != null
+        ? RefreshIndicator(onRefresh: onRefresh!, child: listView)
+        : listView;
+    return Container(color: AppTheme.specOffWhite, child: body);
   }
 
   List<Widget> _buildStandardListWithSponsored(
@@ -1556,12 +1720,19 @@ class _ListingLogo extends StatelessWidget {
         height: size,
         decoration: boxDecoration,
         clipBehavior: Clip.antiAlias,
-        child: Image.network(
-          logoUrl!,
+        child: CachedNetworkImage(
+          imageUrl: logoUrl!,
           fit: BoxFit.cover,
           width: size,
+          memCacheWidth: 200,
+          memCacheHeight: 200,
           height: size,
-          errorBuilder: (context, error, stackTrace) => Icon(
+          placeholder: (_, _) => Icon(
+            Icons.store_rounded,
+            size: size * 0.5,
+            color: AppTheme.specNavy.withValues(alpha: 0.7),
+          ),
+          errorWidget: (_, _, _) => Icon(
             Icons.store_rounded,
             size: size * 0.5,
             color: AppTheme.specNavy.withValues(alpha: 0.7),
@@ -1821,7 +1992,7 @@ class _FavoriteHeartButtonState extends State<_FavoriteHeartButton>
                   final perms = scope.userTierService.value ?? ResolvedPermissions.free;
                   if (perms.wouldExceedFavoritesLimit(ids.length)) {
                     if (!context.mounted) return;
-                    await SubscriptionUpsellPopup.show(context);
+                    await presentSubscriptionPaywall(context);
                     return;
                   }
                   next.add(widget.listingId);
@@ -1887,7 +2058,10 @@ class _SponsoredInlineCard extends StatelessWidget {
             child: banner.imageUrl.isNotEmpty
                 ? ClipRRect(
                     borderRadius: BorderRadius.circular(12),
-                    child: Image.network(banner.imageUrl, fit: BoxFit.cover),
+                    child: CachedNetworkImage(
+                      imageUrl: banner.imageUrl,
+                      fit: BoxFit.cover,
+                    ),
                   )
                 : Icon(Icons.campaign_rounded, color: AppTheme.specGold, size: compact ? 24 : 32),
           ),
@@ -1935,9 +2109,10 @@ const _mapCenter = LatLng(30.4515, -91.1871);
 /// Map view with OSM tiles and a marker per business (synthetic lat/lng when not in data).
 /// Tapping a marker shows a tooltip card; tap "View" to open the listing or tap the map to dismiss.
 class _MapView extends StatefulWidget {
-  const _MapView({required this.list});
+  const _MapView({required this.list, this.subcategoryNames = const {}});
 
   final List<MockListing> list;
+  final Map<String, String> subcategoryNames;
 
   @override
   State<_MapView> createState() => _MapViewState();
@@ -2006,11 +2181,17 @@ class _MapViewState extends State<_MapView> {
         ),
         if (_selectedIndex != null && _selectedIndex! < list.length)
           DraggableScrollableSheet(
-            initialChildSize: 0.28,
-            minChildSize: 0.12,
-            maxChildSize: 0.55,
+            initialChildSize: 0.36,
+            minChildSize: 0.14,
+            maxChildSize: 0.58,
             builder: (context, scrollController) {
               final listing = list[_selectedIndex!];
+              final rating = listing.rating;
+              final ratingStr = rating?.toStringAsFixed(1);
+              final subName = widget.subcategoryNames[listing.subcategoryId ?? ''];
+              final categorySubLine = subName != null
+                  ? '${listing.categoryName} · $subName'
+                  : listing.categoryName;
               return Container(
                 decoration: BoxDecoration(
                   color: AppTheme.specWhite,
@@ -2037,8 +2218,9 @@ class _MapViewState extends State<_MapView> {
                         ),
                       ),
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 14),
                     Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Expanded(
                           child: Column(
@@ -2047,12 +2229,14 @@ class _MapViewState extends State<_MapView> {
                               Text(
                                 listing.name,
                                 style: theme.textTheme.titleMedium?.copyWith(
-                                  fontWeight: FontWeight.w600,
+                                  fontWeight: FontWeight.w700,
                                   color: AppTheme.specNavy,
                                 ),
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
                               ),
                               if (listing.tagline.isNotEmpty) ...[
-                                const SizedBox(height: 2),
+                                const SizedBox(height: 4),
                                 Text(
                                   listing.tagline,
                                   style: theme.textTheme.bodySmall?.copyWith(
@@ -2062,6 +2246,60 @@ class _MapViewState extends State<_MapView> {
                                   overflow: TextOverflow.ellipsis,
                                 ),
                               ],
+                              const SizedBox(height: 8),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: AppTheme.specNavy.withValues(alpha: 0.06),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Text(
+                                  categorySubLine,
+                                  style: theme.textTheme.labelMedium?.copyWith(
+                                    color: AppTheme.specNavy.withValues(alpha: 0.85),
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              Row(
+                                children: [
+                                  Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: List.generate(5, (i) {
+                                      final filled = rating != null &&
+                                          i < rating.floor().clamp(0, 5);
+                                      return Icon(
+                                        filled
+                                            ? Icons.star_rounded
+                                            : Icons.star_outline_rounded,
+                                        size: 20,
+                                        color: AppTheme.specGold,
+                                      );
+                                    }),
+                                  ),
+                                  if (ratingStr != null) ...[
+                                    const SizedBox(width: 6),
+                                    Text(
+                                      ratingStr,
+                                      style: theme.textTheme.bodySmall?.copyWith(
+                                        color: theme.colorScheme.onSurfaceVariant,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ] else ...[
+                                    const SizedBox(width: 6),
+                                    Text(
+                                      'No reviews',
+                                      style: theme.textTheme.bodySmall?.copyWith(
+                                        color: theme.colorScheme.onSurfaceVariant,
+                                      ),
+                                    ),
+                                  ],
+                                ],
+                              ),
                             ],
                           ),
                         ),
@@ -2072,7 +2310,7 @@ class _MapViewState extends State<_MapView> {
                         ),
                       ],
                     ),
-                    const SizedBox(height: 14),
+                    const SizedBox(height: 16),
                     AppPrimaryButton(
                       onPressed: () {
                         final id = listing.id;

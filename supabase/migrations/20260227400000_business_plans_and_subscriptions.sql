@@ -90,7 +90,23 @@ CREATE POLICY "business_subscriptions_delete_admin"
   ON public.business_subscriptions FOR DELETE
   USING (public.has_role(auth.uid(), 'admin'));
 
--- 3. Seed default plans if none exist
+-- 3. If table was created with id uuid (e.g. elsewhere), convert to text so seed values work
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'business_plans' AND column_name = 'id' AND data_type = 'uuid'
+  ) THEN
+    ALTER TABLE public.business_subscriptions DROP CONSTRAINT IF EXISTS business_subscriptions_plan_id_fkey;
+    ALTER TABLE public.business_plans ALTER COLUMN id TYPE text USING id::text;
+    ALTER TABLE public.business_subscriptions ALTER COLUMN plan_id TYPE text USING plan_id::text;
+    ALTER TABLE public.business_subscriptions
+      ADD CONSTRAINT business_subscriptions_plan_id_fkey
+      FOREIGN KEY (plan_id) REFERENCES public.business_plans(id) ON DELETE RESTRICT;
+  END IF;
+END $$;
+
+-- 4. Seed default plans if none exist
 INSERT INTO public.business_plans (id, name, tier, price_monthly, price_yearly, sort_order, is_active)
 VALUES
   ('free', 'Free', 'free', 0, 0, 0, true),

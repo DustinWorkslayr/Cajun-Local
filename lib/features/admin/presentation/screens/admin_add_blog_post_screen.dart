@@ -1,14 +1,19 @@
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_quill/flutter_quill.dart' as quill;
+import 'package:flutter_quill_delta_from_html/flutter_quill_delta_from_html.dart';
 import 'package:my_app/core/data/models/blog_post.dart';
+import 'package:my_app/core/data/models/parish.dart';
 import 'package:my_app/core/data/repositories/blog_posts_repository.dart';
+import 'package:my_app/core/data/repositories/parish_repository.dart';
 import 'package:my_app/core/data/services/app_storage_service.dart';
 import 'package:my_app/core/data/services/storage_upload_constants.dart';
 import 'package:my_app/core/theme/app_layout.dart';
 import 'package:my_app/core/theme/theme.dart';
 import 'package:my_app/shared/widgets/app_buttons.dart';
+import 'package:vsc_quill_delta_to_html/vsc_quill_delta_to_html.dart';
 
-/// Admin: create or edit a blog post. Body is edited as raw HTML; you provide the full HTML content.
+/// Admin: create or edit a blog post. Body is edited with a rich text (Quill) editor and stored as HTML.
 class AdminAddBlogPostScreen extends StatefulWidget {
   const AdminAddBlogPostScreen({super.key, this.post});
 
@@ -23,27 +28,59 @@ class _AdminAddBlogPostScreenState extends State<AdminAddBlogPostScreen> {
   final _formKey = GlobalKey<FormState>();
   final _titleController = TextEditingController();
   final _slugController = TextEditingController();
-  final _bodyController = TextEditingController();
+  late final quill.QuillController _quillController;
+  final _scrollController = ScrollController();
+  final _focusNode = FocusNode();
   String _status = 'draft';
   bool _saving = false;
   String? _message;
   bool _success = false;
   String? _coverImageUrl;
   bool _uploadingCover = false;
+  List<Parish> _parishes = [];
+  bool _allParishes = true;
+  Set<String> _selectedParishIds = {};
 
   static const List<String> _validStatuses = ['draft', 'pending', 'approved', 'rejected', 'published'];
 
   @override
   void initState() {
     super.initState();
+    _quillController = _createQuillController();
     if (widget.post != null) {
       _titleController.text = widget.post!.title;
       _slugController.text = widget.post!.slug;
       final s = widget.post!.status;
       _status = _validStatuses.contains(s) ? s : 'draft';
       _coverImageUrl = widget.post!.coverImageUrl;
-      _bodyController.text = widget.post!.content ?? '';
+      _allParishes = widget.post!.isAllParishes;
+      _selectedParishIds = widget.post!.parishIds != null ? widget.post!.parishIds!.toSet() : {};
     }
+    _loadParishes();
+  }
+
+  quill.QuillController _createQuillController() {
+    quill.Document document;
+    final html = widget.post?.content?.trim() ?? '';
+    if (html.isNotEmpty) {
+      try {
+        final delta = HtmlToDelta().convert(html, transformTableAsEmbed: false);
+        document = quill.Document.fromJson(delta.toJson());
+      } catch (_) {
+        document = quill.Document();
+      }
+    } else {
+      document = quill.Document();
+    }
+    return quill.QuillController(
+      document: document,
+      selection: const TextSelection.collapsed(offset: 0),
+    );
+  }
+
+  Future<void> _loadParishes() async {
+    final list = await ParishRepository().listParishes();
+    if (mounted) setState(() => _parishes = list);
   }
 
   Future<void> _pickAndUploadBanner() async {
@@ -80,8 +117,21 @@ class _AdminAddBlogPostScreenState extends State<AdminAddBlogPostScreen> {
   void dispose() {
     _titleController.dispose();
     _slugController.dispose();
-    _bodyController.dispose();
+    _quillController.dispose();
+    _scrollController.dispose();
+    _focusNode.dispose();
     super.dispose();
+  }
+
+  String _quillDeltaToHtml() {
+    final delta = _quillController.document.toDelta();
+    final ops = delta.toJson();
+    if (ops.isEmpty) return '';
+    final converter = QuillDeltaToHtmlConverter(
+      ops,
+      ConverterOptions.forEmail(),
+    );
+    return converter.convert().trim();
   }
 
   Future<void> _submit() async {
@@ -91,8 +141,9 @@ class _AdminAddBlogPostScreenState extends State<AdminAddBlogPostScreen> {
       _saving = true;
     });
     try {
-      final contentHtml = _bodyController.text.trim();
+      final contentHtml = _quillDeltaToHtml();
       final repo = BlogPostsRepository();
+      final parishIds = _allParishes ? null : _selectedParishIds.toList();
       if (widget.post != null) {
         await repo.update(
           id: widget.post!.id,
@@ -101,6 +152,7 @@ class _AdminAddBlogPostScreenState extends State<AdminAddBlogPostScreen> {
           content: contentHtml.isEmpty ? null : contentHtml,
           status: _status,
           coverImageUrl: _coverImageUrl,
+          parishIds: parishIds,
         );
       } else {
         await repo.insert(
@@ -109,6 +161,7 @@ class _AdminAddBlogPostScreenState extends State<AdminAddBlogPostScreen> {
           content: contentHtml.isEmpty ? null : contentHtml,
           status: _status,
           coverImageUrl: _coverImageUrl,
+          parishIds: parishIds,
         );
       }
       if (mounted) {
@@ -207,6 +260,53 @@ class _AdminAddBlogPostScreenState extends State<AdminAddBlogPostScreen> {
                 label: Text(_coverImageUrl != null ? 'Change image' : 'Add cover image'),
               ),
               const SizedBox(height: 20),
+              _SectionLabel(title: 'Parish visibility'),
+              Text(
+                'Choose which parishes will see this post. "All parishes" shows it to everyone.',
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: AppTheme.specNavy.withValues(alpha: 0.7),
+                ),
+              ),
+              const SizedBox(height: 8),
+              CheckboxListTile(
+                value: _allParishes,
+                onChanged: (v) => setState(() {
+                  _allParishes = v ?? true;
+                  if (_allParishes) _selectedParishIds = {};
+                }),
+                title: const Text('All parishes'),
+                subtitle: Text(
+                  _allParishes ? 'Post will appear for every user' : 'Select specific parishes below',
+                  style: theme.textTheme.bodySmall?.copyWith(color: AppTheme.specNavy.withValues(alpha: 0.7)),
+                ),
+                controlAffinity: ListTileControlAffinity.leading,
+                contentPadding: EdgeInsets.zero,
+                activeColor: AppTheme.specGold,
+              ),
+              if (!_allParishes) ...[
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: _parishes.map((p) {
+                    final selected = _selectedParishIds.contains(p.id);
+                    return FilterChip(
+                      label: Text(p.name),
+                      selected: selected,
+                      onSelected: (v) => setState(() {
+                        if (v) {
+                          _selectedParishIds.add(p.id);
+                        } else {
+                          _selectedParishIds.remove(p.id);
+                        }
+                      }),
+                      selectedColor: AppTheme.specGold.withValues(alpha: 0.3),
+                      checkmarkColor: AppTheme.specNavy,
+                    );
+                  }).toList(),
+                ),
+              ],
+              const SizedBox(height: 20),
               _SectionLabel(title: 'Status'),
               DropdownButtonFormField<String>(
                 initialValue: _status,
@@ -225,29 +325,52 @@ class _AdminAddBlogPostScreenState extends State<AdminAddBlogPostScreen> {
                 onChanged: (v) => setState(() => _status = v ?? 'draft'),
               ),
               const SizedBox(height: 24),
-              _SectionLabel(title: 'Content (HTML)'),
+              _SectionLabel(title: 'Content'),
               Text(
-                'Paste or type your full HTML content below. It will be stored and rendered as-is on the post.',
+                'Use the toolbar to format text. Content is saved as HTML and rendered on the post.',
                 style: theme.textTheme.bodySmall?.copyWith(
                   color: AppTheme.specNavy.withValues(alpha: 0.7),
                 ),
               ),
               const SizedBox(height: 10),
-              TextFormField(
-                controller: _bodyController,
-                maxLines: 24,
-                minLines: 12,
-                decoration: const InputDecoration(
-                  hintText: '<p>Your content here…</p>',
-                  alignLabelWithHint: true,
-                  border: OutlineInputBorder(),
-                  filled: true,
-                  fillColor: AppTheme.specWhite,
-                  contentPadding: EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+              Container(
+                decoration: BoxDecoration(
+                  color: AppTheme.specWhite,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: AppTheme.specNavy.withValues(alpha: 0.2)),
                 ),
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  fontFamily: 'monospace',
-                  color: AppTheme.specNavy,
+                clipBehavior: Clip.antiAlias,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    quill.QuillSimpleToolbar(
+                      controller: _quillController,
+                      config: const quill.QuillSimpleToolbarConfig(
+                        showAlignmentButtons: true,
+                        showBackgroundColorButton: false,
+                        showFontFamily: false,
+                        showFontSize: false,
+                        showColorButton: false,
+                        showSearchButton: false,
+                        showSubscript: false,
+                        showSuperscript: false,
+                      ),
+                    ),
+                    const Divider(height: 1),
+                    SizedBox(
+                      height: 280,
+                      child: quill.QuillEditor.basic(
+                        controller: _quillController,
+                        focusNode: _focusNode,
+                        scrollController: _scrollController,
+                        config: const quill.QuillEditorConfig(
+                          placeholder: 'Write your post content…',
+                          padding: EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
               if (_message != null) ...[

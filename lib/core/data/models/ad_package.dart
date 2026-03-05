@@ -12,6 +12,7 @@ class AdPackage {
     this.maxImpressions,
     this.description,
     this.stripePriceId,
+    this.revenuecatProductId,
     this.isActive = true,
     this.sortOrder = 0,
     this.createdAt,
@@ -27,6 +28,8 @@ class AdPackage {
   final int? maxImpressions;
   final String? description;
   final String? stripePriceId;
+  /// RevenueCat product ID for IAP (e.g. homepage_feature_7_day). When set, ad payment uses RevenueCat.
+  final String? revenuecatProductId;
   final bool isActive;
   final int sortOrder;
   final DateTime? createdAt;
@@ -42,6 +45,7 @@ class AdPackage {
       maxImpressions: json['max_impressions'] as int?,
       description: json['description'] as String?,
       stripePriceId: json['stripe_price_id'] as String?,
+      revenuecatProductId: json['revenuecat_product_id'] as String?,
       isActive: json['is_active'] as bool? ?? true,
       sortOrder: json['sort_order'] as int? ?? 0,
       createdAt: json['created_at'] != null
@@ -69,6 +73,7 @@ class AdPackage {
         'max_impressions': maxImpressions,
         'description': description,
         'stripe_price_id': stripePriceId,
+        'revenuecat_product_id': revenuecatProductId,
         'is_active': isActive,
         'sort_order': sortOrder,
       };

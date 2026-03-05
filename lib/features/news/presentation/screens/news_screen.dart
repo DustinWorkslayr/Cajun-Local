@@ -1,7 +1,10 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:my_app/core/data/models/blog_post.dart';
+import 'package:my_app/core/data/models/parish.dart';
 import 'package:my_app/core/data/repositories/blog_posts_repository.dart';
+import 'package:my_app/core/data/repositories/parish_repository.dart';
+import 'package:my_app/core/preferences/user_parish_preferences.dart';
 import 'package:my_app/core/supabase/supabase_config.dart';
 import 'package:my_app/core/theme/app_layout.dart';
 import 'package:my_app/core/theme/theme.dart';
@@ -24,10 +27,19 @@ class NewsScreen extends StatelessWidget {
     return '${trimmed.substring(0, maxLen).trim()}…';
   }
 
+  static String _parishLabel(BlogPost post, Map<String, String> idToName) {
+    if (post.isAllParishes) return 'All parishes';
+    return post.parishIds!.map((id) => idToName[id] ?? id).join(', ');
+  }
+
+  static const double _bannerAspectRatio = 2.1; // Wide banner
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final padding = AppLayout.horizontalPadding(context);
+    final screenWidth = MediaQuery.sizeOf(context).width;
+    final bannerHeight = (screenWidth - padding.left - padding.right) / _bannerAspectRatio;
 
     return Scaffold(
       backgroundColor: AppTheme.specOffWhite,
@@ -37,7 +49,7 @@ class NewsScreen extends StatelessWidget {
             child: SafeArea(
               bottom: false,
               child: Padding(
-                padding: EdgeInsets.fromLTRB(padding.left, 28, padding.right, 20),
+                padding: EdgeInsets.fromLTRB(padding.left, 24, padding.right, 16),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -49,7 +61,7 @@ class NewsScreen extends StatelessWidget {
                         letterSpacing: -0.5,
                       ),
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 6),
                     Text(
                       'Stories and updates from around Cajun country.',
                       style: theme.textTheme.bodyLarge?.copyWith(
@@ -63,11 +75,17 @@ class NewsScreen extends StatelessWidget {
             ),
           ),
           SliverPadding(
-            padding: EdgeInsets.fromLTRB(padding.left, 20, padding.right, padding.right),
-            sliver: FutureBuilder<List<BlogPost>>(
+            padding: EdgeInsets.fromLTRB(padding.left, 16, padding.right, padding.right),
+            sliver: FutureBuilder<(List<BlogPost>, List<Parish>)>(
               future: SupabaseConfig.isConfigured
-                  ? BlogPostsRepository().listApproved()
-                  : Future.value(<BlogPost>[]),
+                  ? UserParishPreferences.getPreferredParishIds().then((ids) async {
+                      final posts = await BlogPostsRepository().listApproved(
+                        forParishIds: ids.isEmpty ? null : ids,
+                      );
+                      final parishes = await ParishRepository().listParishes();
+                      return (posts, parishes);
+                    })
+                  : Future.value((<BlogPost>[], <Parish>[])),
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting && !snapshot.hasData) {
                   return const SliverToBoxAdapter(
@@ -77,7 +95,9 @@ class NewsScreen extends StatelessWidget {
                     ),
                   );
                 }
-                final posts = snapshot.data ?? [];
+                final posts = snapshot.data?.$1 ?? [];
+                final parishes = snapshot.data?.$2 ?? [];
+                final idToName = {for (final p in parishes) p.id: p.name};
                 if (posts.isEmpty) {
                   return SliverToBoxAdapter(
                     child: Padding(
@@ -108,10 +128,12 @@ class NewsScreen extends StatelessWidget {
                       final post = posts[index];
                       final isFirst = index == 0;
                       return Padding(
-                        padding: EdgeInsets.only(bottom: isFirst ? 24 : 20),
+                        padding: EdgeInsets.only(bottom: isFirst ? 28 : 24),
                         child: _NewsCard(
                           post: post,
+                          parishLabel: _parishLabel(post, idToName),
                           featured: isFirst,
+                          bannerHeight: bannerHeight,
                           onTap: () {
                             Navigator.of(context).push(
                               MaterialPageRoute<void>(
@@ -138,13 +160,41 @@ class NewsScreen extends StatelessWidget {
 class _NewsCard extends StatelessWidget {
   const _NewsCard({
     required this.post,
+    required this.parishLabel,
     required this.featured,
+    required this.bannerHeight,
     required this.onTap,
   });
 
   final BlogPost post;
+  final String parishLabel;
   final bool featured;
+  final double bannerHeight;
   final VoidCallback onTap;
+
+  static Widget _bannerPlaceholder() {
+    return Container(
+      width: double.infinity,
+      height: double.infinity,
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            AppTheme.specNavy.withValues(alpha: 0.12),
+            AppTheme.specGold.withValues(alpha: 0.15),
+          ],
+        ),
+      ),
+      child: Center(
+        child: Icon(
+          Icons.article_rounded,
+          size: 56,
+          color: AppTheme.specNavy.withValues(alpha: 0.2),
+        ),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -152,22 +202,22 @@ class _NewsCard extends StatelessWidget {
     final hasImage = post.coverImageUrl != null && post.coverImageUrl!.isNotEmpty;
     final dateStr = NewsScreen._formatDate(post.publishedAt ?? post.createdAt);
     final excerpt = post.excerpt ?? NewsScreen._excerpt(post.content);
+    const radius = 20.0;
 
     return Material(
       color: Colors.transparent,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(radius),
         child: Container(
           decoration: BoxDecoration(
             color: AppTheme.specWhite,
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: AppTheme.specNavy.withValues(alpha: 0.06)),
+            borderRadius: BorderRadius.circular(radius),
             boxShadow: [
               BoxShadow(
-                color: AppTheme.specNavy.withValues(alpha: 0.06),
-                blurRadius: 16,
-                offset: const Offset(0, 4),
+                color: AppTheme.specNavy.withValues(alpha: 0.08),
+                blurRadius: 20,
+                offset: const Offset(0, 6),
               ),
             ],
           ),
@@ -175,37 +225,96 @@ class _NewsCard extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              if (hasImage)
-                AspectRatio(
-                  aspectRatio: featured ? 2.0 : 1.9,
-                  child: CachedNetworkImage(
-                    imageUrl: post.coverImageUrl!,
-                    fit: BoxFit.cover,
-                    placeholder: (_, _) => Container(
-                      color: AppTheme.specNavy.withValues(alpha: 0.06),
-                      child: const Center(child: CircularProgressIndicator(strokeWidth: 2, color: AppTheme.specGold)),
-                    ),
-                    errorWidget: (_, _, _) => Container(
-                      color: AppTheme.specNavy.withValues(alpha: 0.06),
-                      child: Icon(Icons.article_rounded, size: 48, color: AppTheme.specNavy.withValues(alpha: 0.25)),
-                    ),
-                  ),
+              // Banner image — always show same-height area
+              SizedBox(
+                height: bannerHeight,
+                width: double.infinity,
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    if (hasImage)
+                      CachedNetworkImage(
+                        imageUrl: post.coverImageUrl!,
+                        fit: BoxFit.cover,
+                        placeholder: (_, _) => _bannerPlaceholder(),
+                        errorWidget: (_, _, _) => _bannerPlaceholder(),
+                      )
+                    else
+                      _bannerPlaceholder(),
+                    // Subtle bottom gradient for text overlap on featured
+                    if (featured)
+                      Positioned(
+                        left: 0,
+                        right: 0,
+                        bottom: 0,
+                        child: Container(
+                          height: 80,
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              begin: Alignment.topCenter,
+                              end: Alignment.bottomCenter,
+                              colors: [
+                                Colors.transparent,
+                                Colors.black.withValues(alpha: 0.35),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                  ],
                 ),
+              ),
               Padding(
-                padding: EdgeInsets.fromLTRB(featured ? 24 : 20, featured ? 20 : 16, featured ? 24 : 20, featured ? 24 : 20),
+                padding: EdgeInsets.fromLTRB(featured ? 24 : 20, featured ? 22 : 18, featured ? 24 : 20, featured ? 24 : 20),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    if (dateStr.isNotEmpty)
-                      Text(
-                        dateStr,
-                        style: theme.textTheme.labelMedium?.copyWith(
-                          color: AppTheme.specGold,
-                          fontWeight: FontWeight.w700,
-                          letterSpacing: 0.5,
-                        ),
-                      ),
-                    if (dateStr.isNotEmpty) const SizedBox(height: 10),
+                    Row(
+                      children: [
+                        if (dateStr.isNotEmpty)
+                          Text(
+                            dateStr,
+                            style: theme.textTheme.labelMedium?.copyWith(
+                              color: AppTheme.specGold,
+                              fontWeight: FontWeight.w700,
+                              letterSpacing: 0.5,
+                            ),
+                          ),
+                        if (dateStr.isNotEmpty && parishLabel.isNotEmpty) ...[
+                          const SizedBox(width: 12),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: AppTheme.specNavy.withValues(alpha: 0.08),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Text(
+                              parishLabel,
+                              style: theme.textTheme.labelSmall?.copyWith(
+                                color: AppTheme.specNavy.withValues(alpha: 0.8),
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ],
+                        if (dateStr.isEmpty && parishLabel.isNotEmpty)
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: AppTheme.specNavy.withValues(alpha: 0.08),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Text(
+                              parishLabel,
+                              style: theme.textTheme.labelSmall?.copyWith(
+                                color: AppTheme.specNavy.withValues(alpha: 0.8),
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                    if (dateStr.isNotEmpty || parishLabel.isNotEmpty) const SizedBox(height: 10),
                     Text(
                       post.title,
                       style: (featured ? theme.textTheme.titleLarge : theme.textTheme.titleMedium)?.copyWith(

@@ -38,42 +38,7 @@ BEGIN
   END IF;
 END;
 $$;
--- Trigger: claim approved -> enqueue claim_approved email to claimant.
-CREATE OR REPLACE FUNCTION public.on_business_claim_approved_send_email()
-RETURNS TRIGGER
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = public
-AS $$
-DECLARE
-  v_email text;
-  v_display_name text;
-  v_business_name text;
-BEGIN
-  IF NEW.status = 'approved' AND (OLD.status IS NULL OR OLD.status <> 'approved') THEN
-    SELECT p.email, coalesce(p.display_name, '')
-      INTO v_email, v_display_name
-      FROM public.profiles p
-      WHERE p.user_id = NEW.user_id
-      LIMIT 1;
-    SELECT b.name INTO v_business_name FROM public.businesses b WHERE b.id = NEW.business_id LIMIT 1;
-    PERFORM public.email_queue_enqueue(
-      'claim_approved',
-      v_email,
-      jsonb_build_object(
-        'display_name', coalesce(v_display_name, ''),
-        'email', coalesce(v_email, ''),
-        'business_name', coalesce(v_business_name, '')
-      )
-    );
-  END IF;
-  RETURN NEW;
-END;
-$$;
-CREATE TRIGGER trigger_claim_approved_send_email
-  AFTER UPDATE ON public.business_claims
-  FOR EACH ROW
-  EXECUTE FUNCTION public.on_business_claim_approved_send_email();
+-- Trigger: claim approved -> enqueue claim_approved email. Created in 20260227300002 (after business_claims exists).
 -- Trigger: business approved -> enqueue business_approved to creator (created_by).
 CREATE OR REPLACE FUNCTION public.on_business_approved_send_email()
 RETURNS TRIGGER
@@ -152,10 +117,16 @@ BEGIN
   RETURN NEW;
 END;
 $$;
-CREATE TRIGGER trigger_deal_approved_send_email
-  AFTER UPDATE ON public.deals
-  FOR EACH ROW
-  EXECUTE FUNCTION public.on_deal_approved_send_email();
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_tables WHERE schemaname = 'public' AND tablename = 'deals') THEN
+    DROP TRIGGER IF EXISTS trigger_deal_approved_send_email ON public.deals;
+    CREATE TRIGGER trigger_deal_approved_send_email
+      AFTER UPDATE ON public.deals
+      FOR EACH ROW
+      EXECUTE FUNCTION public.on_deal_approved_send_email();
+  END IF;
+END $$;
 -- Trigger: review approved -> enqueue review_approved to reviewer.
 CREATE OR REPLACE FUNCTION public.on_review_approved_send_email()
 RETURNS TRIGGER
@@ -188,10 +159,16 @@ BEGIN
   RETURN NEW;
 END;
 $$;
-CREATE TRIGGER trigger_review_approved_send_email
-  AFTER UPDATE ON public.reviews
-  FOR EACH ROW
-  EXECUTE FUNCTION public.on_review_approved_send_email();
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_tables WHERE schemaname = 'public' AND tablename = 'reviews') THEN
+    DROP TRIGGER IF EXISTS trigger_review_approved_send_email ON public.reviews;
+    CREATE TRIGGER trigger_review_approved_send_email
+      AFTER UPDATE ON public.reviews
+      FOR EACH ROW
+      EXECUTE FUNCTION public.on_review_approved_send_email();
+  END IF;
+END $$;
 -- Trigger: business_image approved -> enqueue image_approved to one business owner.
 CREATE OR REPLACE FUNCTION public.on_business_image_approved_send_email()
 RETURNS TRIGGER
@@ -233,7 +210,13 @@ BEGIN
   RETURN NEW;
 END;
 $$;
-CREATE TRIGGER trigger_business_image_approved_send_email
-  AFTER UPDATE ON public.business_images
-  FOR EACH ROW
-  EXECUTE FUNCTION public.on_business_image_approved_send_email();
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_tables WHERE schemaname = 'public' AND tablename = 'business_images') THEN
+    DROP TRIGGER IF EXISTS trigger_business_image_approved_send_email ON public.business_images;
+    CREATE TRIGGER trigger_business_image_approved_send_email
+      AFTER UPDATE ON public.business_images
+      FOR EACH ROW
+      EXECUTE FUNCTION public.on_business_image_approved_send_email();
+  END IF;
+END $$;

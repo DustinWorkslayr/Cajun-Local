@@ -12,16 +12,31 @@ class BlogPostsRepository {
   static const _limit = 500;
 
   /// Public: list approved/published posts for News (backend-cheatsheet §7).
-  Future<List<BlogPost>> listApproved({int limit = 50}) async {
+  /// When [forParishIds] is provided, only posts visible to at least one of those parishes are returned
+  /// (posts with null/empty parish_ids are shown to all; otherwise post must list at least one of forParishIds).
+  /// When [forParishIds] is null or empty, all approved posts are returned.
+  Future<List<BlogPost>> listApproved({
+    int limit = 50,
+    Set<String>? forParishIds,
+  }) async {
     final client = _client;
     if (client == null) return [];
     final list = await client
         .from('blog_posts')
         .select()
-        .eq('status', 'approved')
+        .inFilter('status', ['approved', 'published'])
         .order('published_at', ascending: false)
-        .limit(limit);
-    return (list as List).map((e) => BlogPost.fromJson(e as Map<String, dynamic>)).toList();
+        .limit(limit * 2);
+    var posts = (list as List)
+        .map((e) => BlogPost.fromJson(e as Map<String, dynamic>))
+        .toList();
+    if (forParishIds != null && forParishIds.isNotEmpty) {
+      posts = posts.where((p) {
+        if (p.isAllParishes) return true;
+        return p.parishIds!.any((id) => forParishIds.contains(id));
+      }).toList();
+    }
+    return posts.take(limit).toList();
   }
 
   Future<List<BlogPost>> listForAdmin({String? status}) async {
@@ -60,6 +75,7 @@ class BlogPostsRepository {
     String status = 'draft',
     String? authorId,
     String? coverImageUrl,
+    List<String>? parishIds,
   }) async {
     final client = _client;
     if (client == null) return;
@@ -73,10 +89,11 @@ class BlogPostsRepository {
       'status': status,
       ...? (authorId != null ? {'author_id': authorId} : null),
       ...? (coverImageUrl != null ? {'cover_image_url': coverImageUrl} : null),
+      ...? (_parishIdsToPayload(parishIds)),
     });
   }
 
-  /// Admin: update an existing blog post (title, slug, content, excerpt, status, cover).
+  /// Admin: update an existing blog post (title, slug, content, excerpt, status, cover, parish_ids).
   Future<void> update({
     required String id,
     required String title,
@@ -85,6 +102,7 @@ class BlogPostsRepository {
     String? excerpt,
     required String status,
     String? coverImageUrl,
+    List<String>? parishIds,
   }) async {
     final client = _client;
     if (client == null) return;
@@ -95,6 +113,13 @@ class BlogPostsRepository {
       'excerpt': excerpt,
       'status': status,
       'cover_image_url': coverImageUrl,
+      ...? (_parishIdsToPayload(parishIds)),
     }).eq('id', id);
+  }
+
+  static Map<String, dynamic>? _parishIdsToPayload(List<String>? parishIds) {
+    if (parishIds == null) return {'parish_ids': null};
+    if (parishIds.isEmpty) return {'parish_ids': null};
+    return {'parish_ids': parishIds};
   }
 }

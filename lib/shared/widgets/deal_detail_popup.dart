@@ -1,6 +1,7 @@
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
+import 'package:my_app/core/data/deal_type_icons.dart';
 import 'package:my_app/core/data/mock_data.dart';
 import 'package:my_app/shared/widgets/app_buttons.dart';
 import 'package:my_app/core/theme/theme.dart';
@@ -157,13 +158,21 @@ class _DealDetailPopupState extends State<DealDetailPopup> {
                             letterSpacing: 0.5,
                           ),
                         ),
-                        const SizedBox(height: 8),
-                        Text(
-                          widget.deal.discount ?? 'Special offer',
-                          style: theme.textTheme.headlineMedium?.copyWith(
-                            fontWeight: FontWeight.w800,
-                            color: AppTheme.specWhite,
-                            letterSpacing: -0.5,
+                        const SizedBox(height: 12),
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: AppTheme.specGold.withValues(alpha: 0.25),
+                            borderRadius: BorderRadius.circular(14),
+                            border: Border.all(
+                              color: AppTheme.specGold.withValues(alpha: 0.6),
+                              width: 1.5,
+                            ),
+                          ),
+                          child: Icon(
+                            DealTypeIcons.iconFor(widget.deal.dealType),
+                            size: 36,
+                            color: AppTheme.specGold,
                           ),
                         ),
                         if (widget.deal.expiry != null) ...[

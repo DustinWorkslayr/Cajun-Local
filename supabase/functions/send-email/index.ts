@@ -6,6 +6,39 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const SENDGRID_URL = "https://api.sendgrid.com/v3/mail/send";
 
+const ALLOWED_TEMPLATES = new Set([
+  "business_approved",
+  "deal_approved",
+  "review_approved",
+  "image_approved",
+  "claim_approved",
+  "team_invite",
+]);
+
+function isValidEmail(s: string): boolean {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s) && s.length <= 254;
+}
+
+const RATE_LIMIT_REQUESTS = 10;
+const RATE_LIMIT_WINDOW_MS = 60_000;
+const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
+
+function checkRateLimit(userId: string): boolean {
+  const now = Date.now();
+  const entry = rateLimitMap.get(userId);
+  if (!entry) {
+    rateLimitMap.set(userId, { count: 1, resetAt: now + RATE_LIMIT_WINDOW_MS });
+    return true;
+  }
+  if (now >= entry.resetAt) {
+    entry.count = 1;
+    entry.resetAt = now + RATE_LIMIT_WINDOW_MS;
+    return true;
+  }
+  entry.count++;
+  return entry.count <= RATE_LIMIT_REQUESTS;
+}
+
 function corsHeaders(origin: string | null): Record<string, string> {
   const allow = origin ?? "*";
   return {
@@ -77,6 +110,13 @@ Deno.serve(async (req) => {
     );
   }
 
+  if (!checkRateLimit(user.id)) {
+    return new Response(
+      JSON.stringify({ error: "Too many requests. Try again in a minute." }),
+      { status: 429, headers: { "Content-Type": "application/json", ...corsHeaders(origin) } }
+    );
+  }
+
   const sendgridKey = Deno.env.get("SENDGRID_API_KEY");
   const fromEmail = Deno.env.get("SENDGRID_FROM_EMAIL") ?? "";
   const fromName = Deno.env.get("SENDGRID_FROM_NAME") ?? "Cajun Local";
@@ -106,6 +146,18 @@ Deno.serve(async (req) => {
   if (!to || !templateName) {
     return new Response(
       JSON.stringify({ error: "Missing 'to' or 'template'" }),
+      { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders(origin) } }
+    );
+  }
+  if (!isValidEmail(to)) {
+    return new Response(
+      JSON.stringify({ error: "Invalid email address" }),
+      { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders(origin) } }
+    );
+  }
+  if (!ALLOWED_TEMPLATES.has(templateName)) {
+    return new Response(
+      JSON.stringify({ error: "Template not allowed" }),
       { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders(origin) } }
     );
   }

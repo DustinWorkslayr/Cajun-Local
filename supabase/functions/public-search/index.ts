@@ -7,6 +7,7 @@ import { corsHeaders, ensureWpKey, jsonResponse } from "../_shared/wp-auth.ts";
 
 const MAX_LIMIT = 50;
 const DEFAULT_LIMIT = 20;
+const MAX_SLUG_LENGTH = 200;
 
 function parseIntSafe(val: string | null, def: number, max: number): number {
   if (val == null || val.trim() === "") return def;
@@ -30,9 +31,17 @@ Deno.serve(async (req) => {
 
   const url = new URL(req.url);
   const q = url.searchParams.get("q")?.trim() ?? "";
-  const categorySlug = url.searchParams.get("categorySlug")?.trim() ?? null;
-  const subcategorySlug = url.searchParams.get("subcategorySlug")?.trim() ?? null;
+  const rawCategorySlug = url.searchParams.get("categorySlug")?.trim() ?? null;
+  const rawSubcategorySlug = url.searchParams.get("subcategorySlug")?.trim() ?? null;
   const parish = url.searchParams.get("parish")?.trim() ?? null;
+  if (rawCategorySlug && rawCategorySlug.length > MAX_SLUG_LENGTH) {
+    return jsonResponse(400, { error: "categorySlug too long" }, origin);
+  }
+  if (rawSubcategorySlug && rawSubcategorySlug.length > MAX_SLUG_LENGTH) {
+    return jsonResponse(400, { error: "subcategorySlug too long" }, origin);
+  }
+  const categorySlug = rawCategorySlug;
+  const subcategorySlug = rawSubcategorySlug;
   const flagsParam = url.searchParams.get("flags")?.trim() ?? "";
   const flags = flagsParam ? new Set(flagsParam.split(",").map((f) => f.trim().toLowerCase()).filter(Boolean)) : new Set<string>();
   const limit = parseIntSafe(url.searchParams.get("limit"), DEFAULT_LIMIT, MAX_LIMIT);
@@ -67,29 +76,23 @@ Deno.serve(async (req) => {
     query = query.in("id", ids);
   }
 
-  // Apply tier filters at query time so count is correct
+  // Apply tier filters in DB: get plan IDs for requested tiers, then business_ids from subscriptions
   if (flags.has("is_partner") || flags.has("is_local_plus")) {
+    const tiersNeeded: string[] = flags.has("is_partner") ? ["enterprise"] : ["premium", "enterprise"];
+    const { data: plans } = await client
+      .from("business_plans")
+      .select("id")
+      .in("tier", tiersNeeded);
+    const planIds = (plans ?? []).map((p: { id: string }) => p.id);
+    if (planIds.length === 0) {
+      return jsonResponse(200, { listings: [], total: 0 }, origin);
+    }
     const { data: subRows } = await client
       .from("business_subscriptions")
-      .select("business_id, business_plans(tier)")
-      .eq("status", "active");
-    const partnerIds = new Set<string>();
-    const localPlusIds = new Set<string>();
-    for (const row of subRows ?? []) {
-      const r = row as { business_id: string; business_plans?: { tier?: string } };
-      const tier = r.business_plans?.tier?.toLowerCase();
-      if (!tier || !r.business_id) continue;
-      if (tier === "enterprise") partnerIds.add(r.business_id);
-      if (tier !== "free") localPlusIds.add(r.business_id);
-    }
-    let tierFilterIds: string[] = [];
-    if (flags.has("is_partner") && flags.has("is_local_plus")) {
-      tierFilterIds = [...partnerIds].filter((id) => localPlusIds.has(id));
-    } else if (flags.has("is_partner")) {
-      tierFilterIds = [...partnerIds];
-    } else {
-      tierFilterIds = [...localPlusIds];
-    }
+      .select("business_id")
+      .eq("status", "active")
+      .in("plan_id", planIds);
+    const tierFilterIds = [...new Set((subRows ?? []).map((r: { business_id: string }) => r.business_id))];
     if (tierFilterIds.length === 0) {
       return jsonResponse(200, { listings: [], total: 0 }, origin);
     }

@@ -9,6 +9,7 @@ import 'package:my_app/core/data/app_data_scope.dart';
 import 'package:my_app/core/data/mock_data.dart';
 import 'package:my_app/core/data/repositories/business_managers_repository.dart';
 import 'package:my_app/core/data/repositories/form_submissions_repository.dart';
+import 'package:my_app/core/data/repositories/user_notification_preferences_repository.dart';
 import 'package:my_app/core/data/repositories/user_plans_repository.dart';
 import 'package:my_app/core/stripe/stripe_checkout_service.dart';
 import 'package:my_app/core/stripe/stripe_config.dart';
@@ -23,11 +24,12 @@ import 'package:my_app/features/deals/presentation/screens/scan_punch_screen.dar
 import 'package:my_app/features/messaging/presentation/screens/my_conversations_screen.dart';
 import 'package:my_app/features/my_listings/presentation/screens/form_submissions_inbox_screen.dart';
 import 'package:my_app/features/my_listings/presentation/screens/my_listings_screen.dart';
+import 'package:my_app/features/notifications/presentation/screens/notifications_screen.dart';
 import 'package:my_app/features/profile/presentation/screens/about_screen.dart';
 import 'package:my_app/features/profile/presentation/screens/privacy_policy_screen.dart';
 import 'package:my_app/shared/widgets/app_buttons.dart';
 import 'package:my_app/shared/widgets/page_loader.dart';
-import 'package:my_app/shared/widgets/subscription_upsell_popup.dart';
+import 'package:my_app/core/revenuecat/present_subscription_paywall.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 /// Placeholder user when profile load fails; UI shows loadError instead of fake data.
@@ -385,9 +387,11 @@ class _ProfileContentState extends State<_ProfileContent>
   bool _notificationsDeals = true;
   bool _notificationsListings = true;
   bool _notificationsReminders = false;
+  bool _notificationPrefsLoaded = false;
 
   late TabController _tabController;
   int _selectedIndex = 0;
+  final _notificationPrefsRepo = UserNotificationPreferencesRepository();
 
   List<({String label, IconData icon})> get _sections {
     final list = <({String label, IconData icon})>[
@@ -424,6 +428,39 @@ class _ProfileContentState extends State<_ProfileContent>
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!_notificationPrefsLoaded) {
+      final uid = AppDataScope.of(context).authRepository.currentUserId;
+      if (uid != null) {
+        _notificationPrefsLoaded = true;
+        _loadNotificationPrefs(uid);
+      }
+    }
+  }
+
+  Future<void> _loadNotificationPrefs(String userId) async {
+    final prefs = await _notificationPrefsRepo.get(userId);
+    if (mounted) {
+      setState(() {
+        _notificationsDeals = prefs.dealsEnabled;
+        _notificationsListings = prefs.listingsEnabled;
+        _notificationsReminders = prefs.remindersEnabled;
+      });
+    }
+  }
+
+  Future<void> _saveNotificationPrefs() async {
+    final uid = AppDataScope.of(context).authRepository.currentUserId;
+    if (uid == null) return;
+    await _notificationPrefsRepo.save(uid, UserNotificationPreferences(
+      dealsEnabled: _notificationsDeals,
+      listingsEnabled: _notificationsListings,
+      remindersEnabled: _notificationsReminders,
+    ));
+  }
+
+  @override
   void didUpdateWidget(covariant _ProfileContent oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.user.displayName != widget.user.displayName) _displayName = widget.user.displayName;
@@ -445,21 +482,39 @@ class _ProfileContentState extends State<_ProfileContent>
     setState(() => _profileEditing = true);
   }
 
-  void _saveProfile() {
+  Future<void> _saveProfile() async {
     final newName = _displayNameController?.text.trim() ?? _displayName;
     final newEmail = _emailController?.text.trim();
     _displayNameController?.dispose();
     _emailController?.dispose();
     _displayNameController = null;
     _emailController = null;
+    final displayName = newName.isEmpty ? widget.user.displayName : newName;
+    final email = (newEmail == null || newEmail.isEmpty) ? widget.user.email : newEmail;
     setState(() {
       _profileEditing = false;
-      _displayName = newName.isEmpty ? widget.user.displayName : newName;
-      _email = (newEmail == null || newEmail.isEmpty) ? widget.user.email : newEmail;
+      _displayName = displayName;
+      _email = email;
     });
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Profile saved')),
-    );
+    final auth = AppDataScope.of(context).authRepository;
+    if (auth.currentUserId != null && displayName.isNotEmpty) {
+      try {
+        await auth.updateOwnProfile(displayName: displayName);
+        if (mounted) widget.onRefresh();
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Could not save profile: $e'), backgroundColor: Colors.red),
+          );
+        }
+        return;
+      }
+    }
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Profile saved')),
+      );
+    }
   }
 
   void _cancelProfileEdit() {
@@ -1143,6 +1198,16 @@ class _ProfileContentState extends State<_ProfileContent>
                                     );
                                   }
                                 },
+                                onRestoreFailed: (error) {
+                                  if (context.mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text('Restore failed: ${error.message}'),
+                                        backgroundColor: Colors.red,
+                                      ),
+                                    );
+                                  }
+                                },
                               );
                             }
                           : widget.onOpenCustomerPortal,
@@ -1229,25 +1294,13 @@ class _ProfileContentState extends State<_ProfileContent>
           ),
           const SizedBox(height: 16),
           AppPrimaryButton(
-            onPressed: () {
+            onPressed: () async {
               final rc = AppDataScope.of(context).revenueCatService;
-              SubscriptionUpsellPopup.show(
-                context,
-                onSubscribe: rc != null
-                    ? null
-                    : () {
-                        Navigator.of(context).pop();
-                        widget.onStartStripeCheckout?.call();
-                      },
-                onStartFreeTrial: rc != null
-                    ? null
-                    : () {
-                        Navigator.of(context).pop();
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Free trial coming soon.')),
-                        );
-                      },
-              );
+              if (rc != null) {
+                await presentSubscriptionPaywall(context);
+              } else {
+                widget.onStartStripeCheckout?.call();
+              }
             },
             expanded: false,
             icon: const Icon(Icons.workspace_premium_rounded, size: 22),
@@ -1314,9 +1367,23 @@ class _ProfileContentState extends State<_ProfileContent>
           dealsEnabled: _notificationsDeals,
           listingsEnabled: _notificationsListings,
           remindersEnabled: _notificationsReminders,
-          onDealsChanged: (v) => setState(() => _notificationsDeals = v),
-          onListingsChanged: (v) => setState(() => _notificationsListings = v),
-          onRemindersChanged: (v) => setState(() => _notificationsReminders = v),
+          onDealsChanged: (v) {
+            setState(() => _notificationsDeals = v);
+            _saveNotificationPrefs();
+          },
+          onListingsChanged: (v) {
+            setState(() => _notificationsListings = v);
+            _saveNotificationPrefs();
+          },
+          onRemindersChanged: (v) {
+            setState(() => _notificationsReminders = v);
+            _saveNotificationPrefs();
+          },
+          onManageTap: () {
+            Navigator.of(context).push(
+              MaterialPageRoute<void>(builder: (_) => const NotificationsScreen()),
+            );
+          },
         ),
         const SizedBox(height: 24),
       ],
@@ -1920,6 +1987,7 @@ class _NotificationsCard extends StatelessWidget {
     required this.onDealsChanged,
     required this.onListingsChanged,
     required this.onRemindersChanged,
+    this.onManageTap,
   });
 
   final bool dealsEnabled;
@@ -1928,9 +1996,11 @@ class _NotificationsCard extends StatelessWidget {
   final ValueChanged<bool> onDealsChanged;
   final ValueChanged<bool> onListingsChanged;
   final ValueChanged<bool> onRemindersChanged;
+  final VoidCallback? onManageTap;
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return _SpecCard(
       padding: EdgeInsets.zero,
       child: Column(
@@ -1955,6 +2025,32 @@ class _NotificationsCard extends StatelessWidget {
             value: remindersEnabled,
             onChanged: onRemindersChanged,
           ),
+          if (onManageTap != null) ...[
+            Divider(height: 1, color: AppTheme.specNavy.withValues(alpha: 0.08)),
+            InkWell(
+              onTap: onManageTap,
+              borderRadius: const BorderRadius.vertical(bottom: Radius.circular(_profileCardRadius)),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+                child: Row(
+                  children: [
+                    Icon(Icons.notifications_outlined, size: 22, color: AppTheme.specNavy.withValues(alpha: 0.7)),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        'View & manage all notifications',
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          color: AppTheme.specNavy,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                    Icon(Icons.chevron_right_rounded, color: AppTheme.specNavy.withValues(alpha: 0.5)),
+                  ],
+                ),
+              ),
+            ),
+          ],
         ],
       ),
     );

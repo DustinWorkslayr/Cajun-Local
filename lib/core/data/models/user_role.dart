@@ -11,11 +11,12 @@ class UserRole {
   final String userId;
   final String role;
 
+  static const String superAdmin = 'super_admin';
   static const String admin = 'admin';
   static const String businessOwner = 'business_owner';
   static const String user = 'user';
 
-  bool get isAdmin => role == admin;
+  bool get isAdmin => role == admin || role == superAdmin;
 
   factory UserRole.fromJson(Map<String, dynamic> json) {
     return UserRole(

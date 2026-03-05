@@ -1,7 +1,7 @@
 // Cajun Local — sync-business-subscription Edge Function
-// Verifies RevenueCat entitlement (or trusted payload) and updates business_subscriptions for a business.
-// Call with service role key so RLS allows write. In production, verify RevenueCat webhook signature
-// or call RevenueCat API to confirm entitlement before applying.
+// Updates business_subscriptions for a business. Call with service role key (backend) or with
+// REVENUECAT_WEBHOOK_SECRET (RevenueCat webhook). In RevenueCat dashboard set the webhook
+// Authorization header to Bearer <REVENUECAT_WEBHOOK_SECRET> so only legitimate webhooks are accepted.
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
@@ -42,8 +42,14 @@ Deno.serve(async (req) => {
   }
   const token = authHeader.slice(7).trim();
   const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  const webhookSecret = Deno.env.get("REVENUECAT_WEBHOOK_SECRET");
   const supabaseUrl = Deno.env.get("SUPABASE_URL");
-  if (!supabaseUrl || !serviceRoleKey || token !== serviceRoleKey) {
+  const isServiceRole = !!serviceRoleKey && token === serviceRoleKey;
+  const isWebhook = !!webhookSecret && token === webhookSecret;
+  if (!supabaseUrl || !serviceRoleKey) {
+    return jsonResponse(503, { error: "Service not configured" }, origin);
+  }
+  if (!isServiceRole && !isWebhook) {
     return jsonResponse(403, { error: "Forbidden" }, origin);
   }
 

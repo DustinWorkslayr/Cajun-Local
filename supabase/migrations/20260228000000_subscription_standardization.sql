@@ -68,13 +68,33 @@ UPDATE public.business_subscriptions
   END
   WHERE plan_type IS NULL;
 
--- 3. user_plans (Cajun+ only; referenced by ask-local)
+-- 3. user_plans (Cajun+ only; referenced by ask-local). id is text (e.g. 'cajun_plus').
 CREATE TABLE IF NOT EXISTS public.user_plans (
   id text PRIMARY KEY,
   name text NOT NULL,
   tier text NOT NULL,
   created_at timestamptz DEFAULT now()
 );
+
+-- If table already existed with id uuid (e.g. from an older migration), convert to text so we can insert 'cajun_plus'.
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'user_plans' AND column_name = 'id' AND data_type = 'uuid'
+  ) THEN
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'user_subscriptions') THEN
+      ALTER TABLE public.user_subscriptions DROP CONSTRAINT IF EXISTS user_subscriptions_plan_id_fkey;
+      ALTER TABLE public.user_subscriptions ALTER COLUMN plan_id TYPE text USING plan_id::text;
+    END IF;
+    ALTER TABLE public.user_plans ALTER COLUMN id TYPE text USING id::text;
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'user_subscriptions') THEN
+      ALTER TABLE public.user_subscriptions
+        ADD CONSTRAINT user_subscriptions_plan_id_fkey
+        FOREIGN KEY (plan_id) REFERENCES public.user_plans(id) ON DELETE RESTRICT;
+    END IF;
+  END IF;
+END $$;
 
 INSERT INTO public.user_plans (id, name, tier)
 VALUES ('cajun_plus', 'Cajun+', 'plus')

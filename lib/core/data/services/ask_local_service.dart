@@ -23,7 +23,14 @@ class AskLocalFailure extends AskLocalResult {
 /// Requires [accessToken] (user JWT). Returns [AskLocalStream] with content chunks
 /// or [AskLocalFailure] on auth/subscription/network errors.
 class AskLocalService {
-  AskLocalService();
+  AskLocalService() : _client = http.Client();
+
+  final http.Client _client;
+
+  static const Duration _timeout = Duration(seconds: 30);
+  static const int _maxAttempts = 2;
+  /// Max bytes to read from error response bodies (prevents OOM from huge error payloads).
+  static const int _maxErrorBodyBytes = 64 * 1024;
 
   static String get _baseUrl {
     final url = SupabaseConfig.url;
@@ -43,29 +50,53 @@ class AskLocalService {
       return AskLocalFailure('Service not configured.');
     }
     final uri = Uri.parse(_baseUrl);
-    final request = http.Request('POST', uri);
-    request.headers['Content-Type'] = 'application/json';
-    request.headers['Authorization'] = 'Bearer $accessToken';
     final body = <String, dynamic>{'question': question.trim()};
     if (preferredParishIds != null && preferredParishIds.isNotEmpty) {
       body['preferred_parish_ids'] = preferredParishIds;
     }
-    request.body = jsonEncode(body);
-
     try {
-      final client = http.Client();
-      final response = await client.send(request);
-
-      if (response.statusCode == 403) {
-        String body = '';
-        await for (final chunk in response.stream) {
-          body += utf8.decode(chunk);
+      int attempt = 0;
+      http.StreamedResponse? response;
+      while (true) {
+        attempt++;
+        final req = http.Request('POST', uri)
+          ..headers['Content-Type'] = 'application/json'
+          ..headers['Authorization'] = 'Bearer $accessToken'
+          ..body = jsonEncode(body);
+        try {
+          response = await _client.send(req).timeout(_timeout);
+        } on TimeoutException {
+          return AskLocalFailure('Request timed out. Please try again.');
+        } catch (e) {
+          if (attempt < _maxAttempts) {
+            await Future<void>.delayed(const Duration(seconds: 2));
+            continue;
+          }
+          rethrow;
         }
-        client.close();
+        if (response.statusCode >= 500 || response.statusCode == 503) {
+          await response.stream.drain();
+          if (attempt < _maxAttempts) {
+            await Future<void>.delayed(const Duration(seconds: 2));
+            continue;
+          }
+        }
+        break;
+      }
+      final response2 = response;
+
+      if (response2.statusCode == 403) {
+        String resBody = '';
+        int totalBytes = 0;
+        await for (final chunk in response2.stream) {
+          totalBytes += chunk.length;
+          if (totalBytes > _maxErrorBodyBytes) break;
+          resBody += utf8.decode(chunk);
+        }
         String? code;
         String message = 'Access denied.';
         try {
-          final map = jsonDecode(body) as Map<String, dynamic>?;
+          final map = jsonDecode(resBody) as Map<String, dynamic>?;
           if (map != null) {
             code = map['code'] as String?;
             final err = map['error'] as String?;
@@ -80,14 +111,16 @@ class AskLocalService {
         return AskLocalFailure(message, code: code);
       }
 
-      if (response.statusCode == 400) {
-        String body = '';
-        await for (final chunk in response.stream) {
-          body += utf8.decode(chunk);
+      if (response2.statusCode == 400) {
+        String resBody = '';
+        int totalBytes = 0;
+        await for (final chunk in response2.stream) {
+          totalBytes += chunk.length;
+          if (totalBytes > _maxErrorBodyBytes) break;
+          resBody += utf8.decode(chunk);
         }
-        client.close();
         try {
-          final map = jsonDecode(body) as Map<String, dynamic>?;
+          final map = jsonDecode(resBody) as Map<String, dynamic>?;
           final err = map?['error'] as String?;
           if (err != null && err.isNotEmpty) {
             return AskLocalFailure(err);
@@ -96,20 +129,35 @@ class AskLocalService {
         return AskLocalFailure('A question is required.');
       }
 
-      if (response.statusCode != 200) {
-        await response.stream.drain();
-        client.close();
-        if (response.statusCode == 429) {
+      if (response2.statusCode != 200) {
+        String resBody = '';
+        int totalBytes = 0;
+        await for (final chunk in response2.stream) {
+          totalBytes += chunk.length;
+          if (totalBytes > _maxErrorBodyBytes) break;
+          resBody += utf8.decode(chunk);
+        }
+        if (response2.statusCode == 503) {
+          return AskLocalFailure('Request timed out. Please try again.');
+        }
+        if (response2.statusCode == 429) {
           return AskLocalFailure('Too many requests. Please try again in a moment.');
         }
-        if (response.statusCode == 402) {
+        if (response2.statusCode == 402) {
           return AskLocalFailure('AI service credits exhausted. Please try again later.');
         }
-        return AskLocalFailure('Something went wrong. Please try again.');
+        // Use server error message when present (e.g. 500 with { "error": "..." })
+        String message = 'Something went wrong. Please try again.';
+        try {
+          final map = jsonDecode(resBody) as Map<String, dynamic>?;
+          final err = map?['error'] as String?;
+          if (err != null && err.isNotEmpty) message = err;
+        } catch (_) {}
+        return AskLocalFailure(message);
       }
 
       final lineStream = LineSplitter().bind(
-        response.stream.transform(utf8.decoder),
+        response2.stream.transform(utf8.decoder),
       );
       final stream = lineStream.asyncExpand<String>((line) async* {
         final trimmed = line.trim();

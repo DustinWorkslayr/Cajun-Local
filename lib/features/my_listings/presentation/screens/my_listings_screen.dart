@@ -10,7 +10,7 @@ import 'package:my_app/features/my_listings/presentation/screens/create_listing_
 import 'package:my_app/features/my_listings/presentation/screens/listing_edit_screen.dart';
 import 'package:my_app/shared/widgets/app_buttons.dart';
 import 'package:my_app/shared/widgets/animated_entrance.dart';
-import 'package:my_app/shared/widgets/subscription_upsell_popup.dart';
+import 'package:my_app/core/revenuecat/present_subscription_paywall.dart';
 import 'package:my_app/core/subscription/resolved_permissions.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -138,12 +138,9 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
   }
 
   void _showCajunPlusUpsell() {
-    SubscriptionUpsellPopup.show(
+    presentSubscriptionPaywall(
       context,
-      onSubscribe: () {
-        Navigator.of(context).pop();
-        _startCajunPlusCheckout();
-      },
+      onRevenueCatUnavailable: _startCajunPlusCheckout,
     );
   }
 

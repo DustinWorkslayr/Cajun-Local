@@ -1,8 +1,17 @@
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:purchases_flutter/purchases_flutter.dart';
 import 'package:purchases_ui_flutter/purchases_ui_flutter.dart';
 
 import 'package:my_app/core/revenuecat/revenuecat_config.dart';
+
+/// Result of purchasing an ad product (consumable / one-time).
+enum AdPurchaseResult {
+  purchased,
+  cancelled,
+  error,
+  productNotFound,
+}
 
 // Use default API key. Set [RevenueCatConfig.iosApiKey] / [androidApiKey] for platform-specific keys.
 
@@ -201,16 +210,81 @@ class RevenueCatService {
     }
   }
 
+  /// Purchase an ad product by RevenueCat product ID (e.g. homepage_feature_7_day).
+  /// Prefer package from [RevenueCatConfig.adsOfferingId] if set; otherwise search all offerings
+  /// for a package with matching store product identifier, or fetch product via getProducts.
+  /// Returns [AdPurchaseResult.purchased] on success; caller should then confirm with backend.
+  Future<AdPurchaseResult> purchaseAdProduct(String productId) async {
+    if (!_configured) return AdPurchaseResult.error;
+    try {
+      Package? package;
+      final offerings = await Purchases.getOfferings();
+      final adsOfferingId = RevenueCatConfig.adsOfferingId;
+      if (offerings.all[adsOfferingId] != null) {
+        final offering = offerings.all[adsOfferingId]!;
+        for (final p in offering.availablePackages) {
+          if (p.storeProduct.identifier == productId) {
+            package = p;
+            break;
+          }
+        }
+      }
+      if (package == null) {
+        for (final offering in offerings.all.values) {
+          for (final p in offering.availablePackages) {
+            if (p.storeProduct.identifier == productId) {
+              package = p;
+              break;
+            }
+          }
+          if (package != null) break;
+        }
+      }
+      if (package != null) {
+        final result = await Purchases.purchase(PurchaseParams.package(package));
+        _customerInfoController?.value = result.customerInfo;
+        return AdPurchaseResult.purchased;
+      }
+      final products = await Purchases.getProducts(
+        [productId],
+        productCategory: ProductCategory.nonSubscription,
+        // ignore: deprecated_member_use
+        type: PurchaseType.inapp,
+      );
+      if (products.isEmpty) return AdPurchaseResult.productNotFound;
+      final result = await Purchases.purchase(PurchaseParams.storeProduct(products.first));
+      _customerInfoController?.value = result.customerInfo;
+      return AdPurchaseResult.purchased;
+    } on PlatformException catch (e) {
+      if (kDebugMode) {
+        debugPrint('$_tag purchaseAdProduct error: $e');
+      }
+      final code = PurchasesErrorHelper.getErrorCode(e);
+      if (code == PurchasesErrorCode.purchaseCancelledError) {
+        return AdPurchaseResult.cancelled;
+      }
+      return AdPurchaseResult.error;
+    } catch (e, st) {
+      if (kDebugMode) {
+        debugPrint('$_tag purchaseAdProduct error: $e');
+        debugPrintStack(stackTrace: st);
+      }
+      return AdPurchaseResult.error;
+    }
+  }
+
   /// Present the Customer Center so the user can manage subscription, restore, etc.
   /// Call from Profile / Settings when the user taps "Manage subscription".
   Future<void> presentCustomerCenter({
     void Function(CustomerInfo)? onRestoreCompleted,
+    void Function(PurchasesError)? onRestoreFailed,
     void Function(String productId, String status)? onRefundRequestCompleted,
   }) async {
     if (!_configured) return;
     try {
       await RevenueCatUI.presentCustomerCenter(
         onRestoreCompleted: onRestoreCompleted,
+        onRestoreFailed: onRestoreFailed,
         onRefundRequestCompleted: onRefundRequestCompleted,
       );
     } catch (e, st) {

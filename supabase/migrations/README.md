@@ -27,5 +27,7 @@ Migrations run in **filename order** (lexicographic). Apply with:
 | `20260225110000_form_submissions_admin_note.sql` | admin_note, replied_at, replied_by on form_submissions | form_submissions |
 | `20260226100000_fix_businesses_slug_trigger.sql` | set_businesses_slug() fix for null name | businesses, slug helpers |
 | `20260227100000_businesses_select_own_for_returning.sql` | SELECT policy so insert+returning id works | businesses |
+| `20260303130000_business_managers_rls_and_team_access.sql` | business_managers RLS; list_business_managers, lookup_user_id_by_email RPCs | business_managers, profiles, has_role, is_business_manager |
+| `20260303140000_team_invite_notification_and_email.sql` | Trigger on business_managers: in-app notification + team_invite email to invitee | business_managers, notifications, profiles, email_queue |
 
 **Note:** Some migrations expect tables (e.g. business_claims, profiles, deals, blog_posts, form_submissions) that may be created outside this set (e.g. Dashboard or another repo). Seed data in `../seed.sql` assumes the core tables and parishes exist.

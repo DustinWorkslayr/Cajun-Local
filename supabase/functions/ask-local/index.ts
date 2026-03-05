@@ -1,12 +1,50 @@
 // Cajun Local — ask-local Edge Function
 // Queries approved business data, promotes top-tier and active advertisers, streams OpenAI response.
 // See docs/ask-local-cheatsheet.md
+/// <reference path="../_shared/deno.d.ts" />
 
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const OPENAI_URL = "https://api.openai.com/v1/chat/completions";
 const MENU_ITEMS_CAP = 15;
 const EVENTS_CAP = 5;
+/** Max approved businesses to load for context (avoids huge payloads and IN lists). */
+const BUSINESS_CAP = 500;
+/** Max question length (chars). */
+const QUESTION_MAX_LENGTH = 1000;
+/** OpenAI request timeout (ms). */
+const OPENAI_TIMEOUT_MS = 28000;
+/** Rate limit: max requests per user per window. */
+const RATE_LIMIT_REQUESTS = 20;
+/** Rate limit window (ms). */
+const RATE_LIMIT_WINDOW_MS = 60_000;
+
+/** In-memory rate limit: userId -> { count, resetAt }. For multi-instance deploy, use a Supabase table instead. */
+const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
+
+function checkRateLimit(userId: string): boolean {
+  const now = Date.now();
+  const entry = rateLimitMap.get(userId);
+  if (!entry) {
+    rateLimitMap.set(userId, { count: 1, resetAt: now + RATE_LIMIT_WINDOW_MS });
+    return true;
+  }
+  if (now >= entry.resetAt) {
+    entry.count = 1;
+    entry.resetAt = now + RATE_LIMIT_WINDOW_MS;
+    return true;
+  }
+  entry.count++;
+  if (entry.count > RATE_LIMIT_REQUESTS) return false;
+  return true;
+}
+function cleanupRateLimit(): void {
+  const now = Date.now();
+  for (const [k, v] of rateLimitMap.entries()) {
+    if (now >= v.resetAt) rateLimitMap.delete(k);
+  }
+}
 
 const DAY_NAMES: Record<string, string> = {
   monday: "Mon",
@@ -26,6 +64,8 @@ const AD_PLACEMENT_LABELS: Record<string, string> = {
   homepage_featured: "Homepage featured",
 };
 
+type SubRow = { business_id: string; plan_id: string };
+type PlanRow = { id: string; tier: string };
 type BusinessRow = {
   id: string;
   name: string;
@@ -73,7 +113,7 @@ async function getTopTierBusinessIds(supabaseUrl: string, serviceRoleKey: string
     .eq("status", "active");
   if (subErr || !subs?.length) return new Map();
 
-  const planIds = [...new Set(subs.map((s) => s.plan_id))];
+  const planIds = [...new Set((subs as SubRow[]).map((s) => s.plan_id))];
   const { data: plans, error: planErr } = await client
     .from("business_plans")
     .select("id, tier")
@@ -81,10 +121,11 @@ async function getTopTierBusinessIds(supabaseUrl: string, serviceRoleKey: string
     .in("tier", ["premium", "enterprise"]);
   if (planErr || !plans?.length) return new Map();
 
-  const topTierPlanIds = new Set(plans.map((p) => p.id));
-  const tierByPlan = Object.fromEntries(plans.map((p) => [p.id, p.tier]));
+  const planList = plans as PlanRow[];
+  const topTierPlanIds = new Set(planList.map((p) => p.id));
+  const tierByPlan = Object.fromEntries(planList.map((p) => [p.id, p.tier]));
   const result = new Map<string, string>();
-  for (const s of subs) {
+  for (const s of subs as SubRow[]) {
     if (topTierPlanIds.has(s.plan_id)) result.set(s.business_id, tierByPlan[s.plan_id] ?? "premium");
   }
   return result;
@@ -111,26 +152,21 @@ async function getActiveAdBusinesses(supabaseUrl: string, serviceRoleKey: string
   return byBusiness;
 }
 
-/** Returns true if the user has an active paid user subscription (plus or pro). Uses service role. */
-async function userHasPaidTier(supabaseUrl: string, serviceRoleKey: string, userId: string): Promise<boolean> {
+/** Returns true if the user has an active Cajun+ subscription. Uses service role. */
+async function userHasCajunPlus(supabaseUrl: string, serviceRoleKey: string, userId: string): Promise<boolean> {
   const client = createClient(supabaseUrl, serviceRoleKey);
   const { data: sub, error } = await client
     .from("user_subscriptions")
     .select("plan_id")
     .eq("user_id", userId)
     .eq("status", "active")
+    .eq("plan_id", "cajun_plus")
     .maybeSingle();
   if (error || !sub) return false;
-  const { data: plan, error: planErr } = await client
-    .from("user_plans")
-    .select("tier")
-    .eq("id", sub.plan_id)
-    .maybeSingle();
-  if (planErr || !plan) return false;
-  return plan.tier === "plus" || plan.tier === "pro";
+  return true;
 }
 
-Deno.serve(async (req) => {
+serve(async (req) => {
   const origin = req.headers.get("Origin") ?? "*";
 
   if (req.method === "OPTIONS") {
@@ -164,6 +200,9 @@ Deno.serve(async (req) => {
   if (!question) {
     return jsonResponse(400, { error: "A question is required." }, origin);
   }
+  if (question.length > QUESTION_MAX_LENGTH) {
+    return jsonResponse(400, { error: `Question must be ${QUESTION_MAX_LENGTH} characters or less.` }, origin);
+  }
 
   const preferredParishIds =
     Array.isArray(body?.preferred_parish_ids) && body.preferred_parish_ids.length > 0
@@ -190,12 +229,17 @@ Deno.serve(async (req) => {
   if (!serviceRoleKey) {
     return jsonResponse(500, { error: "Server configuration error (subscription check unavailable)." }, origin);
   }
-  const paid = await userHasPaidTier(supabaseUrl, serviceRoleKey, user.id);
-  if (!paid) {
+  const hasCajunPlus = await userHasCajunPlus(supabaseUrl, serviceRoleKey, user.id);
+  if (!hasCajunPlus) {
     return jsonResponse(403, {
-      error: "Ask Local is available for Plus and Pro members. Upgrade to use this feature.",
+      error: "Ask Local is included with Cajun+ Membership. Upgrade to use this feature.",
       code: "subscription_required",
     }, origin);
+  }
+
+  cleanupRateLimit();
+  if (!checkRateLimit(user.id)) {
+    return jsonResponse(429, { error: "Too many requests. Please try again in a minute." }, origin);
   }
 
   const anonClient = createClient(supabaseUrl, anonKey);
@@ -209,7 +253,8 @@ Deno.serve(async (req) => {
         getTopTierBusinessIds(supabaseUrl, serviceRoleKey),
         getActiveAdBusinesses(supabaseUrl, serviceRoleKey),
       ]);
-    } catch (_e) {
+    } catch (e) {
+      console.error("ask-local promotion data error:", e);
       // proceed without promotion data
     }
   }
@@ -224,11 +269,12 @@ Deno.serve(async (req) => {
     return parts.length ? parts.join("; ") : null;
   };
 
-  // Approved businesses with category and parish (only existing listings)
+  // Approved businesses with category and parish (capped for scale)
   const { data: businesses, error: bizErr } = await anonClient
     .from("businesses")
     .select("id, name, description, city, state, parish, address, phone, website, email, zip, category_id")
-    .eq("status", "approved");
+    .eq("status", "approved")
+    .limit(BUSINESS_CAP);
   if (bizErr) {
     return jsonResponse(500, { error: "Failed to load businesses." }, origin);
   }
@@ -237,18 +283,25 @@ Deno.serve(async (req) => {
   // Filter by user's preferred parishes when provided (include business if primary parish or any service-area parish matches)
   if (preferredParishIds && preferredParishIds.size > 0) {
     let businessParishIds: Map<string, Set<string>> = new Map();
+    const bizIds = bizList.map((b) => b.id);
+    const CHUNK = 200;
     try {
-      const { data: bpRows } = await anonClient
-        .from("business_parishes")
-        .select("business_id, parish_id")
-        .in("business_id", bizList.map((b) => b.id));
-      for (const row of bpRows ?? []) {
-        const r = row as { business_id: string; parish_id: string };
-        const set = businessParishIds.get(r.business_id) ?? new Set();
-        set.add(r.parish_id);
-        businessParishIds.set(r.business_id, set);
+      for (let i = 0; i < bizIds.length; i += CHUNK) {
+        const chunk = bizIds.slice(i, i + CHUNK);
+        const { data: bpRows } = await anonClient
+          .from("business_parishes")
+          .select("business_id, parish_id")
+          .in("business_id", chunk);
+        for (const row of bpRows ?? []) {
+          const r = row as { business_id: string; parish_id: string };
+          const set = businessParishIds.get(r.business_id) ?? new Set();
+          set.add(r.parish_id);
+          businessParishIds.set(r.business_id, set);
+        }
       }
-    } catch (_) {}
+    } catch (e) {
+      console.error("ask-local business_parishes error:", e);
+    }
     bizList = bizList.filter((b) => {
       const primary = b.parish?.trim();
       if (primary && preferredParishIds.has(primary)) return true;
@@ -275,15 +328,28 @@ Deno.serve(async (req) => {
   const categoryMap = new Map<string, string>();
   for (const c of (categories ?? []) as CategoryRow[]) categoryMap.set(c.id, c.name);
 
-  // business_hours, menu, deals, reviews, events per business
+  // business_hours, menu, deals, reviews, events per business (chunk to avoid huge IN lists)
   const businessIds = bizList.map((b) => b.id);
-  const [hoursRes, sectionsRes, dealsRes, reviewsRes, eventsRes] = await Promise.all([
-    anonClient.from("business_hours").select("business_id, day_of_week, open_time, close_time, is_closed").in("business_id", businessIds),
-    anonClient.from("menu_sections").select("id, business_id, name, sort_order").in("business_id", businessIds),
-    anonClient.from("deals").select("business_id, title, description, deal_type").eq("status", "approved").eq("is_active", true).in("business_id", businessIds),
-    anonClient.from("reviews").select("business_id, rating").eq("status", "approved").in("business_id", businessIds),
-    anonClient.from("business_events").select("business_id, title, description, event_date").eq("status", "approved").gte("event_date", new Date().toISOString()).in("business_id", businessIds),
+  const BATCH_SIZE = 200;
+  const chunked = <T>(fn: (ids: string[]) => Promise<{ data: T[] | null }>): Promise<T[]> =>
+    Promise.all(
+      Array.from({ length: Math.ceil(businessIds.length / BATCH_SIZE) }, (_, i) =>
+        fn(businessIds.slice(i * BATCH_SIZE, (i + 1) * BATCH_SIZE))
+      )
+    ).then((ress) => ress.flatMap((r) => (r.data ?? []) as T[]));
+
+  const [hoursData, sectionsData, dealsData, reviewsData, eventsData] = await Promise.all([
+    chunked<HoursRow>((ids) => anonClient.from("business_hours").select("business_id, day_of_week, open_time, close_time, is_closed").in("business_id", ids)),
+    chunked<MenuSectionRow>((ids) => anonClient.from("menu_sections").select("id, business_id, name, sort_order").in("business_id", ids)),
+    chunked<DealRow>((ids) => anonClient.from("deals").select("business_id, title, description, deal_type").eq("status", "approved").eq("is_active", true).in("business_id", ids)),
+    chunked<ReviewRow>((ids) => anonClient.from("reviews").select("business_id, rating").eq("status", "approved").in("business_id", ids)),
+    chunked<EventRow>((ids) => anonClient.from("business_events").select("business_id, title, description, event_date").eq("status", "approved").gte("event_date", new Date().toISOString()).in("business_id", ids)),
   ]);
+  const hoursRes = { data: hoursData };
+  const sectionsRes = { data: sectionsData };
+  const dealsRes = { data: dealsData };
+  const reviewsRes = { data: reviewsData };
+  const eventsRes = { data: eventsData };
 
   const hoursByBiz = new Map<string, HoursRow[]>();
   for (const h of (hoursRes.data ?? []) as HoursRow[]) {
@@ -314,13 +380,14 @@ Deno.serve(async (req) => {
     dealsByBiz.set(d.business_id, list);
   }
 
-  const reviewAvgByBiz = new Map<string, number>();
+  const reviewRatingsByBiz = new Map<string, number[]>();
   for (const r of (reviewsRes.data ?? []) as ReviewRow[]) {
-    const list = reviewAvgByBiz.get(r.business_id) ?? [];
+    const list = reviewRatingsByBiz.get(r.business_id) ?? [];
     list.push(r.rating);
-    reviewAvgByBiz.set(r.business_id, list);
+    reviewRatingsByBiz.set(r.business_id, list);
   }
-  for (const [bid, ratings] of reviewAvgByBiz) {
+  const reviewAvgByBiz = new Map<string, number>();
+  for (const [bid, ratings] of reviewRatingsByBiz) {
     const avg = ratings.reduce((a, b) => a + b, 0) / ratings.length;
     reviewAvgByBiz.set(bid, Math.round(avg * 10) / 10);
   }
@@ -448,14 +515,18 @@ Only include IDs from the LISTINGS data above. If you recommended no specific bu
   };
 
   try {
+    const ac = new AbortController();
+    const timeoutId = setTimeout(() => ac.abort(), OPENAI_TIMEOUT_MS);
     const openaiRes = await fetch(OPENAI_URL, {
       method: "POST",
+      signal: ac.signal,
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${openaiKey}`,
       },
       body: JSON.stringify(openaiBody),
     });
+    clearTimeout(timeoutId);
 
     if (openaiRes.status === 429) {
       return jsonResponse(429, { error: "Too many requests. Please try again in a moment." }, origin);
@@ -465,7 +536,7 @@ Only include IDs from the LISTINGS data above. If you recommended no specific bu
     }
     if (!openaiRes.ok) {
       const errText = await openaiRes.text();
-      console.error("OpenAI error:", openaiRes.status, errText);
+      console.error("OpenAI error:", openaiRes.status, errText.slice(0, 500));
       return jsonResponse(500, { error: "AI request failed. Please try again later." }, origin);
     }
 
@@ -483,7 +554,11 @@ Only include IDs from the LISTINGS data above. If you recommended no specific bu
       },
     });
   } catch (e) {
-    console.error("Ask-local error:", e);
+    const isAbort = e instanceof Error && e.name === "AbortError";
+    console.error("Ask-local error:", isAbort ? "timeout" : (e instanceof Error ? e.message : String(e)));
+    if (isAbort) {
+      return jsonResponse(503, { error: "Request timed out. Please try again." }, origin);
+    }
     return jsonResponse(500, { error: "Something went wrong. Please try again." }, origin);
   }
 });

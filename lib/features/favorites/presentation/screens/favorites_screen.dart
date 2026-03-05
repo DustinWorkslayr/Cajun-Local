@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:my_app/core/data/app_data_scope.dart';
+import 'package:my_app/core/data/listing_data_source.dart';
 import 'package:my_app/core/data/mock_data.dart';
 import 'package:my_app/core/favorites/favorites_scope.dart';
 import 'package:my_app/core/theme/app_layout.dart';
@@ -18,6 +19,54 @@ class FavoritesScreen extends StatefulWidget {
 class _FavoritesScreenState extends State<FavoritesScreen> {
   /// Selected category id; null = "All".
   String? _selectedCategoryId;
+
+  /// Memoized future for the current set of favorite IDs. Only recreated when ids change.
+  Future<List<MockListing>>? _favoritesListFuture;
+  /// Last set of ids we loaded for; used to avoid creating a new Future on every rebuild.
+  Set<String>? _lastFavoriteIds;
+
+  static const int _favoritesBatchSize = 10;
+
+  /// Returns a Future for the list of listings for [ids]. Fetches in batches to avoid thundering herd. Reuses _favoritesListFuture when ids unchanged.
+  Future<List<MockListing>> _favoritesFutureFor(Set<String> ids) {
+    if (_favoritesListFuture != null &&
+        _lastFavoriteIds != null &&
+        _lastFavoriteIds!.length == ids.length &&
+        _lastFavoriteIds!.containsAll(ids)) {
+      return _favoritesListFuture!;
+    }
+    _lastFavoriteIds = Set<String>.from(ids);
+    final ds = AppDataScope.of(context).dataSource;
+    final idList = ids.toList();
+    _favoritesListFuture = _loadFavoritesInBatches(ds, idList);
+    return _favoritesListFuture!;
+  }
+
+  Future<List<MockListing>> _loadFavoritesInBatches(ListingDataSource ds, List<String> idList) async {
+    final result = <MockListing>[];
+    for (var i = 0; i < idList.length; i += _favoritesBatchSize) {
+      final chunk = idList.skip(i).take(_favoritesBatchSize).toList();
+      final list = await Future.wait(
+        chunk.map((id) => ds.getListingById(id)),
+      );
+      for (final item in list) {
+        if (item != null) result.add(item);
+      }
+    }
+    return result;
+  }
+
+  /// Pull-to-refresh: invalidate cache and reload favorites list.
+  Future<void> _refreshFavorites(Set<String> ids) async {
+    _favoritesListFuture = null;
+    _lastFavoriteIds = null;
+    if (!mounted) return;
+    setState(() {
+      _favoritesListFuture = _favoritesFutureFor(ids);
+    });
+    await _favoritesListFuture;
+    if (mounted) setState(() {});
+  }
 
   /// Group listings by categoryId. Keys in display order (first-seen order); value = list of listings.
   static Map<String, List<MockListing>> _groupByCategory(List<MockListing> listings) {
@@ -58,10 +107,7 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
             );
           }
 
-          final dataSource = AppDataScope.of(context).dataSource;
-          final future = Future.wait(
-            ids.map((id) => dataSource.getListingById(id)),
-          ).then((list) => list.whereType<MockListing>().toList());
+          final future = _favoritesFutureFor(ids);
 
           return FutureBuilder<List<MockListing>>(
             future: future,
@@ -84,7 +130,10 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
               final categoryIds = grouped.keys.toList();
               final padding = AppLayout.horizontalPadding(context);
 
-              return CustomScrollView(
+              return RefreshIndicator(
+                onRefresh: () => _refreshFavorites(ids),
+                color: AppTheme.specNavy,
+                child: CustomScrollView(
                 slivers: [
                   // Category filter chips
                   SliverToBoxAdapter(
@@ -222,6 +271,7 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
                   ],
                   const SliverToBoxAdapter(child: SizedBox(height: 24)),
                 ],
+                ),
               );
             },
           );

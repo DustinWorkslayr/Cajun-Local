@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:my_app/core/data/app_data_scope.dart';
 import 'package:my_app/core/data/mock_data.dart';
 import 'package:my_app/core/data/repositories/business_managers_repository.dart';
@@ -20,15 +19,21 @@ import 'package:my_app/features/local_events/presentation/screens/local_events_s
 import 'package:my_app/features/messaging/presentation/screens/my_conversations_screen.dart';
 import 'package:my_app/features/notifications/presentation/screens/notifications_screen.dart';
 import 'package:my_app/features/profile/presentation/screens/profile_screen.dart';
+import 'package:my_app/features/news/presentation/screens/news_screen.dart';
+import 'package:my_app/features/news/presentation/screens/news_post_detail_screen.dart';
 import 'package:my_app/features/choose_for_me/presentation/screens/choose_for_me_screen.dart';
 import 'package:my_app/shared/widgets/app_buttons.dart';
 import 'package:my_app/shared/widgets/app_logo.dart';
 import 'package:my_app/shared/widgets/ask_local_sheet.dart';
+import 'package:my_app/shared/widgets/explore_category_picker_dialog.dart';
 import 'package:my_app/shared/widgets/parish_onboarding_dialog.dart';
 import 'package:my_app/shared/widgets/quick_scan_sheet.dart';
 
 /// Logo height in AppBar for non-home tabs (Explore, Favorites, Deals, Profile). Smaller than home (112), larger than nav (26).
-const double _kAppBarLogoHeight = 80;
+const double _kAppBarLogoHeight = 88;
+/// AppBar toolbar height and leading width so the logo is not clipped.
+const double _kAppBarToolbarHeight = 96;
+const double _kAppBarLeadingWidth = 120;
 
 /// Root scaffold with bottom navigation (Explore, Home, Favorites, Deals, Profile).
 /// Home uses its own custom header; other tabs use AppBar. Bottom nav: 5 icons with Home in center. Ask Local in menu.
@@ -43,7 +48,9 @@ class _MainShellState extends State<MainShell> with SingleTickerProviderStateMix
   int _currentIndex = 0;
   String? _exploreInitialCategoryId;
   bool _parishOnboardingChecked = false;
-  int _homeRefreshKey = 0;
+  final GlobalKey<NavigatorState> _newsNavigatorKey = GlobalKey<NavigatorState>();
+  /// Incremented when parish onboarding completes so HomeScreen refetches (without being recreated).
+  int _parishPrefsVersion = 0;
   bool _profileShowListings = false;
   bool _menuOpen = false;
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
@@ -77,32 +84,44 @@ class _MainShellState extends State<MainShell> with SingleTickerProviderStateMix
           await UserParishPreferences.setCompletedParishOnboarding();
           if (ctx.mounted) Navigator.of(ctx).pop();
         },
-        onSupportTap: () {
-          // Open support / subscription URL or screen when available
-          if (ctx.mounted) {
-            ScaffoldMessenger.of(ctx).showSnackBar(
-              const SnackBar(content: Text('Thanks for your interest! Support options coming soon.')),
-            );
-          }
-        },
       ),
     );
-    // Force home to refetch after onboarding (parish prefs now set).
-    if (mounted) setState(() => _homeRefreshKey++);
+    // Trigger home refetch after onboarding (parish prefs now set). HomeScreen refetches in place instead of being recreated.
+    if (mounted) setState(() => _parishPrefsVersion++);
   }
 
   void _navigateToExploreWithCategory(MockCategory category) {
     setState(() {
-      _currentIndex = 1;
+      _currentIndex = 2; // Explore tab
       _exploreInitialCategoryId = category.id;
     });
   }
 
   void _navigateToExplore() {
+    _showExploreCategoryPickerThenNavigate();
+  }
+
+  /// Switches to Explore tab immediately so the list starts loading, then shows the category picker
+  /// on top. When the user selects, we apply the category and close the dialog (list keeps loading in background).
+  Future<void> _showExploreCategoryPickerThenNavigate() async {
+    // Switch to Explore tab first so CategoriesScreen mounts and starts loading the list.
     setState(() {
-      _currentIndex = 1;
+      _currentIndex = 2; // Explore tab
       _exploreInitialCategoryId = null;
     });
+    final categories = await AppDataScope.of(context).dataSource.getCategories();
+    if (!mounted) return;
+    final selectedId = await showExploreCategoryPickerDialog(
+      context: context,
+      categories: categories,
+    );
+    if (!mounted) return;
+    // null = user dismissed; keep Explore tab, leave category as-is (or all)
+    if (selectedId != null) {
+      setState(() {
+        _exploreInitialCategoryId = selectedId == kExploreAllSentinel ? null : selectedId;
+      });
+    }
   }
 
   Future<void> _signOut() async {
@@ -173,20 +192,29 @@ class _MainShellState extends State<MainShell> with SingleTickerProviderStateMix
 
   List<Widget> _buildScreens() {
     return [
-      KeyedSubtree(
-        key: ValueKey<int>(_homeRefreshKey),
-        child: HomeScreen(
-          openMenu: _openMenu,
-          onSelectCategory: _navigateToExploreWithCategory,
-          onNavigateToExplore: _navigateToExplore,
-          onNavigateToDeals: () => setState(() => _currentIndex = 3),
-          onOpenLocalEvents: () {
-            Navigator.of(context).push(
-              MaterialPageRoute<void>(builder: (_) => const LocalEventsScreen()),
-            );
-          },
-          onOpenChooseForMe: _onChooseForMeTap,
-        ),
+      HomeScreen(
+        parishPrefsVersion: _parishPrefsVersion,
+        openMenu: _openMenu,
+        onSelectCategory: _navigateToExploreWithCategory,
+        onNavigateToExplore: _navigateToExplore,
+        onNavigateToFavorites: () => setState(() => _currentIndex = 3),
+        onNavigateToDeals: () => setState(() => _currentIndex = 4),
+        onNavigateToNews: _goToNewsTab,
+        onNavigateToNewsPost: _goToNewsPost,
+        onOpenLocalEvents: () {
+          Navigator.of(context).push(
+            MaterialPageRoute<void>(builder: (_) => const LocalEventsScreen()),
+          );
+        },
+        onOpenChooseForMe: _onChooseForMeTap,
+      ),
+      Navigator(
+        key: _newsNavigatorKey,
+        onGenerateRoute: (settings) {
+          return MaterialPageRoute<void>(
+            builder: (_) => const NewsScreen(),
+          );
+        },
       ),
       CategoriesScreen(initialCategoryId: _exploreInitialCategoryId),
       const FavoritesScreen(),
@@ -203,8 +231,8 @@ class _MainShellState extends State<MainShell> with SingleTickerProviderStateMix
     ];
   }
 
-  /// Order: Home, Explore, Favorites, Deals, Profile (Home far left).
-  static const List<String> _titles = ['Home', 'Explore', 'Favorites', 'Deals', 'Profile'];
+  /// Order: Home, News, Explore, Favorites, Deals, Profile (Home far left).
+  static const List<String> _titles = ['Home', 'News', 'Explore', 'Favorites', 'Deals', 'Profile'];
 
   void _onAskLocalTap() {
     final auth = AppDataScope.of(context).authRepository;
@@ -268,6 +296,21 @@ class _MainShellState extends State<MainShell> with SingleTickerProviderStateMix
     );
   }
 
+  void _goToNewsTab() {
+    setState(() => _currentIndex = 1);
+  }
+
+  void _goToNewsPost(String postId) {
+    setState(() => _currentIndex = 1);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _newsNavigatorKey.currentState?.push(
+        MaterialPageRoute<void>(
+          builder: (_) => NewsPostDetailScreen(postId: postId),
+        ),
+      );
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     if (!_parishOnboardingChecked) {
@@ -275,7 +318,7 @@ class _MainShellState extends State<MainShell> with SingleTickerProviderStateMix
       WidgetsBinding.instance.addPostFrameCallback((_) => _maybeShowParishOnboarding());
     }
     final isHome = _currentIndex == 0;
-    const profileTabIndex = 4;
+    const profileTabIndex = 5;
     final isProfile = _currentIndex == profileTabIndex;
     final showListingsInProfile = isProfile && _profileShowListings;
     final screens = _buildScreens();
@@ -291,6 +334,8 @@ class _MainShellState extends State<MainShell> with SingleTickerProviderStateMix
       key: _scaffoldKey,
       extendBodyBehindAppBar: false,
       appBar: AppBar(
+        toolbarHeight: _kAppBarToolbarHeight,
+        leadingWidth: _kAppBarLeadingWidth,
         leading: showListingsInProfile
             ? IconButton(
                 icon: const Icon(Icons.arrow_back_rounded),
@@ -307,9 +352,10 @@ class _MainShellState extends State<MainShell> with SingleTickerProviderStateMix
           showListingsInProfile
               ? 'My Listings'
               : _titles[_currentIndex],
-          style: GoogleFonts.dancingScript(
+          style: TextStyle(
+            fontFamily: 'Brobane',
             fontSize: 26,
-            fontWeight: FontWeight.w700,
+            fontWeight: FontWeight.normal,
             color: AppTheme.specNavy,
           ),
         ),
@@ -322,16 +368,18 @@ class _MainShellState extends State<MainShell> with SingleTickerProviderStateMix
               color: AppTheme.specNavy,
               tooltip: 'Quick scan punch card',
             ),
-          _NotificationsIcon(unreadFuture: _notificationsUnreadFuture, onOpen: () async {
-            final scope = AppDataScope.of(context);
-            await Navigator.of(context).push(
-              MaterialPageRoute<void>(builder: (_) => const NotificationsScreen()),
-            );
-            if (!mounted) return;
-            final uid = scope.authRepository.currentUserId;
-            if (uid != null) {
-              setState(() => _notificationsUnreadFuture = NotificationsRepository().unreadCount(uid));
-            }
+          _NotificationsIcon(unreadFuture: _notificationsUnreadFuture, onOpen: () {
+            WidgetsBinding.instance.addPostFrameCallback((_) async {
+              final scope = AppDataScope.of(context);
+              await Navigator.of(context).push(
+                MaterialPageRoute<void>(builder: (_) => const NotificationsScreen()),
+              );
+              if (!mounted) return;
+              final uid = scope.authRepository.currentUserId;
+              if (uid != null) {
+                setState(() => _notificationsUnreadFuture = NotificationsRepository().unreadCount(uid));
+              }
+            });
           }),
           IconButton(
             onPressed: _openMenu,
@@ -357,7 +405,11 @@ class _MainShellState extends State<MainShell> with SingleTickerProviderStateMix
           onClose: _closeMenu,
           onNavigateToTab: (index) {
             _closeMenu();
-            setState(() => _currentIndex = index);
+            if (index == 2) {
+              _showExploreCategoryPickerThenNavigate();
+            } else {
+              setState(() => _currentIndex = index);
+            }
           },
           onOpenAskLocal: _onAskLocalTap,
           onOpenChooseForMe: _onChooseForMeTap,
@@ -411,7 +463,13 @@ class _MainShellState extends State<MainShell> with SingleTickerProviderStateMix
             final showFooter = !(isTablet && _currentIndex == profileTabIndex);
             final bottomNav = _CustomBottomNav(
               currentIndex: _currentIndex,
-              onTap: (index) => setState(() => _currentIndex = index),
+              onTap: (index) {
+                if (index == 2) {
+                  _showExploreCategoryPickerThenNavigate();
+                } else {
+                  setState(() => _currentIndex = index);
+                }
+              },
               screenCount: screens.length,
               titles: _titles,
             );
@@ -633,28 +691,34 @@ class _AppMenuDrawerState extends State<_AppMenuDrawer> {
                   onTap: () => widget.onNavigateToTab(0),
                 ),
                 _NavTile(
-                  icon: Icons.explore_rounded,
-                  title: 'Explore',
+                  icon: Icons.article_rounded,
+                  title: 'News',
                   selected: widget.currentIndex == 1,
                   onTap: () => widget.onNavigateToTab(1),
                 ),
                 _NavTile(
-                  icon: Icons.favorite_rounded,
-                  title: 'Favorites',
+                  icon: Icons.explore_rounded,
+                  title: 'Explore',
                   selected: widget.currentIndex == 2,
                   onTap: () => widget.onNavigateToTab(2),
                 ),
                 _NavTile(
-                  icon: Icons.local_offer_rounded,
-                  title: 'Deals',
+                  icon: Icons.favorite_rounded,
+                  title: 'Favorites',
                   selected: widget.currentIndex == 3,
                   onTap: () => widget.onNavigateToTab(3),
                 ),
                 _NavTile(
-                  icon: Icons.person_outline_rounded,
-                  title: 'Profile',
+                  icon: Icons.local_offer_rounded,
+                  title: 'Deals',
                   selected: widget.currentIndex == 4,
                   onTap: () => widget.onNavigateToTab(4),
+                ),
+                _NavTile(
+                  icon: Icons.person_outline_rounded,
+                  title: 'Profile',
+                  selected: widget.currentIndex == 5,
+                  onTap: () => widget.onNavigateToTab(5),
                 ),
                 const Divider(height: 24),
                 ListTile(
@@ -662,8 +726,10 @@ class _AppMenuDrawerState extends State<_AppMenuDrawer> {
                   title: Text('Ask Local', style: TextStyle(fontWeight: FontWeight.w600, color: AppTheme.specNavy)),
                   subtitle: const Text('AI-powered local recommendations'),
                   onTap: () {
-                    widget.onClose();
-                    widget.onOpenAskLocal();
+                    WidgetsBinding.instance.addPostFrameCallback((_) {
+                      widget.onClose();
+                      widget.onOpenAskLocal();
+                    });
                   },
                 ),
                 ListTile(
@@ -671,8 +737,10 @@ class _AppMenuDrawerState extends State<_AppMenuDrawer> {
                   title: Text('Choose for me', style: TextStyle(fontWeight: FontWeight.w600, color: AppTheme.specNavy)),
                   subtitle: const Text('Pick a random restaurant'),
                   onTap: () {
-                    widget.onClose();
-                    widget.onOpenChooseForMe();
+                    WidgetsBinding.instance.addPostFrameCallback((_) {
+                      widget.onClose();
+                      widget.onOpenChooseForMe();
+                    });
                   },
                 ),
                 ListTile(
@@ -680,34 +748,44 @@ class _AppMenuDrawerState extends State<_AppMenuDrawer> {
                   title: Text('Local Events', style: TextStyle(fontWeight: FontWeight.w500, color: AppTheme.specNavy)),
                   subtitle: const Text('Happenings from local businesses'),
                   onTap: () {
-                    widget.onClose();
-                    widget.onOpenLocalEvents();
+                    WidgetsBinding.instance.addPostFrameCallback((_) {
+                      widget.onClose();
+                      widget.onOpenLocalEvents();
+                    });
                   },
                 ),
                 ListTile(
                   leading: Icon(Icons.notifications_outlined, color: AppTheme.specNavy),
                   title: Text('Notifications', style: TextStyle(fontWeight: FontWeight.w500, color: AppTheme.specNavy)),
-                  onTap: widget.onOpenNotifications,
+                  onTap: () {
+                    WidgetsBinding.instance.addPostFrameCallback((_) => widget.onOpenNotifications());
+                  },
                 ),
                 ListTile(
                   leading: Icon(Icons.chat_bubble_outline_rounded, color: AppTheme.specNavy),
                   title: Text('Messages', style: TextStyle(fontWeight: FontWeight.w600, color: AppTheme.specNavy)),
                   subtitle: const Text('Conversations with businesses'),
-                  onTap: widget.onOpenMessages,
+                  onTap: () {
+                    WidgetsBinding.instance.addPostFrameCallback((_) => widget.onOpenMessages());
+                  },
                 ),
                 if (_isAdmin == true) ...[
                   const Divider(height: 24),
                   ListTile(
                     leading: Icon(Icons.admin_panel_settings_rounded, color: AppTheme.specNavy),
                     title: Text('Admin', style: TextStyle(fontWeight: FontWeight.w600, color: AppTheme.specNavy)),
-                    onTap: widget.onOpenAdmin,
+                    onTap: () {
+                      WidgetsBinding.instance.addPostFrameCallback((_) => widget.onOpenAdmin());
+                    },
                   ),
                 ],
                 const Divider(height: 24),
                 ListTile(
                   leading: Icon(Icons.logout_rounded, color: AppTheme.specNavy),
                   title: Text('Sign out', style: TextStyle(fontWeight: FontWeight.w600, color: AppTheme.specNavy)),
-                  onTap: widget.onSignOut,
+                  onTap: () {
+                    WidgetsBinding.instance.addPostFrameCallback((_) => widget.onSignOut());
+                  },
                 ),
               ],
             ),
@@ -718,7 +796,88 @@ class _AppMenuDrawerState extends State<_AppMenuDrawer> {
   }
 }
 
-/// Bottom nav: 5 icons — Home, Explore, Favorites, Deals, Profile. Flutter icons only.
+/// Single bottom nav item with hover scale and gold-tinted press/hover feedback.
+class _BottomNavItem extends StatefulWidget {
+  const _BottomNavItem({
+    required this.icon,
+    required this.selected,
+    required this.label,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final bool selected;
+  final String label;
+  final VoidCallback onTap;
+
+  @override
+  State<_BottomNavItem> createState() => _BottomNavItemState();
+}
+
+class _BottomNavItemState extends State<_BottomNavItem> {
+  bool _hovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return MouseRegion(
+      onEnter: (_) => setState(() => _hovered = true),
+      onExit: (_) => setState(() => _hovered = false),
+      cursor: SystemMouseCursors.click,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: widget.onTap,
+          borderRadius: BorderRadius.circular(20),
+          hoverColor: AppTheme.specGold.withValues(alpha: 0.14),
+          focusColor: AppTheme.specGold.withValues(alpha: 0.2),
+          highlightColor: AppTheme.specGold.withValues(alpha: 0.22),
+          splashColor: AppTheme.specGold.withValues(alpha: 0.35),
+          child: Tooltip(
+            message: widget.label,
+            child: Center(
+              child: AnimatedScale(
+                scale: _hovered ? 1.12 : 1.0,
+                duration: const Duration(milliseconds: 160),
+                curve: Curves.easeOutCubic,
+                child: widget.selected
+                    ? Container(
+                        padding: const EdgeInsets.all(6),
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          boxShadow: [
+                            BoxShadow(
+                              color: AppTheme.specGold.withValues(alpha: 0.5),
+                              blurRadius: 12,
+                              spreadRadius: 0,
+                            ),
+                            BoxShadow(
+                              color: AppTheme.specGold.withValues(alpha: 0.35),
+                              blurRadius: 20,
+                              spreadRadius: -2,
+                            ),
+                          ],
+                        ),
+                        child: Icon(
+                          widget.icon,
+                          size: 26,
+                          color: AppTheme.specNavy,
+                        ),
+                      )
+                    : Icon(
+                        widget.icon,
+                        size: 26,
+                        color: AppTheme.specNavy.withValues(alpha: 0.6),
+                      ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Bottom nav: 5 icons only (no labels), rounded floating bar. Home, Explore, Favorites, Deals, Profile.
 class _CustomBottomNav extends StatelessWidget {
   const _CustomBottomNav({
     required this.currentIndex,
@@ -734,6 +893,7 @@ class _CustomBottomNav extends StatelessWidget {
 
   static const List<IconData> _icons = [
     Icons.home_rounded,
+    Icons.article_rounded,
     Icons.explore_rounded,
     Icons.favorite_rounded,
     Icons.local_offer_rounded,
@@ -742,47 +902,47 @@ class _CustomBottomNav extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    const barCount = 5;
+    final barCount = screenCount.clamp(1, _icons.length);
+    final bottomPadding = MediaQuery.paddingOf(context).bottom;
 
-    return Container(
-      decoration: const BoxDecoration(color: Colors.transparent),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
-        child: Row(
+    return Padding(
+      padding: EdgeInsets.fromLTRB(20, 8, 20, 12 + bottomPadding),
+      child: Container(
+        decoration: BoxDecoration(
+          color: AppTheme.specWhite,
+          borderRadius: BorderRadius.circular(28),
+          boxShadow: [
+            // Soft slide shadow (offset downward)
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.06),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.1),
+              blurRadius: 16,
+              offset: const Offset(0, 6),
+            ),
+          ],
+        ),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
+          child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: List.generate(barCount, (index) {
               final selected = index == currentIndex;
               final label = index < titles.length ? titles[index] : '';
-              final icon = index < _icons.length ? _icons[index] : Icons.circle_rounded;
+              final iconData = index < _icons.length ? _icons[index] : Icons.circle_rounded;
               return Expanded(
-                child: Material(
-                  color: Colors.transparent,
-                  child: InkWell(
-                    onTap: () => onTap(index),
-                    borderRadius: BorderRadius.circular(20),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          icon,
-                          size: 26,
-                          color: selected ? AppTheme.specNavy : AppTheme.specNavy.withValues(alpha: 0.6),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          label,
-                          style: theme.textTheme.labelSmall?.copyWith(
-                            fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
-                            color: selected ? AppTheme.specNavy : AppTheme.specNavy.withValues(alpha: 0.6),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
+                child: _BottomNavItem(
+                  icon: iconData,
+                  selected: selected,
+                  label: label,
+                  onTap: () => onTap(index),
                 ),
               );
             }),
+          ),
         ),
       ),
     );

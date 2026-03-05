@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:my_app/core/data/models/blog_post.dart';
+import 'package:my_app/core/data/models/parish.dart';
 import 'package:my_app/core/data/repositories/blog_posts_repository.dart';
+import 'package:my_app/core/data/repositories/parish_repository.dart';
 import 'package:my_app/core/theme/theme.dart';
 import 'package:my_app/features/admin/presentation/screens/admin_add_blog_post_screen.dart';
 import 'package:my_app/features/admin/presentation/screens/admin_blog_detail_screen.dart';
@@ -22,17 +24,28 @@ class AdminBlogScreen extends StatelessWidget {
     );
   }
 
+  static String _parishLabel(BlogPost p, Map<String, String> idToName) {
+    if (p.isAllParishes) return 'All parishes';
+    return p.parishIds!.map((id) => idToName[id] ?? id).join(', ');
+  }
+
   Widget _buildBody(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     final repo = BlogPostsRepository();
-    return FutureBuilder<List<BlogPost>>(
-        future: repo.listForAdmin(status: status),
+    final parishRepo = ParishRepository();
+    return FutureBuilder<(List<BlogPost>, List<Parish>)>(
+        future: Future.wait([
+          repo.listForAdmin(status: status),
+          parishRepo.listParishes(),
+        ]).then((r) => (r[0] as List<BlogPost>, r[1] as List<Parish>)),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting && !snapshot.hasData) {
             return const Center(child: CircularProgressIndicator());
           }
-          final list = snapshot.data ?? [];
+          final list = snapshot.data?.$1 ?? [];
+          final parishes = snapshot.data?.$2 ?? [];
+          final idToName = {for (final x in parishes) x.id: x.name};
           if (list.isEmpty) {
             return Center(
               child: Text(
@@ -54,6 +67,7 @@ class AdminBlogScreen extends StatelessWidget {
                   : (p.createdAt != null ? '${p.createdAt!.month}/${p.createdAt!.day}/${p.createdAt!.year}' : null);
               final badgeList = [
                 AdminBadgeData(p.status, color: p.status == 'pending' ? AppTheme.specRed : null),
+                AdminBadgeData(_parishLabel(p, idToName)),
                 AdminBadgeData(p.slug),
                 if (dateStr != null) AdminBadgeData(dateStr),
               ];

@@ -1,8 +1,10 @@
+import 'package:flutter/foundation.dart';
 import 'package:my_app/core/data/models/parish.dart';
 import 'package:my_app/core/supabase/supabase_config.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 /// Parishes table: allowed list for businesses and filters. Public read; admin write.
+/// All parish lists in the app (Ask Local, filters, business forms, etc.) read from here — no mock fallback.
 class ParishRepository {
   ParishRepository();
 
@@ -11,17 +13,24 @@ class ParishRepository {
 
   static const _limit = 500;
 
+  /// Returns parishes from DB only. Empty if not configured or on error.
   Future<List<Parish>> listParishes() async {
     final client = _client;
     if (client == null) return [];
-    final list = await client
-        .from('parishes')
-        .select()
-        .order('sort_order')
-        .limit(_limit);
-    return (list as List)
-        .map((e) => Parish.fromJson(e as Map<String, dynamic>))
-        .toList();
+    try {
+      final list = await client
+          .from('parishes')
+          .select()
+          .order('sort_order')
+          .limit(_limit);
+      return (list as List)
+          .map((e) => Parish.fromJson(Map<String, dynamic>.from(e as Map)))
+          .toList();
+    } catch (e, st) {
+      debugPrint('ParishRepository.listParishes failed: $e');
+      debugPrint(st.toString());
+      return [];
+    }
   }
 
   /// Admin: create parish.

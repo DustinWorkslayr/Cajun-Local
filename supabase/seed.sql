@@ -30,16 +30,24 @@ INSERT INTO public.business_parishes (business_id, parish_id) VALUES
   ('33333333-3333-3333-3333-333333333303', 'st_martin')
 ON CONFLICT (business_id, parish_id) DO NOTHING;
 
--- 5. business_subcategories
-INSERT INTO public.business_subcategories (business_id, subcategory_id) VALUES
-  ('33333333-3333-3333-3333-333333333301', '22222222-2222-2222-2222-222222222201'),
-  ('33333333-3333-3333-3333-333333333301', '22222222-2222-2222-2222-222222222202'),
-  ('33333333-3333-3333-3333-333333333302', '22222222-2222-2222-2222-222222222203'),
-  ('33333333-3333-3333-3333-333333333303', '22222222-2222-2222-2222-222222222204')
-ON CONFLICT (business_id, subcategory_id) DO NOTHING;
+-- 5. business_subcategories (optional; table may be created outside this set)
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_tables WHERE schemaname = 'public' AND tablename = 'business_subcategories') THEN
+    INSERT INTO public.business_subcategories (business_id, subcategory_id) VALUES
+      ('33333333-3333-3333-3333-333333333301', '22222222-2222-2222-2222-222222222201'),
+      ('33333333-3333-3333-3333-333333333301', '22222222-2222-2222-2222-222222222202'),
+      ('33333333-3333-3333-3333-333333333302', '22222222-2222-2222-2222-222222222203'),
+      ('33333333-3333-3333-3333-333333333303', '22222222-2222-2222-2222-222222222204')
+    ON CONFLICT (business_id, subcategory_id) DO NOTHING;
+  END IF;
+END $$;
 
--- 6. business_hours (day_of_week: monday..sunday)
-INSERT INTO public.business_hours (business_id, day_of_week, open_time, close_time, is_closed) VALUES
+-- 6. business_hours (optional; table may be created outside this set; day_of_week: monday..sunday)
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_tables WHERE schemaname = 'public' AND tablename = 'business_hours') THEN
+    INSERT INTO public.business_hours (business_id, day_of_week, open_time, close_time, is_closed) VALUES
   ('33333333-3333-3333-3333-333333333301', 'monday', '11:00', '21:00', false),
   ('33333333-3333-3333-3333-333333333301', 'tuesday', '11:00', '21:00', false),
   ('33333333-3333-3333-3333-333333333301', 'wednesday', '11:00', '21:00', false),
@@ -58,24 +66,41 @@ INSERT INTO public.business_hours (business_id, day_of_week, open_time, close_ti
   ('33333333-3333-3333-3333-333333333303', 'friday', '09:00', '18:00', false),
   ('33333333-3333-3333-3333-333333333303', 'saturday', '09:00', '18:00', false),
   ('33333333-3333-3333-3333-333333333303', 'sunday', '10:00', '16:00', false)
-ON CONFLICT (business_id, day_of_week) DO NOTHING;
+    ON CONFLICT (business_id, day_of_week) DO NOTHING;
+  END IF;
+END $$;
 
--- 7. deals (deal_type: percentage, fixed, bogo, freebie, other, flash, member_only)
-INSERT INTO public.deals (id, business_id, title, deal_type, status, description, is_active, start_date, end_date) VALUES
-  (gen_random_uuid(), '33333333-3333-3333-3333-333333333301', '10% off lunch', 'percentage', 'approved', 'Valid Mon–Fri 11am–2pm. Dine-in only.', true, now()::date::timestamptz, (now() + interval '90 days')::timestamptz),
-  (gen_random_uuid(), '33333333-3333-3333-3333-333333333301', 'Free dessert with entrée', 'freebie', 'approved', 'Order any entrée, get bread pudding or pecan pie on the house.', true, now()::date::timestamptz, (now() + interval '60 days')::timestamptz),
-  (gen_random_uuid(), '33333333-3333-3333-3333-333333333302', 'Half-price cover on Thursday', 'percentage', 'approved', 'Show this deal at the door for half-price cover.', true, now()::date::timestamptz, (now() + interval '30 days')::timestamptz);
+-- 7. deals (optional; table may be created outside this set)
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_tables WHERE schemaname = 'public' AND tablename = 'deals') THEN
+    INSERT INTO public.deals (id, business_id, title, deal_type, status, description, is_active, start_date, end_date) VALUES
+      (gen_random_uuid(), '33333333-3333-3333-3333-333333333301', '10% off lunch', 'percentage', 'approved', 'Valid Mon–Fri 11am–2pm. Dine-in only.', true, now()::date::timestamptz, (now() + interval '90 days')::timestamptz),
+      (gen_random_uuid(), '33333333-3333-3333-3333-333333333301', 'Free dessert with entrée', 'freebie', 'approved', 'Order any entrée, get bread pudding or pecan pie on the house.', true, now()::date::timestamptz, (now() + interval '60 days')::timestamptz),
+      (gen_random_uuid(), '33333333-3333-3333-3333-333333333302', 'Half-price cover on Thursday', 'percentage', 'approved', 'Show this deal at the door for half-price cover.', true, now()::date::timestamptz, (now() + interval '30 days')::timestamptz);
+  END IF;
+END $$;
 
--- 8. blog_posts (slug unique; status approved for public visibility)
-INSERT INTO public.blog_posts (id, slug, title, body, status, published_at) VALUES
-  (gen_random_uuid(), 'welcome-to-cajun-local', 'Welcome to Cajun Local', '<p>Discover local businesses, deals, and events in Acadiana.</p><p>We’re here to connect you with the best of Louisiana.</p>', 'approved', now()),
-  (gen_random_uuid(), 'best-gumbo-in-town', 'Best Gumbo in Town', '<p>Our roundup of top gumbo spots this season.</p><h2>Bayou favorites</h2><p>From classic chicken and andouille to seafood gumbo.</p>', 'approved', now() - interval '2 days')
-ON CONFLICT (slug) DO NOTHING;
+-- 8. blog_posts (optional; table may be created outside this set)
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_tables WHERE schemaname = 'public' AND tablename = 'blog_posts') THEN
+    INSERT INTO public.blog_posts (id, slug, title, body, status, published_at) VALUES
+      (gen_random_uuid(), 'welcome-to-cajun-local', 'Welcome to Cajun Local', '<p>Discover local businesses, deals, and events in Acadiana.</p><p>We’re here to connect you with the best of Louisiana.</p>', 'approved', now()),
+      (gen_random_uuid(), 'best-gumbo-in-town', 'Best Gumbo in Town', '<p>Our roundup of top gumbo spots this season.</p><h2>Bayou favorites</h2><p>From classic chicken and andouille to seafood gumbo.</p>', 'approved', now() - interval '2 days')
+    ON CONFLICT (slug) DO NOTHING;
+  END IF;
+END $$;
 
--- 9. notification_banners (optional; fixed id so re-seed does not duplicate)
-INSERT INTO public.notification_banners (id, title, message, is_active) VALUES
-  ('44444444-4444-4444-4444-444444444401', 'Welcome', 'Thanks for using Cajun Local. Check out our latest deals and events!', true)
-ON CONFLICT (id) DO NOTHING;
+-- 9. notification_banners (optional; table may be created outside this set)
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_tables WHERE schemaname = 'public' AND tablename = 'notification_banners') THEN
+    INSERT INTO public.notification_banners (id, title, message, is_active) VALUES
+      ('44444444-4444-4444-4444-444444444401', 'Welcome', 'Thanks for using Cajun Local. Check out our latest deals and events!', true)
+    ON CONFLICT (id) DO NOTHING;
+  END IF;
+END $$;
 
 -- 10. business_amenities (sample: 4 per business; amenity IDs from amenities migration)
 INSERT INTO public.business_amenities (business_id, amenity_id) VALUES

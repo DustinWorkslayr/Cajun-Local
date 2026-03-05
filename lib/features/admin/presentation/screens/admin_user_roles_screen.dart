@@ -8,6 +8,7 @@ import 'package:my_app/core/data/models/user_role.dart';
 import 'package:my_app/core/data/models/user_subscription.dart';
 import 'package:my_app/core/data/repositories/business_managers_repository.dart';
 import 'package:my_app/core/data/repositories/business_repository.dart';
+import 'package:my_app/core/data/repositories/user_notification_preferences_repository.dart';
 import 'package:my_app/core/data/repositories/user_plans_repository.dart';
 import 'package:my_app/core/data/repositories/user_roles_repository.dart';
 import 'package:my_app/core/data/repositories/user_subscriptions_repository.dart';
@@ -198,6 +199,10 @@ class _UserEditPanelContentState extends State<_UserEditPanelContent> {
   bool _loading = true;
   bool _uploadingAvatar = false;
   String? _savingError;
+  final _notifPrefsRepo = UserNotificationPreferencesRepository();
+  bool _notifDeals = true;
+  bool _notifListings = true;
+  bool _notifReminders = false;
 
   @override
   void initState() {
@@ -223,14 +228,42 @@ class _UserEditPanelContentState extends State<_UserEditPanelContent> {
     final businesses = await businessRepo.listForAdmin();
     final plans = await plansRepo.list();
     final sub = await subsRepo.getByUserId(widget.userId);
+    final prefs = await _notifPrefsRepo.get(widget.userId);
     if (!mounted) return;
     setState(() {
       _managedBusinessIds = ids;
       _allBusinesses = businesses;
       _userPlans = plans.where((p) => p.isActive).toList();
       _subscription = sub;
+      _notifDeals = prefs.dealsEnabled;
+      _notifListings = prefs.listingsEnabled;
+      _notifReminders = prefs.remindersEnabled;
       _loading = false;
     });
+  }
+
+  Future<void> _saveNotificationPrefs() async {
+    try {
+      await _notifPrefsRepo.saveForAdmin(
+        widget.userId,
+        UserNotificationPreferences(
+          dealsEnabled: _notifDeals,
+          listingsEnabled: _notifListings,
+          remindersEnabled: _notifReminders,
+        ),
+      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Notification preferences saved')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to save: $e'), backgroundColor: Colors.red),
+        );
+      }
+    }
   }
 
   Future<void> _pickAndUploadAvatar() async {
@@ -548,6 +581,7 @@ class _UserEditPanelContentState extends State<_UserEditPanelContent> {
           initialValue: _role,
           decoration: _inputDecoration.copyWith(labelText: 'Role'),
           items: const [
+            DropdownMenuItem(value: 'super_admin', child: Text('Super admin')),
             DropdownMenuItem(value: 'admin', child: Text('Admin')),
             DropdownMenuItem(
               value: 'business_owner',
@@ -629,6 +663,41 @@ class _UserEditPanelContentState extends State<_UserEditPanelContent> {
             ),
           ],
         ],
+        AdminDetailLabel('Notification preferences'),
+        SwitchListTile(
+          value: _notifDeals,
+          onChanged: (v) => setState(() => _notifDeals = v),
+          title: Text(
+            'Deals',
+            style: theme.textTheme.bodyMedium?.copyWith(color: AppTheme.specNavy),
+          ),
+          activeThumbColor: AppTheme.specNavy,
+        ),
+        SwitchListTile(
+          value: _notifListings,
+          onChanged: (v) => setState(() => _notifListings = v),
+          title: Text(
+            'Listings',
+            style: theme.textTheme.bodyMedium?.copyWith(color: AppTheme.specNavy),
+          ),
+          activeThumbColor: AppTheme.specNavy,
+        ),
+        SwitchListTile(
+          value: _notifReminders,
+          onChanged: (v) => setState(() => _notifReminders = v),
+          title: Text(
+            'Reminders',
+            style: theme.textTheme.bodyMedium?.copyWith(color: AppTheme.specNavy),
+          ),
+          activeThumbColor: AppTheme.specNavy,
+        ),
+        Padding(
+          padding: const EdgeInsets.only(bottom: 8),
+          child: AppOutlinedButton(
+            onPressed: _saveNotificationPrefs,
+            child: const Text('Save notification preferences'),
+          ),
+        ),
         if (_savingError != null) ...[
           const SizedBox(height: 12),
           Text(

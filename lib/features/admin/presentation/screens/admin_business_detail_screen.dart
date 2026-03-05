@@ -145,7 +145,7 @@ class _AdminBusinessDetailScreenState extends State<AdminBusinessDetailScreen> {
 
     final business = _business!;
     return DefaultTabController(
-      length: 7,
+      length: 8,
       child: Scaffold(
         backgroundColor: AppTheme.specOffWhite,
         appBar: AppBar(
@@ -254,6 +254,8 @@ class _OverviewTabState extends State<_OverviewTab> {
   bool _saving = false;
   bool _uploadingLogo = false;
   bool _uploadingBanner = false;
+  bool _deletingLogo = false;
+  bool _deletingBanner = false;
 
   List<BusinessCategory> _categories = [];
   List<Subcategory> _subcategories = [];
@@ -479,6 +481,74 @@ class _OverviewTabState extends State<_OverviewTab> {
     }
   }
 
+  Future<void> _deleteLogo() async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Remove logo?'),
+        content: const Text(
+          'The current logo will be removed from this business. You can upload a new one anytime.',
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Cancel')),
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: Text('Remove', style: TextStyle(color: Theme.of(ctx).colorScheme.error)),
+          ),
+        ],
+      ),
+    );
+    if (confirm != true || !mounted) return;
+    setState(() => _deletingLogo = true);
+    try {
+      await BusinessRepository().updateBusiness(widget.business.id, logoUrl: '');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Logo removed.')));
+        widget.onSaved();
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+      }
+    } finally {
+      if (mounted) setState(() => _deletingLogo = false);
+    }
+  }
+
+  Future<void> _deleteBanner() async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Remove banner?'),
+        content: const Text(
+          'The current banner will be removed from this business. You can upload a new one anytime.',
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Cancel')),
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: Text('Remove', style: TextStyle(color: Theme.of(ctx).colorScheme.error)),
+          ),
+        ],
+      ),
+    );
+    if (confirm != true || !mounted) return;
+    setState(() => _deletingBanner = true);
+    try {
+      await BusinessRepository().updateBusiness(widget.business.id, bannerUrl: '');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Banner removed.')));
+        widget.onSaved();
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+      }
+    } finally {
+      if (mounted) setState(() => _deletingBanner = false);
+    }
+  }
+
   Future<void> _save() async {
     setState(() => _saving = true);
     try {
@@ -665,7 +735,42 @@ class _OverviewTabState extends State<_OverviewTab> {
                     ),
                   ),
                   const SizedBox(height: 12),
-                ],
+                  Row(
+                    children: [
+                      Expanded(
+                        child: AppOutlinedButton(
+                          onPressed: _uploadingLogo || _deletingLogo ? null : _uploadLogo,
+                          icon: _uploadingLogo
+                              ? SizedBox(
+                                  width: 20,
+                                  height: 20,
+                                  child: CircularProgressIndicator(strokeWidth: 2, color: AppTheme.specNavy),
+                                )
+                              : const Icon(Icons.upload_rounded, size: 20),
+                          label: Text(_uploadingLogo ? 'Uploading...' : 'Upload logo (admin)'),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      OutlinedButton.icon(
+                        onPressed: _uploadingLogo || _deletingLogo
+                            ? null
+                            : _deleteLogo,
+                        icon: _deletingLogo
+                            ? SizedBox(
+                                width: 18,
+                                height: 18,
+                                child: CircularProgressIndicator(strokeWidth: 2, color: Theme.of(context).colorScheme.error),
+                              )
+                            : Icon(Icons.delete_outline_rounded, size: 20, color: Theme.of(context).colorScheme.error),
+                        label: Text(_deletingLogo ? 'Removing...' : 'Delete logo'),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: Theme.of(context).colorScheme.error,
+                          side: BorderSide(color: Theme.of(context).colorScheme.error.withValues(alpha: 0.7)),
+                        ),
+                      ),
+                    ],
+                  ),
+                ] else
                 AppOutlinedButton(
                   onPressed: _uploadingLogo ? null : _uploadLogo,
                   icon: _uploadingLogo
@@ -718,7 +823,42 @@ class _OverviewTabState extends State<_OverviewTab> {
                     ),
                   ),
                   const SizedBox(height: 12),
-                ],
+                  Row(
+                    children: [
+                      Expanded(
+                        child: AppOutlinedButton(
+                          onPressed: _uploadingBanner || _deletingBanner ? null : _uploadBanner,
+                          icon: _uploadingBanner
+                              ? SizedBox(
+                                  width: 20,
+                                  height: 20,
+                                  child: CircularProgressIndicator(strokeWidth: 2, color: AppTheme.specNavy),
+                                )
+                              : const Icon(Icons.image_rounded, size: 20),
+                          label: Text(_uploadingBanner ? 'Uploading...' : 'Upload banner (admin)'),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      OutlinedButton.icon(
+                        onPressed: _uploadingBanner || _deletingBanner
+                            ? null
+                            : _deleteBanner,
+                        icon: _deletingBanner
+                            ? SizedBox(
+                                width: 18,
+                                height: 18,
+                                child: CircularProgressIndicator(strokeWidth: 2, color: Theme.of(context).colorScheme.error),
+                              )
+                            : Icon(Icons.delete_outline_rounded, size: 20, color: Theme.of(context).colorScheme.error),
+                        label: Text(_deletingBanner ? 'Removing...' : 'Delete banner'),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: Theme.of(context).colorScheme.error,
+                          side: BorderSide(color: Theme.of(context).colorScheme.error.withValues(alpha: 0.7)),
+                        ),
+                      ),
+                    ],
+                  ),
+                ] else
                 AppOutlinedButton(
                   onPressed: _uploadingBanner ? null : _uploadBanner,
                   icon: _uploadingBanner

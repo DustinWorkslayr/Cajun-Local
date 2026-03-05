@@ -1,15 +1,14 @@
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:my_app/core/data/app_data_scope.dart';
 import 'package:my_app/core/data/models/ad_package.dart';
 import 'package:my_app/core/data/models/business_ad.dart';
 import 'package:my_app/core/data/repositories/ad_packages_repository.dart';
 import 'package:my_app/core/data/repositories/business_ads_repository.dart';
 import 'package:my_app/core/data/services/app_storage_service.dart';
-import 'package:my_app/core/stripe/stripe_checkout_service.dart';
-import 'package:my_app/core/stripe/stripe_config.dart';
+import 'package:my_app/core/revenuecat/revenuecat_service.dart';
 import 'package:my_app/core/theme/theme.dart';
 import 'package:my_app/shared/widgets/app_buttons.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 /// For a single business: list its ads and start "Buy ad" flow (package -> form -> checkout).
 class BusinessAdsScreen extends StatefulWidget {
@@ -835,27 +834,36 @@ class _CreateAdScreenState extends State<_CreateAdScreen> {
         targetUrl: null,
       );
       if (ad == null) throw Exception('Failed to create ad');
-      if (pkg.stripePriceId != null && pkg.stripePriceId!.isNotEmpty) {
-        final checkout = StripeCheckoutService();
-        final base = StripeConfig.returnBaseUrl;
-        final suffix = base.endsWith('/') ? '' : '/';
-        final successUrl = base.isEmpty ? null : '$base${suffix}my-listings?checkout=success';
-        final cancelUrl = base.isEmpty ? null : '$base${suffix}my-listings?checkout=canceled';
-        final url = await checkout.createCheckoutSession(
-          priceId: pkg.stripePriceId!,
-          mode: 'payment',
-          successUrl: successUrl,
-          cancelUrl: cancelUrl,
-          metadata: {
-            'type': 'advertisement',
-            'business_id': widget.businessId,
-            'reference_id': ad.id,
-          },
-        );
+      final rcProductId = pkg.revenuecatProductId;
+      if (rcProductId != null && rcProductId.isNotEmpty) {
+        if (!mounted) return;
+        final rc = AppDataScope.of(context).revenueCatService;
+        if (rc == null || !rc.isConfigured) {
+          if (mounted) {
+            setState(() => _submitting = false);
+            _error = 'In-app purchase is not available on this device.';
+          }
+          return;
+        }
+        final result = await rc.purchaseAdProduct(rcProductId);
         if (mounted) {
           setState(() => _submitting = false);
-          Navigator.of(context).pop(true);
-          await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
+          switch (result) {
+            case AdPurchaseResult.purchased:
+              Navigator.of(context).pop(true);
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Payment successful. Your ad is pending approval.')),
+              );
+              break;
+            case AdPurchaseResult.cancelled:
+              break;
+            case AdPurchaseResult.productNotFound:
+              _error = 'This ad package is not available in the store.';
+              break;
+            case AdPurchaseResult.error:
+              _error = 'Payment failed. Please try again.';
+              break;
+          }
         }
       } else {
         if (mounted) {
@@ -863,7 +871,7 @@ class _CreateAdScreenState extends State<_CreateAdScreen> {
           Navigator.of(context).pop(true);
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-                content: Text('Ad created as draft. Payment not configured for this package.')),
+                content: Text('Ad created as draft. RevenueCat product ID not set for this package.')),
           );
         }
       }

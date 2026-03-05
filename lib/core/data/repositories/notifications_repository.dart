@@ -9,16 +9,22 @@ class NotificationsRepository {
   SupabaseClient? get _client =>
       SupabaseConfig.isConfigured ? Supabase.instance.client : null;
 
-  /// List notifications for the current user (own only).
-  Future<List<AppNotification>> listForUser(String userId) async {
+  /// List notifications for the current user (own only). Optional [typeFilter]. Paginated via [limit] and [offset].
+  Future<List<AppNotification>> listForUser(
+    String userId, {
+    String? typeFilter,
+    int limit = 50,
+    int offset = 0,
+  }) async {
     final client = _client;
     if (client == null) return [];
-    final list = await client
-        .from('notifications')
-        .select()
-        .eq('user_id', userId)
+    var q = client.from('notifications').select().eq('user_id', userId);
+    if (typeFilter != null && typeFilter.isNotEmpty) {
+      q = q.eq('type', typeFilter);
+    }
+    final list = await q
         .order('created_at', ascending: false)
-        .limit(100);
+        .range(offset, offset + limit - 1);
     return (list as List)
         .map((e) => AppNotification.fromJson(e as Map<String, dynamic>))
         .toList();
@@ -43,6 +49,24 @@ class NotificationsRepository {
     await client.from('notifications').update({'is_read': true}).eq('id', id);
   }
 
+  /// Mark all notifications as read for the user.
+  Future<void> markAllAsRead(String userId) async {
+    final client = _client;
+    if (client == null) return;
+    await client
+        .from('notifications')
+        .update({'is_read': true})
+        .eq('user_id', userId)
+        .eq('is_read', false);
+  }
+
+  /// Delete one notification (own only via RLS). No-op if RLS denies.
+  Future<void> deleteForUser(String id) async {
+    final client = _client;
+    if (client == null) return;
+    await client.from('notifications').delete().eq('id', id);
+  }
+
   /// Admin: list all notifications (optional user filter).
   Future<List<AppNotification>> listForAdmin({String? userId}) async {
     final client = _client;
@@ -59,18 +83,23 @@ class NotificationsRepository {
   Future<void> insert({
     required String userId,
     required String title,
+    String? body,
     String? type,
+    String? actionUrl,
   }) async {
     final client = _client;
     if (client == null) return;
     final id = 'n-${DateTime.now().millisecondsSinceEpoch}-${userId.hashCode.abs()}';
-    await client.from('notifications').insert({
+    final map = <String, dynamic>{
       'id': id,
       'user_id': userId,
       'title': title,
-      'type': type,
       'is_read': false,
-    });
+    };
+    if (body != null && body.isNotEmpty) map['body'] = body;
+    if (type != null && type.isNotEmpty) map['type'] = type;
+    if (actionUrl != null && actionUrl.isNotEmpty) map['action_url'] = actionUrl;
+    await client.from('notifications').insert(map);
   }
 
   /// Admin: delete a notification.

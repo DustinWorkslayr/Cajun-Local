@@ -23,7 +23,7 @@ class _AdminAdPackageFormScreenState extends State<AdminAdPackageFormScreen> {
   final _priceController = TextEditingController();
   final _maxImpressionsController = TextEditingController();
   final _descriptionController = TextEditingController();
-  final _stripePriceIdController = TextEditingController();
+  final _revenuecatProductIdController = TextEditingController();
   final _sortOrderController = TextEditingController();
   String _placement = 'homepage_featured';
   bool _isActive = true;
@@ -49,7 +49,7 @@ class _AdminAdPackageFormScreenState extends State<AdminAdPackageFormScreen> {
       _priceController.text = p.price.toString();
       _maxImpressionsController.text = p.maxImpressions?.toString() ?? '';
       _descriptionController.text = p.description ?? '';
-      _stripePriceIdController.text = p.stripePriceId ?? '';
+      _revenuecatProductIdController.text = p.revenuecatProductId ?? '';
       _sortOrderController.text = p.sortOrder.toString();
       _isActive = p.isActive;
     } else {
@@ -65,7 +65,7 @@ class _AdminAdPackageFormScreenState extends State<AdminAdPackageFormScreen> {
     _priceController.dispose();
     _maxImpressionsController.dispose();
     _descriptionController.dispose();
-    _stripePriceIdController.dispose();
+    _revenuecatProductIdController.dispose();
     _sortOrderController.dispose();
     super.dispose();
   }
@@ -85,7 +85,7 @@ class _AdminAdPackageFormScreenState extends State<AdminAdPackageFormScreen> {
       final maxImp = _maxImpressionsController.text.trim().isEmpty
           ? null
           : int.tryParse(_maxImpressionsController.text.trim());
-      final stripeId = _stripePriceIdController.text.trim();
+      final rcProductId = _revenuecatProductIdController.text.trim();
       final desc = _descriptionController.text.trim();
 
       if (widget.package != null) {
@@ -97,7 +97,8 @@ class _AdminAdPackageFormScreenState extends State<AdminAdPackageFormScreen> {
           price: price,
           maxImpressions: maxImp,
           description: desc.isEmpty ? null : desc,
-          stripePriceId: stripeId.isEmpty ? null : stripeId,
+          stripePriceId: widget.package!.stripePriceId,
+          revenuecatProductId: rcProductId.isEmpty ? null : rcProductId,
           isActive: _isActive,
           sortOrder: sortOrder,
           createdAt: widget.package!.createdAt,
@@ -113,7 +114,8 @@ class _AdminAdPackageFormScreenState extends State<AdminAdPackageFormScreen> {
           price: price,
           maxImpressions: maxImp,
           description: desc.isEmpty ? null : desc,
-          stripePriceId: stripeId.isEmpty ? null : stripeId,
+          stripePriceId: null,
+          revenuecatProductId: rcProductId.isEmpty ? null : rcProductId,
           isActive: _isActive,
           sortOrder: sortOrder,
         );
@@ -275,7 +277,7 @@ class _AdminAdPackageFormScreenState extends State<AdminAdPackageFormScreen> {
               ),
               const SizedBox(height: 16),
               Text(
-                'Stripe',
+                'RevenueCat (IAP)',
                 style: theme.textTheme.titleSmall?.copyWith(
                   color: AppTheme.specNavy,
                   fontWeight: FontWeight.w600,
@@ -283,20 +285,20 @@ class _AdminAdPackageFormScreenState extends State<AdminAdPackageFormScreen> {
               ),
               const SizedBox(height: 6),
               Text(
-                'One-time payment Price ID from Stripe Dashboard.',
+                'Product ID from App Store Connect / Google Play, configured in RevenueCat.',
                 style: theme.textTheme.bodySmall?.copyWith(
                   color: AppTheme.specNavy.withValues(alpha: 0.7),
                 ),
               ),
               const SizedBox(height: 8),
               TextFormField(
-                controller: _stripePriceIdController,
+                controller: _revenuecatProductIdController,
                 decoration: const InputDecoration(
-                  labelText: 'Stripe Price ID',
+                  labelText: 'RevenueCat product ID',
                   border: OutlineInputBorder(),
                   filled: true,
                   fillColor: AppTheme.specWhite,
-                  hintText: 'e.g. price_1ABC...',
+                  hintText: 'e.g. homepage_feature_7_day',
                 ),
               ),
               const SizedBox(height: 16),

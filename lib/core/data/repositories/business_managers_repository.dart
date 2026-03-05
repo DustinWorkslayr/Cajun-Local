@@ -1,13 +1,40 @@
+import 'package:my_app/core/data/models/business_manager_entry.dart';
 import 'package:my_app/core/supabase/supabase_config.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 /// Business managers (backend-cheatsheet §2). Admin or existing manager can insert.
-/// RLS: admin OR manager can SELECT (own rows).
+/// RLS: admin OR manager can SELECT/INSERT/DELETE for their business (see 20260303130000).
 class BusinessManagersRepository {
   BusinessManagersRepository();
 
   SupabaseClient? get _client =>
       SupabaseConfig.isConfigured ? Supabase.instance.client : null;
+
+  /// List users with access to this business (callable by admin or manager).
+  Future<List<BusinessManagerEntry>> listManagersForBusiness(String businessId) async {
+    final client = _client;
+    if (client == null) return [];
+    final list = await client.rpc(
+      'list_business_managers',
+      params: {'p_business_id': businessId},
+    );
+    if (list == null || list is! List) return [];
+    return (list)
+        .map((e) => BusinessManagerEntry.fromJson(e as Map<String, dynamic>))
+        .toList();
+  }
+
+  /// Resolve user id by email for adding team access (callable by admin or manager).
+  Future<String?> lookupUserByEmail(String businessId, String email) async {
+    final client = _client;
+    if (client == null) return null;
+    final res = await client.rpc(
+      'lookup_user_id_by_email',
+      params: {'p_business_id': businessId, 'p_email': email.trim()},
+    );
+    if (res == null) return null;
+    return res is String ? res : res.toString();
+  }
 
   /// One user_id to notify for a business (first manager). Admin use for approval emails.
   Future<String?> getFirstManagerUserId(String businessId) async {
@@ -36,7 +63,7 @@ class BusinessManagersRepository {
         .toList();
   }
 
-  /// Admin: add a manager to a business (e.g. after claim approval).
+  /// Add a user as manager (admin or existing manager; RLS enforces).
   Future<void> insert(String businessId, String userId, {String role = 'owner'}) async {
     final client = _client;
     if (client == null) return;
@@ -47,7 +74,7 @@ class BusinessManagersRepository {
     });
   }
 
-  /// Admin: remove a manager from a business.
+  /// Remove a manager from a business (admin or existing manager; RLS enforces).
   Future<void> delete(String businessId, String userId) async {
     final client = _client;
     if (client == null) return;

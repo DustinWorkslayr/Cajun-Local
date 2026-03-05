@@ -14,6 +14,7 @@ import 'package:my_app/features/admin/presentation/screens/admin_businesses_scre
 import 'package:my_app/features/admin/presentation/screens/admin_reviews_screen.dart';
 import 'package:my_app/features/admin/presentation/screens/admin_claims_screen.dart';
 import 'package:my_app/features/admin/presentation/screens/admin_pending_approvals_screen.dart';
+import 'package:my_app/features/admin/presentation/screens/admin_images_screen.dart';
 import 'package:my_app/features/admin/presentation/screens/admin_blog_screen.dart';
 import 'package:my_app/features/admin/presentation/screens/admin_manage_banners_screen.dart';
 import 'package:my_app/features/admin/presentation/screens/admin_user_roles_screen.dart';
@@ -307,10 +308,10 @@ class AdminDashboardScreen extends StatelessWidget {
                           _ActionCard(icon: Icons.store_outlined, label: 'Businesses', onTap: () => _navigate(context, 1)),
                           _ActionCard(icon: Icons.star_outline_rounded, label: 'Reviews', onTap: () => _navigate(context, 2)),
                           _ActionCard(icon: Icons.handshake_outlined, label: 'Claims', onTap: () => _navigate(context, 3)),
-                          _ActionCard(icon: Icons.image_outlined, label: 'Images', onTap: () => _navigate(context, 4)),
-                          _ActionCard(icon: Icons.article_outlined, label: 'Blog posts', onTap: () => _navigate(context, 5)),
-                          _ActionCard(icon: Icons.perm_media_outlined, label: 'Banners', onTap: () => _navigate(context, 6)),
-                          _ActionCard(icon: Icons.people_outline_rounded, label: 'Users', onTap: () => _navigate(context, 9)),
+                          _ActionCard(icon: Icons.image_outlined, label: 'Images', onTap: () => _navigate(context, 5)),
+                          _ActionCard(icon: Icons.article_outlined, label: 'Blog posts', onTap: () => _navigate(context, 7)),
+                          _ActionCard(icon: Icons.perm_media_outlined, label: 'Banners', onTap: () => _navigate(context, 8)),
+                          _ActionCard(icon: Icons.people_outline_rounded, label: 'Users', onTap: () => _navigate(context, 16)),
                           _ActionCard(icon: Icons.email_outlined, label: 'Process email queue', onTap: () => _processEmailQueue(context)),
                         ];
                         return Wrap(
@@ -385,15 +386,20 @@ class AdminDashboardScreen extends StatelessWidget {
           break;
         case 5:
           Navigator.of(context).push(
+            MaterialPageRoute<void>(builder: (_) => AdminImagesScreen(status: status)),
+          );
+          break;
+        case 7:
+          Navigator.of(context).push(
             MaterialPageRoute<void>(builder: (_) => AdminBlogScreen(status: status)),
           );
           break;
-        case 6:
+        case 8:
           Navigator.of(context).push(
             MaterialPageRoute<void>(builder: (_) => AdminManageBannersScreen(status: status)),
           );
           break;
-        case 9:
+        case 16:
           Navigator.of(context).push(
             MaterialPageRoute<void>(builder: (_) => const AdminUserRolesScreen()),
           );

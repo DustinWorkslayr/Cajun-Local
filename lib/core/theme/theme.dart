@@ -7,6 +7,8 @@ class AppTheme {
 
   /// Tablet breakpoint (width): use multi-column layouts above this.
   static const double breakpointTablet = 600;
+  /// Large tablet / dashboard breakpoint: more columns, compact card height.
+  static const double breakpointLargeTablet = 900;
   /// Max content width for centered sections on large screens.
   static const double sectionMaxWidth = 800;
 

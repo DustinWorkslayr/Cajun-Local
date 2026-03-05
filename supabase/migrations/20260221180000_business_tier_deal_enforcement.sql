@@ -147,11 +147,16 @@ BEGIN
   RETURN NEW;
 END;
 $$;
-DROP TRIGGER IF EXISTS trigger_deal_tier_check ON public.deals;
-CREATE TRIGGER trigger_deal_tier_check
-  BEFORE INSERT OR UPDATE ON public.deals
-  FOR EACH ROW
-  EXECUTE FUNCTION public.on_deal_before_insert_update_tier_check();
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_tables WHERE schemaname = 'public' AND tablename = 'deals') THEN
+    DROP TRIGGER IF EXISTS trigger_deal_tier_check ON public.deals;
+    CREATE TRIGGER trigger_deal_tier_check
+      BEFORE INSERT OR UPDATE ON public.deals
+      FOR EACH ROW
+      EXECUTE FUNCTION public.on_deal_before_insert_update_tier_check();
+  END IF;
+END $$;
 -- 8. Trigger function: punch_card_programs
 CREATE OR REPLACE FUNCTION public.on_punch_card_before_insert_tier_check()
 RETURNS TRIGGER
@@ -164,11 +169,16 @@ BEGIN
   RETURN NEW;
 END;
 $$;
-DROP TRIGGER IF EXISTS trigger_punch_card_tier_check ON public.punch_card_programs;
-CREATE TRIGGER trigger_punch_card_tier_check
-  BEFORE INSERT ON public.punch_card_programs
-  FOR EACH ROW
-  EXECUTE FUNCTION public.on_punch_card_before_insert_tier_check();
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_tables WHERE schemaname = 'public' AND tablename = 'punch_card_programs') THEN
+    DROP TRIGGER IF EXISTS trigger_punch_card_tier_check ON public.punch_card_programs;
+    CREATE TRIGGER trigger_punch_card_tier_check
+      BEFORE INSERT ON public.punch_card_programs
+      FOR EACH ROW
+      EXECUTE FUNCTION public.on_punch_card_before_insert_tier_check();
+  END IF;
+END $$;
 -- 9. On subscription downgrade: pause excess active deals for the business
 CREATE OR REPLACE FUNCTION public.pause_excess_deals_for_business(p_business_id uuid)
 RETURNS integer
@@ -218,8 +228,13 @@ BEGIN
   RETURN NEW;
 END;
 $$;
-DROP TRIGGER IF EXISTS trigger_business_subscription_pause_excess_deals ON public.business_subscriptions;
-CREATE TRIGGER trigger_business_subscription_pause_excess_deals
-  AFTER UPDATE ON public.business_subscriptions
-  FOR EACH ROW
-  EXECUTE FUNCTION public.on_business_subscription_change_pause_excess_deals();
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_tables WHERE schemaname = 'public' AND tablename = 'business_subscriptions') THEN
+    DROP TRIGGER IF EXISTS trigger_business_subscription_pause_excess_deals ON public.business_subscriptions;
+    CREATE TRIGGER trigger_business_subscription_pause_excess_deals
+      AFTER UPDATE ON public.business_subscriptions
+      FOR EACH ROW
+      EXECUTE FUNCTION public.on_business_subscription_change_pause_excess_deals();
+  END IF;
+END $$;

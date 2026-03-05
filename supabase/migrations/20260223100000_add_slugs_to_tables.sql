@@ -114,16 +114,13 @@ FROM (
   FROM public.businesses
 ) sub
 WHERE b.id = sub.id AND (b.slug IS NULL OR b.slug = '');
--- 11. Backfill blog_posts slug from title where slug is null (if any)
-UPDATE public.blog_posts bp
-SET slug = sub.s
-FROM (
-  SELECT id,
-    public.next_unique_slug('public.blog_posts'::regclass, public.slugify(title), id::text) AS s
-  FROM public.blog_posts
-  WHERE slug IS NULL OR slug = ''
-) sub
-WHERE bp.id = sub.id;
+-- 11. Backfill blog_posts slug from title where slug is null (if table exists)
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_tables WHERE schemaname = 'public' AND tablename = 'blog_posts') THEN
+    EXECUTE 'UPDATE public.blog_posts bp SET slug = sub.s FROM (SELECT id, public.next_unique_slug(''public.blog_posts''::regclass, public.slugify(title), id::text) AS s FROM public.blog_posts WHERE slug IS NULL OR slug = '''' ) sub WHERE bp.id = sub.id';
+  END IF;
+END $$;
 -- 12. Unique constraints on slug
 ALTER TABLE public.business_categories
   DROP CONSTRAINT IF EXISTS business_categories_slug_key;
@@ -141,11 +138,14 @@ ALTER TABLE public.parishes
   DROP CONSTRAINT IF EXISTS parishes_slug_key;
 ALTER TABLE public.parishes
   ADD CONSTRAINT parishes_slug_key UNIQUE (slug);
--- blog_posts already has unique(slug) typically; ensure it
-ALTER TABLE public.blog_posts
-  DROP CONSTRAINT IF EXISTS blog_posts_slug_key;
-ALTER TABLE public.blog_posts
-  ADD CONSTRAINT blog_posts_slug_key UNIQUE (slug);
+-- blog_posts unique(slug) when table exists
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_tables WHERE schemaname = 'public' AND tablename = 'blog_posts') THEN
+    EXECUTE 'ALTER TABLE public.blog_posts DROP CONSTRAINT IF EXISTS blog_posts_slug_key';
+    EXECUTE 'ALTER TABLE public.blog_posts ADD CONSTRAINT blog_posts_slug_key UNIQUE (slug)';
+  END IF;
+END $$;
 -- 13. Trigger: business_categories — set slug from name if null
 CREATE OR REPLACE FUNCTION public.set_business_categories_slug()
 RETURNS trigger
@@ -237,26 +237,15 @@ DROP TRIGGER IF EXISTS trigger_parishes_slug ON public.parishes;
 CREATE TRIGGER trigger_parishes_slug
   BEFORE INSERT OR UPDATE OF name, slug ON public.parishes
   FOR EACH ROW EXECUTE FUNCTION public.set_parishes_slug();
--- 17. Trigger: blog_posts — slug from title if null
-CREATE OR REPLACE FUNCTION public.set_blog_posts_slug()
-RETURNS trigger
-LANGUAGE plpgsql
-AS $$
+-- 17. Trigger: blog_posts — slug from title if null (when table exists)
+DO $$
 BEGIN
-  IF NEW.slug IS NULL OR trim(NEW.slug) = '' THEN
-    NEW.slug := public.next_unique_slug(
-      'public.blog_posts'::regclass,
-      public.slugify(NEW.title),
-      CASE WHEN TG_OP = 'UPDATE' THEN NEW.id::text ELSE NULL END
-    );
+  IF EXISTS (SELECT 1 FROM pg_tables WHERE schemaname = 'public' AND tablename = 'blog_posts') THEN
+    EXECUTE 'CREATE OR REPLACE FUNCTION public.set_blog_posts_slug() RETURNS trigger LANGUAGE plpgsql AS $fn$ BEGIN IF NEW.slug IS NULL OR trim(NEW.slug) = '''' THEN NEW.slug := public.next_unique_slug(''public.blog_posts''::regclass, public.slugify(NEW.title), CASE WHEN TG_OP = ''UPDATE'' THEN NEW.id::text ELSE NULL END); END IF; RETURN NEW; END; $fn$';
+    EXECUTE 'DROP TRIGGER IF EXISTS trigger_blog_posts_slug ON public.blog_posts';
+    EXECUTE 'CREATE TRIGGER trigger_blog_posts_slug BEFORE INSERT OR UPDATE OF title, slug ON public.blog_posts FOR EACH ROW EXECUTE FUNCTION public.set_blog_posts_slug()';
   END IF;
-  RETURN NEW;
-END;
-$$;
-DROP TRIGGER IF EXISTS trigger_blog_posts_slug ON public.blog_posts;
-CREATE TRIGGER trigger_blog_posts_slug
-  BEFORE INSERT OR UPDATE OF title, slug ON public.blog_posts
-  FOR EACH ROW EXECUTE FUNCTION public.set_blog_posts_slug();
+END $$;
 -- Indexes for lookups by slug
 CREATE INDEX IF NOT EXISTS idx_business_categories_slug ON public.business_categories(slug);
 CREATE INDEX IF NOT EXISTS idx_subcategories_slug ON public.subcategories(slug);

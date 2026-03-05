@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:my_app/features/admin/presentation/screens/admin_ad_packages_screen.dart';
+import 'package:my_app/features/admin/presentation/screens/admin_amenities_screen.dart';
 import 'package:my_app/features/admin/presentation/screens/admin_audit_log_screen.dart';
 import 'package:my_app/features/admin/presentation/screens/admin_blog_screen.dart';
 import 'package:my_app/features/admin/presentation/screens/admin_business_ads_screen.dart';
@@ -10,6 +11,7 @@ import 'package:my_app/features/admin/presentation/screens/admin_claims_screen.d
 import 'package:my_app/features/admin/presentation/screens/admin_dashboard_screen.dart';
 import 'package:my_app/features/admin/presentation/screens/admin_email_templates_screen.dart';
 import 'package:my_app/features/admin/presentation/screens/admin_form_submissions_screen.dart';
+import 'package:my_app/features/admin/presentation/screens/admin_images_screen.dart';
 import 'package:my_app/features/admin/presentation/screens/admin_pending_approvals_screen.dart';
 import 'package:my_app/features/admin/presentation/screens/admin_manage_banners_screen.dart';
 import 'package:my_app/features/admin/presentation/screens/admin_payment_history_screen.dart';
@@ -95,6 +97,16 @@ List<AdminSectionItem> buildAdminSections() {
       ),
     ),
     AdminSectionItem(
+      label: 'Images',
+      icon: Icons.image_rounded,
+      group: 'Listings',
+      builder: (context, {required embedded, status, onNavigateToSection}) =>
+          AdminImagesScreen(
+        status: status,
+        embeddedInShell: embedded,
+      ),
+    ),
+    AdminSectionItem(
       label: 'Form submissions',
       icon: Icons.inbox_rounded,
       group: 'Listings',
@@ -129,6 +141,13 @@ List<AdminSectionItem> buildAdminSections() {
       group: 'Settings',
       builder: (context, {required embedded, status, onNavigateToSection}) =>
           AdminCategoriesScreen(embeddedInShell: embedded),
+    ),
+    AdminSectionItem(
+      label: 'Amenities',
+      icon: Icons.room_preferences_rounded,
+      group: 'Settings',
+      builder: (context, {required embedded, status, onNavigateToSection}) =>
+          AdminAmenitiesScreen(embeddedInShell: embedded),
     ),
     AdminSectionItem(
       label: 'Parishes',

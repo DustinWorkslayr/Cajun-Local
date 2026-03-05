@@ -6,6 +6,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders, ensureWpKey, jsonResponse } from "../_shared/wp-auth.ts";
 
 const LISTINGS_PAGE_SIZE = 24;
+const MAX_SLUG_LENGTH = 200;
 
 Deno.serve(async (req) => {
   const origin = req.headers.get("Origin") ?? null;
@@ -25,6 +26,9 @@ Deno.serve(async (req) => {
   if (!categorySlug) {
     return jsonResponse(400, { error: "Missing categorySlug" }, origin);
   }
+  if (categorySlug.length > MAX_SLUG_LENGTH) {
+    return jsonResponse(400, { error: "categorySlug too long" }, origin);
+  }
 
   const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
   const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
@@ -42,7 +46,7 @@ Deno.serve(async (req) => {
     return jsonResponse(404, { error: "Category not found" }, origin);
   }
 
-  const [subRes, bannersRes, bizRes, tiersRes] = await Promise.all([
+  const [subRes, bannersRes, bizRes] = await Promise.all([
     client.from("subcategories").select("id, name").eq("category_id", categorySlug).order("name"),
     client.from("category_banners").select("id, image_url").eq("category_id", categorySlug).eq("status", "approved"),
     client
@@ -52,20 +56,26 @@ Deno.serve(async (req) => {
       .eq("status", "approved")
       .range(0, LISTINGS_PAGE_SIZE - 1)
       .order("name"),
-    client.from("business_subscriptions").select("business_id, business_plans(tier)").eq("status", "active"),
   ]);
 
   const subcategories = (subRes.data ?? []).map((s: { id: string; name: string }) => ({ id: s.id, name: s.name }));
   const banners = (bannersRes.data ?? []).map((b: { id: string; image_url: string }) => ({ id: b.id, image_url: b.image_url }));
 
   const businesses = (bizRes.data ?? []) as { id: string; name: string; tagline: string | null; logo_url: string | null; city: string | null; parish: string | null; category_id: string }[];
-  const tierMap = new Map<string, string>();
-  for (const row of tiersRes.data ?? []) {
-    const r = row as { business_id: string; business_plans?: { tier?: string } };
-    if (r.business_id && r.business_plans?.tier) tierMap.set(r.business_id, r.business_plans.tier);
-  }
-
   const businessIds = businesses.map((b) => b.id);
+
+  const tierMap = new Map<string, string>();
+  if (businessIds.length > 0) {
+    const { data: tiersRes } = await client
+      .from("business_subscriptions")
+      .select("business_id, business_plans(tier)")
+      .eq("status", "active")
+      .in("business_id", businessIds);
+    for (const row of tiersRes ?? []) {
+      const r = row as { business_id: string; business_plans?: { tier?: string } };
+      if (r.business_id && r.business_plans?.tier) tierMap.set(r.business_id, r.business_plans.tier);
+    }
+  }
   let subByBiz: Map<string, { id: string; name: string }[]> = new Map();
   if (businessIds.length > 0) {
     const { data: bs } = await client.from("business_subcategories").select("business_id, subcategory_id").in("business_id", businessIds);

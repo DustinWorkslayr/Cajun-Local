@@ -4,6 +4,7 @@ import 'package:my_app/shared/widgets/app_buttons.dart';
 import 'package:my_app/core/data/mock_data.dart';
 import 'package:my_app/core/data/services/ask_local_service.dart';
 import 'package:my_app/core/preferences/user_parish_preferences.dart';
+import 'package:my_app/core/revenuecat/present_subscription_paywall.dart';
 import 'package:my_app/core/theme/theme.dart';
 import 'package:my_app/features/listing/presentation/screens/listing_detail_screen.dart';
 
@@ -21,6 +22,10 @@ class _Message {
 
 /// Regex to parse [LISTINGS:id1,id2,...] at end of AI reply. Captures comma-separated IDs.
 final _listingsPattern = RegExp(r'\[LISTINGS:([^\]]*)\]');
+
+/// Max characters to keep in stream buffer to avoid OOM on very long Ask Local responses.
+const int _kAskLocalBufferMaxChars = 100000;
+const int _kAskLocalBufferTailChars = 2500;
 
 /// Strips the [LISTINGS:...] line from [text] and returns (displayText, listOfIds).
 (String, List<String>) parseListingsFromReply(String text) {
@@ -64,6 +69,8 @@ class _AskLocalSheetState extends State<_AskLocalSheet> {
   final _scrollController = ScrollController();
   bool _loading = false;
   String? _error;
+  /// True when last failure was subscription_required (show Cajun+ upsell).
+  bool _errorSubscriptionRequired = false;
   final _service = AskLocalService();
 
   // Form-style state (when no messages yet)
@@ -105,7 +112,7 @@ class _AskLocalSheetState extends State<_AskLocalSheet> {
       if (!mounted) return;
       setState(() {
         _formParishIds = Set.from(ids);
-        _formParishes = List<MockParish>.from(MockData.parishes);
+        _formParishes = [];
         _formParishesLoaded = true;
       });
     }
@@ -134,6 +141,9 @@ class _AskLocalSheetState extends State<_AskLocalSheet> {
         : "I'm looking for $type in $areas. $extra";
     final ids = _formParishIds.isEmpty ? null : _formParishIds.toList();
     _lastPreferredParishIds = ids;
+    if (_formParishIds.isNotEmpty) {
+      UserParishPreferences.setPreferredParishIds(_formParishIds);
+    }
     await _send(question, preferredParishIds: ids);
   }
 
@@ -142,6 +152,7 @@ class _AskLocalSheetState extends State<_AskLocalSheet> {
     if (q.isEmpty || _loading) return;
     setState(() {
       _error = null;
+      _errorSubscriptionRequired = false;
       _messages.add(_Message(isUser: true, text: q));
       _loading = true;
     });
@@ -162,8 +173,9 @@ class _AskLocalSheetState extends State<_AskLocalSheet> {
       setState(() {
         _loading = false;
         _error = result.message;
-        if (result.code == 'subscription_required') {
-          _error = '${result.message} Upgrade to Cajun+ Membership (\$2.99) or Pro to use Ask Local.';
+        _errorSubscriptionRequired = result.code == 'subscription_required';
+        if (_errorSubscriptionRequired) {
+          _error = '${result.message} Get Cajun+ Membership to use Ask Local.';
         }
       });
       return;
@@ -171,6 +183,7 @@ class _AskLocalSheetState extends State<_AskLocalSheet> {
 
     final stream = (result as AskLocalStream).stream;
     final buffer = StringBuffer();
+    var truncated = false;
     setState(() {
       _messages.add(_Message(isUser: false, text: ''));
       _loading = false;
@@ -179,10 +192,17 @@ class _AskLocalSheetState extends State<_AskLocalSheet> {
     await for (final chunk in stream) {
       if (!mounted) return;
       buffer.write(chunk);
+      if (buffer.length > _kAskLocalBufferMaxChars) {
+        final s = buffer.toString();
+        buffer.clear();
+        buffer.write(s.substring(s.length - _kAskLocalBufferTailChars));
+        truncated = true;
+      }
       final (displayText, ids) = parseListingsFromReply(buffer.toString());
+      final text = truncated ? '[Earlier content truncated.]\n\n$displayText' : displayText;
       setState(() {
         if (_messages.isNotEmpty && !_messages.last.isUser) {
-          _messages[_messages.length - 1] = _Message(isUser: false, text: displayText, listingIds: ids);
+          _messages[_messages.length - 1] = _Message(isUser: false, text: text, listingIds: ids);
         }
       });
       _scrollToEnd();
@@ -257,16 +277,34 @@ class _AskLocalSheetState extends State<_AskLocalSheet> {
                 borderRadius: BorderRadius.circular(8),
                 child: Padding(
                   padding: const EdgeInsets.all(12),
-                  child: Row(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      Icon(Icons.info_outline_rounded, color: AppTheme.specRed, size: 20),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          _error!,
-                          style: theme.textTheme.bodySmall?.copyWith(color: AppTheme.specRed),
-                        ),
+                      Row(
+                        children: [
+                          Icon(Icons.info_outline_rounded, color: AppTheme.specRed, size: 20),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              _error!,
+                              style: theme.textTheme.bodySmall?.copyWith(color: AppTheme.specRed),
+                            ),
+                          ),
+                        ],
                       ),
+                      if (_errorSubscriptionRequired) ...[
+                        const SizedBox(height: 12),
+                        FilledButton.icon(
+                          onPressed: () => presentSubscriptionPaywall(context),
+                          icon: const Icon(Icons.workspace_premium_rounded, size: 20),
+                          label: const Text('Get Cajun+ Membership'),
+                          style: FilledButton.styleFrom(
+                            backgroundColor: AppTheme.specGold,
+                            foregroundColor: AppTheme.specNavy,
+                          ),
+                        ),
+                      ],
                     ],
                   ),
                 ),

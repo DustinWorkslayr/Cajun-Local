@@ -128,7 +128,8 @@
 | price | numeric | No | 0 | One-time USD price |
 | max_impressions | integer | Yes | — | Nullable; for impression-capped packages |
 | description | text | Yes | — | |
-| stripe_price_id | text | Yes | NULL | Stripe Price ID (one-time payment) |
+| stripe_price_id | text | Yes | NULL | *(Legacy; unused for new ad payment.)* |
+| revenuecat_product_id | text | Yes | NULL | RevenueCat product ID for IAP (e.g. `homepage_feature_7_day`). When set, ad payment uses RevenueCat. |
 | is_active | boolean | No | true | |
 | sort_order | integer | No | 0 | |
 | created_at | timestamptz | No | `now()` | |

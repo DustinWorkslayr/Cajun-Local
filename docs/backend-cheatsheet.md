@@ -1,7 +1,7 @@
 # Cajun Local — Backend Architecture Cheat Sheet
 
 > Technical reference. No UI. No marketing. Backend logic and security only.
-> Last updated: 2026-02-21
+> Last updated: 2026-03-01
 >
 > **See also:**
 > - [Pricing, Subscriptions & Advertising Cheat Sheet](./pricing-and-ads-cheatsheet.md) — covers the 8 monetization tables.
@@ -10,15 +10,15 @@
 
 ---
 
-## 1. Database Overview (41 Tables — 27 core + 9 ads/monetization + 3 messaging/FAQs + 1 events + 1 RSVP)
+## 1. Database Overview (existing tables — repo migrations)
 
-**Schema alignment:** The live database may use different column names than the app expects. See [§1.1 Schema alignment (DB vs app)](#11-schema-alignment-db-vs-app) below.
+**Schema alignment:** See [§1.1 Schema alignment (DB vs app)](#11-schema-alignment-db-vs-app) for column naming used by the app vs DB.
 
 ### Core Business Tables
 
 | Table | Purpose | Key Fields | Relationships |
 |---|---|---|---|
-| `businesses` | Primary listing entity | name, status, category_id, city, state, latitude/longitude (or lat/lng), cover_image_url (or logo_url, banner_url) | → business_categories, ← business_managers, ← deals, ← reviews |
+| `businesses` | Primary listing entity | name, status, category_id, city, parish, state, address, latitude, longitude, owner_user_id, created_by, slug, logo_url, banner_url, contact_form_template | → business_categories, ← business_managers, ← deals, ← reviews. Owner: owner_user_id or created_by; RLS uses `is_business_manager()`. |
 | `business_categories` | Top-level classification | name (unique), icon, sort_order | ← businesses, ← subcategories, ← category_banners |
 | `subcategories` | Second-level classification | name, category_id | → business_categories |
 | `business_subcategories` | M:N join table | business_id, subcategory_id (unique pair) | → businesses, → subcategories |
@@ -27,6 +27,10 @@
 | `business_links` | External URLs (social, website) | url, label, business_id, sort_order | → businesses |
 | `menu_sections` | Menu category groupings | name, business_id, sort_order | → businesses, ← menu_items |
 | `menu_items` | Individual menu entries | name, price, section_id, is_available | → menu_sections |
+| `parishes` | Lookup: allowed parishes (filters, forms, ask-local) | id (text), name, sort_order, slug | Referenced by businesses.parish, business_parishes.parish_id |
+| `business_parishes` | M:N service area (businesses that serve multiple parishes) | business_id, parish_id (unique pair) | → businesses, → parishes. Primary parish stays on businesses.parish. |
+| `amenities` | Global amenity definitions (e.g. wifi, parking) | id, name, icon, sort_order, bucket (category) | Admin-managed; RLS public SELECT, admin ALL. |
+| `business_amenities` | M:N business ↔ amenities (tier-limited) | business_id, amenity_id (unique pair) | → businesses, → amenities. Enforced by `check_business_amenity_insert()` trigger; tier via `get_business_tier_for_amenities()`. |
 
 ### User & Identity Tables
 
@@ -60,10 +64,11 @@
 
 | Table | Purpose | Key Fields | Relationships |
 |---|---|---|---|
-| `blog_posts` | CMS content with moderation | slug (unique), title, content (or body), excerpt, cover_image_url, status, author_id | — |
+| `blog_posts` | CMS content with moderation | slug (unique), title, content, excerpt, cover_image_url, status, author_id | App uses `content` (no `body` column). |
 | `category_banners` | Hero images per category | category_id, image_url, status | → business_categories |
 | `notification_banners` | System-wide announcements | title, message, link, is_active, start/end_date | — |
-| `notifications` | Per-user notifications | user_id, title, type, is_read | — |
+| `notifications` | Per-user notifications | user_id, title, body, type, action_url, is_read, created_at. RLS: own SELECT/UPDATE/DELETE; admin INSERT/DELETE. | — |
+| `user_notification_preferences` | Per-user notification toggles | user_id, deals_enabled, listings_enabled, reminders_enabled, updated_at. RLS: own SELECT/INSERT/UPDATE. | → auth.users |
 | `email_templates` | Email content templates | name (unique), subject, body | — |
 | `email_queue` | Queue for DB-triggered emails | template_name, to_email, variables (jsonb), status (pending/sent/failed), sent_at, error_message | Triggers enqueue; `process-email-queue` edge function sends |
 | `audit_log` | Admin action logging | action, user_id, target_table, target_id, details | — |
@@ -82,19 +87,19 @@ Templated emails use `{{variable_name}}` in `subject` and `body`. The send-templ
 | `deal_approved` | `display_name`, `email`, `deal_title`, `business_name` | Admin approves deal |
 | `review_approved` | `display_name`, `email`, `business_name` | Admin approves review |
 | `image_approved` | `display_name`, `email`, `business_name` | Admin approves business image |
+| `team_invite` | `display_name`, `email`, `business_name`, `inviter_name` | Business owner adds user to business (team access) |
 
 ### 1.1 Schema alignment (DB vs app)
 
-The following differences exist between the **live database** schema (as exported from Supabase) and what the **app code** expects. Align either the DB or the app so they match.
-
-| Table | Live DB columns | App expects | Action |
+| Table | DB columns (migrations / live) | App usage | Notes |
 |---|---|---|---|
-| `blog_posts` | `content`, `excerpt`, `cover_image_url` | `body`, `cover_image_url` | Add a `body` column (and sync with `content`) or rename `content` → `body`; or change the app to use `content` and optionally `excerpt`. |
-| `businesses` | `latitude`, `longitude`, `cover_image_url` | `lat`, `lng`, `logo_url`, `banner_url` | Add columns `lat`, `lng`, `logo_url`, `banner_url` (repo migration `20260221200000` adds logo_url/banner_url); or add `latitude`/`longitude` and map in app. Ensure only one set is used consistently. |
+| `blog_posts` | `content`, `excerpt`, `cover_image_url` | Model and repo use `content` and `cover_image_url` | No `body` column in app; use `content` consistently. |
+| `businesses` | `latitude`, `longitude`, `logo_url`, `banner_url` (migration `20260221200000`); optional legacy `cover_image_url` | App uses `latitude`/`longitude`; prefers `logo_url`/`banner_url`, falls back to `cover_image_url` when reading; on update error retries with `cover_image_url` | Standardize on one set: prefer `logo_url`/`banner_url`; avoid dual writes to both `cover_image_url` and logo/banner. |
+| `business_subscriptions` | `plan_id` (FK business_plans), `plan_type` (free \| local_plus \| partner), `revenuecat_product_id` | `sync-business-subscription` and app set both; ask-local uses plan_id/tier | Keep `plan_id` and `plan_type` in sync (same migration backfill + sync function). |
 
-**Tables created only in repo migrations** (not in initial DB dump): `business_parishes`, `email_queue`. Ensure migrations `20260221000000_add_business_parishes.sql` and `20260221120000_email_queue_and_triggers.sql` have been applied.
+**Tables from repo migrations:** `business_parishes`, `email_queue`, `parishes`, `amenities`, `business_amenities`, `user_plans`, `user_subscriptions`; `businesses.owner_user_id`, `businesses.logo_url`, `businesses.banner_url`; `business_subscriptions.plan_type`, `business_subscriptions.revenuecat_product_id`. Ensure migrations are applied.
 
-**Extra table in live DB:** `ad_impressions_log` — documented in [Pricing & Ads Cheat Sheet](./pricing-and-ads-cheatsheet.md).
+**Extra table in live DB:** `ad_impressions_log` — see [Pricing & Ads Cheat Sheet](./pricing-and-ads-cheatsheet.md).
 
 ---
 
@@ -104,6 +109,7 @@ The following differences exist between the **live database** schema (as exporte
 
 | Role | Description |
 |---|---|
+| `super_admin` | Same as admin for RLS; `has_role(uid, 'admin')` is true. Use for top-level admins. |
 | `admin` | Full access to all tables. Can moderate, approve, delete. |
 | `business_owner` | Assigned when claim approved. Manages own businesses via `business_managers`. |
 | `user` | Default role. Can favorite, review, claim deals, enroll in punch cards. |
@@ -113,10 +119,17 @@ The following differences exist between the **live database** schema (as exporte
 | Function | Purpose |
 |---|---|
 | `has_role(user_id, role)` | Checks `user_roles` table. Used in all admin RLS policies. |
-| `is_business_manager(user_id, business_id)` | Checks `business_managers` table. Used in business-scoped RLS. |
+| `is_business_manager(user_id, business_id)` | True if user in business_managers OR is businesses.owner_user_id or created_by for that business. Used by RLS and triggers. (Subscription standardization migration.) |
+| `set_business_owner_from_creator()` | Trigger: default owner_user_id from created_by on INSERT. |
 | `validate_and_punch(token, punched_by)` | Server-side punch validation. Returns JSONB. |
 | `redeem_punch_card(card_id, redeemed_by)` | Server-side reward redemption. Returns JSONB. |
+| `list_punch_card_enrollments_for_business(business_id)` | Returns enrollments for a business (punch card redemption flow). |
 | `get_favorites_count(business_id)` | Returns total count of favorites for a business. SECURITY DEFINER so anon/authenticated can call for display. Migration: `20260221160000_favorites_count_rpc.sql`. |
+| `get_business_tier_for_deals(business_id)` | Returns tier from business_subscriptions + business_plans (free/basic/premium/enterprise). Used by deal/punch-card triggers. |
+| `get_business_tier_for_amenities(business_id)` | Same as get_business_tier_for_deals; used by amenities trigger. |
+| `max_amenities_for_tier(tier)`, `amenity_allowed_for_business(business_id, amenity_id)`, `check_business_amenity_insert()` | Amenity tier enforcement (trigger on business_amenities). |
+| `insert_amenity_admin(payload)`, `update_amenity_admin(amenity_id, payload)`, `update_amenities_sort_order(orders)`, `delete_amenity_admin(amenity_id)` | Admin RPCs for amenities (migration 20260228120000). |
+| `slugify(value)`, `next_unique_slug(table, base_slug, exclude_id)`, `set_*_slug()` (per table) | Slug generation; triggers on businesses, business_categories, subcategories, parishes, blog_posts. |
 | `handle_new_user()` | Trigger function: creates profile + assigns `user` role on signup. |
 | `update_updated_at_column()` | Trigger function: sets `updated_at = now()` on row update. |
 
@@ -134,7 +147,13 @@ The following differences exist between the **live database** schema (as exporte
 | `business_links` | **public** | admin OR manager | admin OR manager | admin OR manager |
 | `business_managers` | admin OR manager | existing manager (not self) | admin | admin |
 | `business_subcategories` | **public** | admin OR manager | admin OR manager | admin OR manager |
-| `businesses` | approved OR admin OR manager | own (created_by=uid) | admin OR manager | admin only |
+| `businesses` | approved OR admin OR manager (owner/created_by/is_business_manager) | own (created_by=uid) | admin OR manager (owner or is_business_manager) | admin only |
+| `parishes` | **public** | admin | admin | admin |
+| `business_parishes` | **public** | manager or admin | — | manager or admin |
+| `amenities` | **public** | admin | admin | admin |
+| `business_amenities` | **public** | manager or admin | — | manager or admin |
+| `user_plans` | **public** | admin | admin | admin |
+| `user_subscriptions` | own (user_id=uid) | own | own | — |
 | `category_banners` | approved OR admin | admin | admin | admin |
 | `deals` | approved OR admin OR manager | admin OR manager | admin OR manager | admin OR manager |
 | `email_templates` | admin | admin | admin | admin |
@@ -176,7 +195,7 @@ The following differences exist between the **live database** schema (as exporte
 | Enum | Values | Used By |
 |---|---|---|
 | `approval_status` | `pending`, `approved`, `rejected` | businesses, deals, reviews, blog_posts, business_images, category_banners, business_claims, business_events |
-| `app_role` | `admin`, `business_owner`, `user` | user_roles |
+| `app_role` | `super_admin`, `admin`, `business_owner`, `user` (stored as text in user_roles) | user_roles |
 | `deal_type` | `percentage`, `fixed`, `bogo`, `freebie`, `other`, `flash`, `member_only` (simple: first five; advanced: flash, member_only) | deals |
 | `day_of_week` | `monday` through `sunday` | business_hours |
 | `subscription_tier` | `free`, `basic`, `premium`, `enterprise` | business_plans |
@@ -314,16 +333,14 @@ Business owner scans QR
 
 1. User inserts into `business_claims` with `user_id = auth.uid()`
 2. Admin reviews in dashboard, sets `status = 'approved'`
-3. **⚠️ Manual steps required after approval (not automated):**
-   - Insert row into `business_managers (business_id, user_id, role='owner')`
-   - Insert `business_owner` role into `user_roles` if not present
+3. **Automated on approval:** Trigger `on_business_claim_approved` inserts into `business_managers` and sets `user_roles.role` to `business_owner`. Trigger `trigger_claim_approved_send_email` enqueues claim_approved email.
 
 ### Claim Approval Automation
 
 Trigger `on_business_claim_approved` on `business_claims` (AFTER UPDATE when `status` becomes `approved`):
 - Inserts into `business_managers` (business_id, user_id, role='owner')
 - Sets `user_roles.role` to `business_owner` (insert or update)
-- Send notification to user remains app-side (e.g. claim_approved email)
+- Trigger `trigger_claim_approved_send_email` enqueues claim_approved email to claimant
 
 ---
 
@@ -341,6 +358,9 @@ Trigger `on_business_claim_approved` on `business_claims` (AFTER UPDATE when `st
 | `business_links` | All rows |
 | `menu_sections` | All rows |
 | `menu_items` | All rows |
+| `parishes` | All rows |
+| `amenities` | All rows |
+| `business_amenities` | All rows |
 | `punch_card_programs` | All rows |
 | `blog_posts` | `status = 'approved'` only |
 | `business_images` | `status = 'approved'` only |
@@ -365,6 +385,9 @@ Trigger `on_business_claim_approved` on `business_claims` (AFTER UPDATE when `st
 | `email_templates` | Admin only |
 | `business_managers` | Admin or own business managers only |
 | `business_claims` | Own or admin only |
+| `business_parishes` | Public read for directory/filters; INSERT/DELETE manager or admin |
+| `user_plans` | Public read; INSERT/UPDATE/DELETE admin only |
+| `user_subscriptions` | Own user only (SELECT/UPDATE/INSERT) |
 | `reviews` (pending) | Own or admin only until approved |
 | `deals` (pending) | Manager or admin only until approved |
 
@@ -379,21 +402,34 @@ If WordPress or any external system reads Supabase data:
 
 ## 8. Edge Functions
 
-| Name | Purpose | Auth | Env Vars Required |
+| Name | Purpose | Auth | Env / Notes |
 |---|---|---|---|
-| `punch-token-generate` | Customer generates a one-time QR token for their punch card | User JWT | `SUPABASE_URL`, `SUPABASE_ANON_KEY` |
-| `punch-validate` | Business owner scans QR, validates and records punch | Business owner JWT | `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY` |
+| `ask-local` | AI chat over approved businesses; promotes top-tier/advertisers; streams OpenAI response. Uses business_subscriptions + business_plans for tier. | Optional (anon or JWT) | `OPENAI_API_KEY`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`. See docs/ask-local-cheatsheet.md. |
+| `sync-business-subscription` | RevenueCat/trusted payload → updates business_subscriptions (plan_id, plan_type, revenuecat_product_id, status, current_period_end). | Service role Bearer | `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`. |
+| `public-search` | Public search over businesses (e.g. by query, category). Selects id, name, tagline, logo_url, city, parish, category_id. | Anon ok | `SUPABASE_URL`, `SUPABASE_ANON_KEY`. |
+| `public-category-page` | Public category page data (businesses by category). | Anon ok | Same. |
+| `public-business` | Public single-business detail. | Anon ok | Same. |
+| `public-menu` | Public menu for a business. | Anon ok | Same. |
+| `directory-sync` | Syncs directory data (businesses: logo_url, banner_url, latitude, longitude, etc.). | Service/backend | `SUPABASE_URL`, keys as needed. |
+| `blog-sync` | Syncs blog content (e.g. cover_image_url). | Service/backend | Same. |
+| `send-email` / `send-templated-email` | Templated email from `email_templates`, `{{variables}}`, SendGrid. | JWT or app | `SUPABASE_SERVICE_ROLE_KEY`, `SENDGRID_API_KEY`; optional from name/email. |
+| `process-email-queue` | Processes `email_queue` (pending → send via SendGrid, mark sent/failed). Invoke by cron or manually. | No JWT (cron) | Same as send-email. |
+| `punch-token-generate` | Customer: one-time QR token for punch card. | User JWT | `SUPABASE_URL`, `SUPABASE_ANON_KEY`. |
+| `punch-validate` | Business owner scans QR; calls `validate_and_punch` RPC. | Business owner JWT | `SUPABASE_SERVICE_ROLE_KEY` for RPC. |
 | `stripe-checkout` | Creates Stripe Checkout Session for subscriptions/ads | User JWT | `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `STRIPE_SECRET_KEY` |
-| `check-subscription` | Checks user's active Stripe subscription status | User JWT | `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `STRIPE_SECRET_KEY` |
-| `customer-portal` | Creates Stripe Customer Portal session for billing management | User JWT | `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `STRIPE_SECRET_KEY` |
-| `send-email` | Sends a templated email: loads template from `email_templates`, substitutes `{{variables}}`, sends via SendGrid | User JWT or app | `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SENDGRID_API_KEY`; optional: `SENDGRID_FROM_EMAIL`, `SENDGRID_FROM_NAME` |
-| `send-templated-email` | Same as `send-email` (templated send via SendGrid) | User JWT or app | Same as `send-email` |
-| `process-email-queue` | Processes `email_queue`: sends pending rows via SendGrid, marks sent/failed. Invoke by cron or manually | No JWT (cron) | `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SENDGRID_API_KEY`; optional: `SENDGRID_FROM_EMAIL`, `SENDGRID_FROM_NAME` |
+| `check-subscription` | Checks user's active Stripe subscription status | User JWT | Same |
+| `customer-portal` | Creates Stripe Customer Portal session for billing management | User JWT | Same |
 
 ### Config
 
 ```toml
 # supabase/config.toml
+[functions.ask-local]
+verify_jwt = false   # Optional anon or JWT; validated in code
+
+[functions.sync-business-subscription]
+verify_jwt = false   # Service role Bearer validated in code
+
 [functions.punch-token-generate]
 verify_jwt = false   # JWT validated in code via getClaims()
 
@@ -417,6 +453,8 @@ verify_jwt = false   # JWT validated in code via getUser()
 | Trigger | Table | Function | Purpose |
 |---|---|---|---|
 | `on_auth_user_created` | `auth.users` | `handle_new_user()` | Creates profile + assigns `user` role |
+| `trigger_business_owner_default` | `businesses` | `set_business_owner_from_creator()` | BEFORE INSERT: set owner_user_id from created_by if null |
+| `trigger_*_slug` (per table) | business_categories, subcategories, businesses, parishes, blog_posts | `set_*_slug()` | BEFORE INSERT/UPDATE: set slug from name/title via next_unique_slug |
 | `update_*_updated_at` | 14 tables | `update_updated_at_column()` | Auto-sets `updated_at = now()` on UPDATE |
 | `trigger_on_business_claim_approved` | `business_claims` | `on_business_claim_approved()` | Adds manager + business_owner role on approval |
 | `trigger_claim_approved_send_email` | `business_claims` | `on_business_claim_approved_send_email()` | Enqueues `claim_approved` email to claimant |
@@ -438,7 +476,7 @@ Deal creation and punch-card creation are enforced by **business subscription ti
 - **Punch cards:** Only Local Partner can create rows in `punch_card_programs`; trigger blocks INSERT for Free/Local+.
 - **Downgrade:** When `business_subscriptions` is updated (e.g. plan_id or status), a trigger runs `pause_excess_deals_for_business(business_id)`, which sets `is_active = false` on excess active deals (oldest by id) so the business stays within the new tier’s limit.
 
-Helper functions (SECURITY DEFINER): `get_business_tier_for_deals(business_id)`, `check_deal_insert_allowed(...)`, `check_punch_card_insert_allowed(business_id)`, `pause_excess_deals_for_business(business_id)`.
+Helper functions (SECURITY DEFINER): `get_business_tier_for_deals(business_id)`, `check_deal_insert_allowed(...)`, `check_punch_card_insert_allowed(business_id)`, `pause_excess_deals_for_business(business_id)`. **Amenities:** Tier limits enforced by `get_business_tier_for_amenities()` and `check_business_amenity_insert()` trigger; admin manages global list via `insert_amenity_admin`, `update_amenity_admin`, `update_amenities_sort_order`, `delete_amenity_admin`.
 
 ### Tables with `updated_at` Trigger
 
@@ -454,11 +492,19 @@ blog_posts, business_categories, business_claims, business_events, businesses, d
 supabase/
   migrations/           # Versioned SQL migration files (timestamped)
   functions/
-    punch-token-generate/
-    punch-validate/
+    ask-local/
+    sync-business-subscription/
+    public-search/
+    public-category-page/
+    public-business/
+    public-menu/
+    directory-sync/
+    blog-sync/
     send-email/           # Templated email via SendGrid (email_templates)
     send-templated-email/ # Same as send-email
     process-email-queue/  # Sends pending email_queue rows via SendGrid
+    punch-token-generate/ # If present
+    punch-validate/       # If present
   config.toml             # Function config (verify_jwt settings)
 ```
 
@@ -545,7 +591,7 @@ RLS policies use `(storage.foldername(name))[1]` to extract the first path segme
 | Bucket | Used By | SELECT | INSERT / UPDATE / DELETE |
 |---|---|---|---|
 | `avatars` | `profiles.avatar_url` | Public | Own user (`folder[1] = auth.uid()`) |
-| `business-images` | `businesses.cover_image_url`, `business_images.url` | Public | Admin OR `is_business_manager(uid, folder[1])` |
+| `business-images` | `businesses.logo_url`, `businesses.banner_url`, `business_images.url` (legacy: `cover_image_url`) | Public | Admin OR `is_business_manager(uid, folder[1])` |
 | `blog-images` | `blog_posts.cover_image_url` | Public | Admin only |
 | `category-banners` | `category_banners.image_url` | Public | Admin only |
 | `ad-images` | `business_ads.image_url` | Public | Admin OR `is_business_manager(uid, folder[1])` |
@@ -558,8 +604,21 @@ RLS policies use `(storage.foldername(name))[1]` to extract the first path segme
 
 | Gap | Description | Priority |
 |---|---|---|
-| Claim approval automation | No trigger/function auto-creates `business_managers` entry or grants `business_owner` role on claim approval | High |
+| Claim approval automation | Done: trigger `on_business_claim_approved` + `trigger_claim_approved_send_email`. | — |
 | Deal redemption function | No `redeem_deal()` SECURITY DEFINER function for marking `used_at` | Medium |
 | Token cleanup | No scheduled job to purge expired/used `punch_tokens` | Low |
 | Review aggregation | No materialized view or cached average rating per business | Low |
 | Email queue cron | Run `process-email-queue` on a schedule (e.g. every 1–5 min) so enqueued approval emails are sent | Low |
+
+### 13.1 Admin full control — verify in your project
+
+These ensure admins have full control from the app. Migrations in this repo address the first; the rest depend on tables/policies created elsewhere (e.g. Dashboard).
+
+| Item | Status / action |
+|------|-----------------|
+| **user_roles RLS** | Fixed in `20260303120000_user_roles_rls.sql`: own SELECT; admin SELECT/INSERT/UPDATE/DELETE. `has_role(uid, 'admin')` now returns true for `super_admin` as well. |
+| **super_admin in app** | App treats `super_admin` as admin; Admin Users role dropdown and `UserRole` model include Super admin. |
+| **profiles** | Admin must be able to SELECT all (e.g. `listProfilesForAdmin()`). Ensure a policy allows `has_role(auth.uid(), 'admin')` for SELECT. |
+| **notifications** | Admin sends via INSERT; `listForAdmin()` needs admin to SELECT any user's rows. Add `notifications_select_admin` if admin should list/filter notifications. |
+| **form_submissions** | Admin Form Submissions screen lists and updates (admin_note). Ensure RLS allows admin SELECT all and UPDATE (manager can already for own business). |
+| **audit_log** | No migration in repo creates `audit_log`. If you use the Admin Audit Log screen, create the table and RLS (admin-only SELECT/INSERT). |

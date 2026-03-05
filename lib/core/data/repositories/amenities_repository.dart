@@ -35,6 +35,7 @@ class AmenitiesRepository {
   }
 
   /// All 50 amenities (e.g. for admin). Optional filter by bucket.
+  /// Uses direct select; for admin UI prefer [getAllForAdmin] so list always loads.
   Future<List<Amenity>> getAll({String? bucket}) async {
     final client = _client;
     if (client == null) return [];
@@ -42,6 +43,17 @@ class AmenitiesRepository {
     final list = bucket != null
         ? await query.eq('bucket', bucket).order('sort_order')
         : await query.order('bucket').order('sort_order');
+    return (list as List)
+        .map((e) => Amenity.fromJson(e as Map<String, dynamic>))
+        .toList();
+  }
+
+  /// Admin: all amenities via RPC (bypasses RLS). Use for admin amenities management screen.
+  Future<List<Amenity>> getAllForAdmin({String? bucket}) async {
+    final client = _client;
+    if (client == null) return [];
+    final params = bucket != null ? {'p_bucket': bucket} : <String, dynamic>{};
+    final list = await client.rpc('get_amenities_for_admin', params: params);
     return (list as List)
         .map((e) => Amenity.fromJson(e as Map<String, dynamic>))
         .toList();
@@ -141,5 +153,38 @@ class AmenitiesRepository {
       }
     }
     return map;
+  }
+
+  /// Admin: insert a new amenity via RPC (bypasses RLS; enforces admin in DB).
+  Future<void> insertAmenity(Map<String, dynamic> data) async {
+    final client = _client;
+    if (client == null) return;
+    await client.rpc('insert_amenity_admin', params: {'payload': data});
+  }
+
+  /// Admin: update an amenity by id via RPC. Only provided keys are updated.
+  Future<void> updateAmenity(String id, Map<String, dynamic> data) async {
+    final client = _client;
+    if (client == null) return;
+    if (data.isEmpty) return;
+    await client.rpc('update_amenity_admin', params: {
+      'amenity_id': id,
+      'payload': data,
+    });
+  }
+
+  /// Admin: batch update sort_order (e.g. after drag-and-drop). [orders] = list of {id, sort_order}.
+  Future<void> updateAmenitiesSortOrder(List<Map<String, dynamic>> orders) async {
+    final client = _client;
+    if (client == null) return;
+    if (orders.isEmpty) return;
+    await client.rpc('update_amenities_sort_order', params: {'orders': orders});
+  }
+
+  /// Admin: delete an amenity via RPC. Removes from business_amenities via FK cascade.
+  Future<void> deleteAmenity(String id) async {
+    final client = _client;
+    if (client == null) return;
+    await client.rpc('delete_amenity_admin', params: {'amenity_id': id});
   }
 }

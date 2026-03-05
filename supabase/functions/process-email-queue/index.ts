@@ -6,9 +6,15 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const SENDGRID_URL = "https://api.sendgrid.com/v3/mail/send";
 const BATCH_SIZE = 50;
+const SENDGRID_TIMEOUT_MS = 15_000;
 
-/** If Authorization header is present, verify the user is admin. Return true to proceed, false to deny. */
-async function ensureAdminOrCron(req: Request, supabaseUrl: string, serviceRoleKey: string): Promise<{ ok: boolean; status?: number; body?: string }> {
+/** If Authorization header is present, verify the user is admin. Return true to proceed, false to deny. Uses shared service-role client for role check. */
+async function ensureAdminOrCron(
+  req: Request,
+  supabaseUrl: string,
+  anonKey: string | null,
+  supabase: ReturnType<typeof createClient>
+): Promise<{ ok: boolean; status?: number; body?: string }> {
   const authHeader = req.headers.get("Authorization");
   if (!authHeader || !authHeader.startsWith("Bearer ")) {
     return { ok: true }; // No JWT = cron, allow
@@ -16,7 +22,6 @@ async function ensureAdminOrCron(req: Request, supabaseUrl: string, serviceRoleK
   const token = authHeader.slice(7).trim();
   if (!token) return { ok: true };
 
-  const anonKey = Deno.env.get("SUPABASE_ANON_KEY");
   if (!anonKey) {
     return { ok: false, status: 503, body: JSON.stringify({ error: "SUPABASE_ANON_KEY not set" }) };
   }
@@ -26,7 +31,6 @@ async function ensureAdminOrCron(req: Request, supabaseUrl: string, serviceRoleK
     return { ok: false, status: 403, body: JSON.stringify({ error: "Invalid or expired token" }) };
   }
 
-  const supabase = createClient(supabaseUrl, serviceRoleKey);
   const { data: roleRow } = await supabase
     .from("user_roles")
     .select("role")
@@ -62,6 +66,7 @@ Deno.serve(async (req) => {
   const fromName = Deno.env.get("SENDGRID_FROM_NAME") ?? "Cajun Local";
   const supabaseUrl = Deno.env.get("SUPABASE_URL");
   const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  const anonKey = Deno.env.get("SUPABASE_ANON_KEY") ?? null;
 
   if (!sendgridKey || !supabaseUrl || !serviceRoleKey) {
     return new Response(
@@ -70,15 +75,14 @@ Deno.serve(async (req) => {
     );
   }
 
-  const authResult = await ensureAdminOrCron(req, supabaseUrl, serviceRoleKey);
+  const supabase = createClient(supabaseUrl, serviceRoleKey);
+  const authResult = await ensureAdminOrCron(req, supabaseUrl, anonKey, supabase);
   if (!authResult.ok) {
     return new Response(authResult.body ?? "Forbidden", {
       status: authResult.status ?? 403,
       headers: { "Content-Type": "application/json" },
     });
   }
-
-  const supabase = createClient(supabaseUrl, serviceRoleKey);
 
   const { data: rows, error: fetchError } = await supabase
     .from("email_queue")
@@ -103,36 +107,47 @@ Deno.serve(async (req) => {
   }
 
   const variables = rows as { id: string; template_name: string; to_email: string; variables: Record<string, string> }[];
+  const templateNames = [...new Set(variables.map((r) => r.template_name))];
+  const { data: templateRows, error: templatesErr } = await supabase
+    .from("email_templates")
+    .select("name, subject, body")
+    .in("name", templateNames);
+  if (templatesErr) {
+    console.error("process-email-queue templates fetch error:", templatesErr.message);
+    return new Response(
+      JSON.stringify({ error: "Failed to load templates" }),
+      { status: 500, headers: { "Content-Type": "application/json" } }
+    );
+  }
+  const templateMap = new Map<string, { subject: string; body: string }>();
+  for (const t of templateRows ?? []) {
+    const row = t as { name: string; subject: string; body: string };
+    templateMap.set(row.name, { subject: row.subject, body: row.body });
+  }
+
   let sent = 0;
   let failed = 0;
 
   for (const row of variables) {
     const vars = (row.variables as Record<string, string>) ?? {};
-    let subject = "";
-    let html = "";
+    const templateRow = templateMap.get(row.template_name);
 
-    const { data: templateRow, error: templateError } = await supabase
-      .from("email_templates")
-      .select("subject, body")
-      .eq("name", row.template_name)
-      .maybeSingle();
-
-    if (templateError || !templateRow) {
+    if (!templateRow) {
       await supabase
         .from("email_queue")
         .update({
           status: "failed",
           sent_at: new Date().toISOString(),
-          error_message: templateError?.message ?? `Template '${row.template_name}' not found`,
+          error_message: `Template '${row.template_name}' not found`,
         })
         .eq("id", row.id);
       failed++;
       continue;
     }
 
-    subject = substitute(templateRow.subject as string, vars);
-    const bodyText = substitute(templateRow.body as string, vars);
-    html = `<div style="font-family: sans-serif; line-height: 1.5;">${bodyText.split("\n").map((line) => escapeHtml(line)).join("<br>\n")}</div>`;
+    const subject = substitute(templateRow.subject, vars);
+    const bodyText = substitute(templateRow.body, vars);
+    const html = `<div style="font-family: sans-serif; line-height: 1.5;">${bodyText.split("\n").map((line) => escapeHtml(line)).join("<br>\n")}</div>`;
 
     const sendgridBody = {
       personalizations: [{ to: [{ email: row.to_email }] }],
@@ -141,14 +156,22 @@ Deno.serve(async (req) => {
       content: [{ type: "text/html", value: html }],
     };
 
-    const sendgridRes = await fetch(SENDGRID_URL, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${sendgridKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(sendgridBody),
-    });
+    const ac = new AbortController();
+    const timeoutId = setTimeout(() => ac.abort(), SENDGRID_TIMEOUT_MS);
+    let sendgridRes: Response;
+    try {
+      sendgridRes = await fetch(SENDGRID_URL, {
+        method: "POST",
+        signal: ac.signal,
+        headers: {
+          Authorization: `Bearer ${sendgridKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(sendgridBody),
+      });
+    } finally {
+      clearTimeout(timeoutId);
+    }
 
     if (sendgridRes.ok) {
       await supabase

@@ -27,14 +27,30 @@ class _AdminBusinessesScreenState extends State<AdminBusinessesScreen> {
   String _query = '';
   int _pageIndex = 0;
   int _pageSize = defaultAdminPageSize;
-  List<Business> _all = [];
+  List<Business> _page = [];
+  int _totalCount = 0;
   bool _loading = true;
   String? _error;
 
   @override
+  void didUpdateWidget(AdminBusinessesScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.status != widget.status) {
+      _pageIndex = 0;
+      _load();
+    }
+  }
+
+  @override
   void initState() {
     super.initState();
-    _searchController.addListener(() => setState(() => _query = _searchController.text.trim()));
+    _searchController.addListener(() {
+      setState(() {
+        _query = _searchController.text.trim();
+        _pageIndex = 0;
+      });
+      _load();
+    });
     _load();
   }
 
@@ -50,24 +66,34 @@ class _AdminBusinessesScreenState extends State<AdminBusinessesScreen> {
       _error = null;
     });
     final repo = BusinessRepository();
-    final list = await repo.listForAdmin(status: widget.status);
-    if (mounted) {
-      setState(() {
-        _all = list;
-        _loading = false;
-      });
+    try {
+      final list = await repo.listForAdmin(
+        status: widget.status,
+        search: _query.isEmpty ? null : _query,
+        limit: _pageSize,
+        offset: _pageIndex * _pageSize,
+      );
+      final total = await repo.listForAdminCount(
+        status: widget.status,
+        search: _query.isEmpty ? null : _query,
+      );
+      if (mounted) {
+        setState(() {
+          _page = list;
+          _totalCount = total;
+          _loading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _page = [];
+          _totalCount = 0;
+          _loading = false;
+          _error = e.toString();
+        });
+      }
     }
-  }
-
-  List<Business> get _filtered {
-    if (_query.isEmpty) return _all;
-    final q = _query.toLowerCase();
-    return _all.where((b) {
-      return b.name.toLowerCase().contains(q) ||
-          (b.city?.toLowerCase().contains(q) ?? false) ||
-          (b.state?.toLowerCase().contains(q) ?? false) ||
-          (b.address?.toLowerCase().contains(q) ?? false);
-    }).toList();
   }
 
   void _openAddBusiness() {
@@ -100,9 +126,8 @@ class _AdminBusinessesScreenState extends State<AdminBusinessesScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final padding = AppLayout.horizontalPadding(context);
-    final filtered = _filtered;
-    final total = filtered.length;
-    final pageItems = paginate(filtered, _pageIndex, _pageSize);
+    final total = _totalCount;
+    final pageItems = _page;
 
     Widget body = Container(
       color: AppTheme.specOffWhite,
@@ -152,7 +177,10 @@ class _AdminBusinessesScreenState extends State<AdminBusinessesScreen> {
                   AdminSearchBar(
                     controller: _searchController,
                     hint: 'Search by name, city, or address…',
-                    onChanged: (_) => setState(() => _pageIndex = 0),
+                    onChanged: (_) {
+                      setState(() => _pageIndex = 0);
+                      _load();
+                    },
                   ),
                   if (widget.status != null) ...[
                     const SizedBox(height: 8),
@@ -175,7 +203,7 @@ class _AdminBusinessesScreenState extends State<AdminBusinessesScreen> {
                 child: Text(_error!, style: theme.textTheme.bodyLarge?.copyWith(color: theme.colorScheme.error)),
               ),
             )
-          else if (filtered.isEmpty)
+          else if (pageItems.isEmpty)
             Expanded(
               child: Center(
                 child: Column(
@@ -237,10 +265,14 @@ class _AdminBusinessesScreenState extends State<AdminBusinessesScreen> {
               totalCount: total,
               pageIndex: _pageIndex,
               pageSize: _pageSize,
-              onPageChanged: (p) => setState(() => _pageIndex = p),
+              onPageChanged: (p) => setState(() {
+                _pageIndex = p;
+                _load();
+              }),
               onPageSizeChanged: (s) => setState(() {
                 _pageSize = s;
                 _pageIndex = 0;
+                _load();
               }),
             ),
           ],

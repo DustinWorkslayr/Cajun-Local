@@ -90,14 +90,23 @@ class MockSpot {
     required this.name,
     required this.subtitle,
     this.categoryId,
+    this.categoryName,
+    this.subcategoryName,
     this.logoUrl,
+    this.rating,
   });
   final String id;
   final String name;
   final String subtitle;
   final String? categoryId;
+  /// Display name for category (e.g. "Food & Dining") for card subtitle.
+  final String? categoryName;
+  /// Display name for subcategory (e.g. "Cajun") when available.
+  final String? subcategoryName;
   /// Business logo URL for featured/popular card image.
   final String? logoUrl;
+  /// Average rating (e.g. from reviews). Null when not available.
+  final double? rating;
 }
 
 /// Coupon or deal offered by a business. Only active deals shown on Deals page.
@@ -337,7 +346,7 @@ abstract class MockData {
     MockCategory(id: 'outdoors', name: 'Outdoors', iconName: 'terrain', count: 8),
   ];
 
-  /// Allowed parishes for the app (businesses can only be in these; filters use this list).
+  /// Legacy/reference only. Do not use for loading parish lists — use [ListingDataSource.getParishes] or [ParishRepository.listParishes] (reads from DB).
   /// Order: Acadia, Evangeline, Iberia, Jefferson Davis, Lafayette, St. Landry, St. Martin, St. Mary, Vermilion.
   static const List<MockParish> parishes = [
     MockParish(id: 'acadia', name: 'Acadia'),
@@ -351,14 +360,37 @@ abstract class MockData {
     MockParish(id: 'vermilion', name: 'Vermilion'),
   ];
 
-  /// Parish IDs that are allowed when adding a business (same as parishes).
+  /// Legacy/reference only. Do not use for forms — load from DB via getParishes().
   static List<String> get allowedParishIds =>
       parishes.map((p) => p.id).toList();
 
   static const List<MockSpot> featuredSpots = [
-    MockSpot(id: '1', name: 'Bayou Bites', subtitle: 'Authentic gumbo & po\'boys', categoryId: 'food'),
-    MockSpot(id: '2', name: 'Zydeco Hall', subtitle: 'Live music & dancing', categoryId: 'music'),
-    MockSpot(id: '3', name: 'Cajun Spice Market', subtitle: 'Local spices & crafts', categoryId: 'shops'),
+    MockSpot(
+      id: '1',
+      name: 'Bayou Bites',
+      subtitle: 'Authentic gumbo & po\'boys',
+      categoryId: 'food',
+      categoryName: 'Food & Dining',
+      subcategoryName: 'Cajun',
+      rating: 4.2,
+    ),
+    MockSpot(
+      id: '2',
+      name: 'Zydeco Hall',
+      subtitle: 'Live music & dancing',
+      categoryId: 'music',
+      categoryName: 'Music & Events',
+      subcategoryName: 'Zydeco',
+      rating: 4.5,
+    ),
+    MockSpot(
+      id: '3',
+      name: 'Cajun Spice Market',
+      subtitle: 'Local spices & crafts',
+      categoryId: 'shops',
+      categoryName: 'Local Shops',
+      rating: 4.0,
+    ),
   ];
 
   static const List<MockListing> listings = [
@@ -466,7 +498,9 @@ abstract class MockData {
           return false;
         }
       }
-      if (filters.categoryId != null && l.categoryId != filters.categoryId) {
+      if (filters.categoryIds != null && filters.categoryIds!.isNotEmpty) {
+        if (!filters.categoryIds!.contains(l.categoryId)) return false;
+      } else if (filters.categoryId != null && l.categoryId != filters.categoryId) {
         return false;
       }
       if (filters.subcategoryIds.isNotEmpty &&

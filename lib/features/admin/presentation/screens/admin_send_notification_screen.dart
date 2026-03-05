@@ -19,7 +19,9 @@ class AdminSendNotificationScreen extends StatefulWidget {
 class _AdminSendNotificationScreenState extends State<AdminSendNotificationScreen> {
   final _formKey = GlobalKey<FormState>();
   final _titleController = TextEditingController();
+  final _bodyController = TextEditingController();
   final _typeController = TextEditingController();
+  final _actionUrlController = TextEditingController();
   List<Profile> _profiles = [];
   Profile? _selectedProfile;
   bool _loading = true;
@@ -48,7 +50,9 @@ class _AdminSendNotificationScreenState extends State<AdminSendNotificationScree
   @override
   void dispose() {
     _titleController.dispose();
+    _bodyController.dispose();
     _typeController.dispose();
+    _actionUrlController.dispose();
     super.dispose();
   }
 
@@ -69,7 +73,9 @@ class _AdminSendNotificationScreenState extends State<AdminSendNotificationScree
       await NotificationsRepository().insert(
         userId: _selectedProfile!.userId,
         title: _titleController.text.trim(),
+        body: _bodyController.text.trim().isEmpty ? null : _bodyController.text.trim(),
         type: _typeController.text.trim().isEmpty ? null : _typeController.text.trim(),
+        actionUrl: _actionUrlController.text.trim().isEmpty ? null : _actionUrlController.text.trim(),
       );
       if (mounted) {
         setState(() {
@@ -78,7 +84,9 @@ class _AdminSendNotificationScreenState extends State<AdminSendNotificationScree
           _message = 'Notification sent to ${_selectedProfile!.displayName ?? _selectedProfile!.email ?? _selectedProfile!.userId}.';
         });
         _titleController.clear();
+        _bodyController.clear();
         _typeController.clear();
+        _actionUrlController.clear();
       }
     } catch (e) {
       if (mounted) {
@@ -134,10 +142,22 @@ class _AdminSendNotificationScreenState extends State<AdminSendNotificationScree
                 border: OutlineInputBorder(),
                 filled: true,
                 fillColor: AppTheme.specWhite,
-                hintText: 'Notification message',
+                hintText: 'Short headline',
               ),
               maxLines: 2,
               validator: (v) => (v == null || v.trim().isEmpty) ? 'Required' : null,
+            ),
+            const SizedBox(height: 16),
+            TextFormField(
+              controller: _bodyController,
+              decoration: const InputDecoration(
+                labelText: 'Body (optional)',
+                border: OutlineInputBorder(),
+                filled: true,
+                fillColor: AppTheme.specWhite,
+                hintText: 'Longer description for the notification',
+              ),
+              maxLines: 3,
             ),
             const SizedBox(height: 16),
             TextFormField(
@@ -147,8 +167,20 @@ class _AdminSendNotificationScreenState extends State<AdminSendNotificationScree
                 border: OutlineInputBorder(),
                 filled: true,
                 fillColor: AppTheme.specWhite,
-                hintText: 'e.g. deal, reminder, system',
+                hintText: 'e.g. deal, reminder, listing, system',
               ),
+            ),
+            const SizedBox(height: 16),
+            TextFormField(
+              controller: _actionUrlController,
+              decoration: const InputDecoration(
+                labelText: 'Action URL (optional)',
+                border: OutlineInputBorder(),
+                filled: true,
+                fillColor: AppTheme.specWhite,
+                hintText: 'https://... or app deep link',
+              ),
+              keyboardType: TextInputType.url,
             ),
             if (_message != null) ...[
               const SizedBox(height: 16),
