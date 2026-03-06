@@ -1,0 +1,77 @@
+PODS:
+  - app_links (6.4.1):
+    - FlutterMacOS
+  - file_picker (0.0.1):
+    - FlutterMacOS
+  - FlutterMacOS (1.0.0)
+  - mobile_scanner (6.0.2):
+    - FlutterMacOS
+  - purchases_flutter (9.13.1):
+    - FlutterMacOS
+    - PurchasesHybridCommon (= 17.42.0)
+  - PurchasesHybridCommon (17.42.0):
+    - RevenueCat (= 5.60.0)
+  - quill_native_bridge_macos (0.0.1):
+    - FlutterMacOS
+  - RevenueCat (5.60.0)
+  - shared_preferences_foundation (0.0.1):
+    - Flutter
+    - FlutterMacOS
+  - sqflite_darwin (0.0.4):
+    - Flutter
+    - FlutterMacOS
+  - url_launcher_macos (0.0.1):
+    - FlutterMacOS
+
+DEPENDENCIES:
+  - app_links (from `Flutter/ephemeral/.symlinks/plugins/app_links/macos`)
+  - file_picker (from `Flutter/ephemeral/.symlinks/plugins/file_picker/macos`)
+  - FlutterMacOS (from `Flutter/ephemeral`)
+  - mobile_scanner (from `Flutter/ephemeral/.symlinks/plugins/mobile_scanner/macos`)
+  - purchases_flutter (from `Flutter/ephemeral/.symlinks/plugins/purchases_flutter/macos`)
+  - quill_native_bridge_macos (from `Flutter/ephemeral/.symlinks/plugins/quill_native_bridge_macos/macos`)
+  - shared_preferences_foundation (from `Flutter/ephemeral/.symlinks/plugins/shared_preferences_foundation/darwin`)
+  - sqflite_darwin (from `Flutter/ephemeral/.symlinks/plugins/sqflite_darwin/darwin`)
+  - url_launcher_macos (from `Flutter/ephemeral/.symlinks/plugins/url_launcher_macos/macos`)
+
+SPEC REPOS:
+  trunk:
+    - PurchasesHybridCommon
+    - RevenueCat
+
+EXTERNAL SOURCES:
+  app_links:
+    :path: Flutter/ephemeral/.symlinks/plugins/app_links/macos
+  file_picker:
+    :path: Flutter/ephemeral/.symlinks/plugins/file_picker/macos
+  FlutterMacOS:
+    :path: Flutter/ephemeral
+  mobile_scanner:
+    :path: Flutter/ephemeral/.symlinks/plugins/mobile_scanner/macos
+  purchases_flutter:
+    :path: Flutter/ephemeral/.symlinks/plugins/purchases_flutter/macos
+  quill_native_bridge_macos:
+    :path: Flutter/ephemeral/.symlinks/plugins/quill_native_bridge_macos/macos
+  shared_preferences_foundation:
+    :path: Flutter/ephemeral/.symlinks/plugins/shared_preferences_foundation/darwin
+  sqflite_darwin:
+    :path: Flutter/ephemeral/.symlinks/plugins/sqflite_darwin/darwin
+  url_launcher_macos:
+    :path: Flutter/ephemeral/.symlinks/plugins/url_launcher_macos/macos
+
+SPEC CHECKSUMS:
+  app_links: 05a6ec2341985eb05e9f97dc63f5837c39895c3f
+  file_picker: 7584aae6fa07a041af2b36a2655122d42f578c1a
+  FlutterMacOS: d0db08ddef1a9af05a5ec4b724367152bb0500b1
+  mobile_scanner: 0e365ed56cad24f28c0fd858ca04edefb40dfac3
+  purchases_flutter: 689a88d4fbb10e688adf55b751c7fc0fdf77d051
+  PurchasesHybridCommon: c0a62a03bd15e40af1c3cd111f5f4f50cac751c7
+  quill_native_bridge_macos: 2b005cb56902bb740e0cd9620aa399dfac6b4882
+  RevenueCat: 88010b2d5fc8fb7405d2e11dacd65ac74c9d21d1
+  shared_preferences_foundation: 7036424c3d8ec98dfe75ff1667cb0cd531ec82bb
+  sqflite_darwin: 20b2a3a3b70e43edae938624ce550a3cbf66a3d0
+  url_launcher_macos: f87a979182d112f911de6820aefddaf56ee9fbfd
+
+PODFILE CHECKSUM: 54d867c82ac51cbd61b565781b9fada492027009
+
+COCOAPODS: 1.16.2
