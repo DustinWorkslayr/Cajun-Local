@@ -39,6 +39,8 @@ class UserNotificationPreferencesRepository {
         'deals_enabled': prefs.dealsEnabled,
         'listings_enabled': prefs.listingsEnabled,
         'reminders_enabled': prefs.remindersEnabled,
+        'news_enabled': prefs.newsEnabled,
+        'events_enabled': prefs.eventsEnabled,
         'updated_at': DateTime.now().toIso8601String(),
       }, onConflict: 'user_id');
     } on PostgrestException catch (e) {
@@ -59,6 +61,8 @@ class UserNotificationPreferencesRepository {
         'deals_enabled': prefs.dealsEnabled,
         'listings_enabled': prefs.listingsEnabled,
         'reminders_enabled': prefs.remindersEnabled,
+        'news_enabled': prefs.newsEnabled,
+        'events_enabled': prefs.eventsEnabled,
         'updated_at': DateTime.now().toIso8601String(),
       }, onConflict: 'user_id');
     } on PostgrestException catch (e) {
@@ -75,16 +79,22 @@ class UserNotificationPreferences {
     required this.dealsEnabled,
     required this.listingsEnabled,
     required this.remindersEnabled,
+    required this.newsEnabled,
+    required this.eventsEnabled,
   });
 
   final bool dealsEnabled;
   final bool listingsEnabled;
   final bool remindersEnabled;
+  final bool newsEnabled;
+  final bool eventsEnabled;
 
   static UserNotificationPreferences defaults() => const UserNotificationPreferences(
         dealsEnabled: true,
         listingsEnabled: true,
         remindersEnabled: false,
+        newsEnabled: true,
+        eventsEnabled: true,
       );
 
   factory UserNotificationPreferences.fromJson(Map<String, dynamic> json) {
@@ -92,6 +102,8 @@ class UserNotificationPreferences {
       dealsEnabled: json['deals_enabled'] as bool? ?? true,
       listingsEnabled: json['listings_enabled'] as bool? ?? true,
       remindersEnabled: json['reminders_enabled'] as bool? ?? false,
+      newsEnabled: json['news_enabled'] as bool? ?? true,
+      eventsEnabled: json['events_enabled'] as bool? ?? true,
     );
   }
 }

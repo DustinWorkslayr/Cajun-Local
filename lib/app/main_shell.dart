@@ -21,6 +21,7 @@ import 'package:my_app/features/notifications/presentation/screens/notifications
 import 'package:my_app/features/profile/presentation/screens/profile_screen.dart';
 import 'package:my_app/features/news/presentation/screens/news_screen.dart';
 import 'package:my_app/features/news/presentation/screens/news_post_detail_screen.dart';
+import 'package:my_app/features/listing/presentation/screens/listing_detail_screen.dart';
 import 'package:my_app/features/choose_for_me/presentation/screens/choose_for_me_screen.dart';
 import 'package:my_app/shared/widgets/app_buttons.dart';
 import 'package:my_app/shared/widgets/app_logo.dart';
@@ -227,6 +228,7 @@ class _MainShellState extends State<MainShell> with SingleTickerProviderStateMix
           : ProfileScreen(
               onMyListings: () => setState(() => _profileShowListings = true),
               onNavigateToHome: () => setState(() => _currentIndex = 0),
+              onHandleNotificationActionUrl: (url) => _handleNotificationActionUrl(context, url),
             ),
     ];
   }
@@ -311,6 +313,42 @@ class _MainShellState extends State<MainShell> with SingleTickerProviderStateMix
     });
   }
 
+  /// Handles in-app action URLs from notifications (app://news/id, app://listings/id).
+  /// Returns true if the URL was handled (caller should not launch externally).
+  bool _handleNotificationActionUrl(BuildContext shellContext, String actionUrl) {
+    final uri = Uri.tryParse(actionUrl);
+    if (uri == null) return false;
+    final pathSegments = uri.pathSegments;
+    if (pathSegments.isEmpty) return false;
+    final pathOnly = uri.path;
+    // app://news/id -> host=news, pathSegments=[id]; /news/id -> pathSegments=[news, id]
+    if ((uri.scheme == 'app' && uri.host == 'news') || pathOnly.startsWith('/news/')) {
+      final postId = pathSegments.length >= 2 && pathSegments[0] == 'news' ? pathSegments[1] : pathSegments.last;
+      if (postId.isEmpty) return false;
+      Navigator.of(shellContext).pop();
+      setState(() => _currentIndex = 1);
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _newsNavigatorKey.currentState?.push(
+          MaterialPageRoute<void>(builder: (_) => NewsPostDetailScreen(postId: postId)),
+        );
+      });
+      return true;
+    }
+    if ((uri.scheme == 'app' && uri.host == 'listings') || pathOnly.startsWith('/listings/')) {
+      final listingId = pathSegments.length >= 2 && pathSegments[0] == 'listings' ? pathSegments[1] : pathSegments.last;
+      if (listingId.isEmpty) return false;
+      Navigator.of(shellContext).pop();
+      setState(() => _currentIndex = 2);
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        Navigator.of(shellContext).push(
+          MaterialPageRoute<void>(builder: (_) => ListingDetailScreen(listingId: listingId)),
+        );
+      });
+      return true;
+    }
+    return false;
+  }
+
   @override
   Widget build(BuildContext context) {
     if (!_parishOnboardingChecked) {
@@ -372,7 +410,11 @@ class _MainShellState extends State<MainShell> with SingleTickerProviderStateMix
             WidgetsBinding.instance.addPostFrameCallback((_) async {
               final scope = AppDataScope.of(context);
               await Navigator.of(context).push(
-                MaterialPageRoute<void>(builder: (_) => const NotificationsScreen()),
+                MaterialPageRoute<void>(
+                  builder: (_) => NotificationsScreen(
+                    onHandleActionUrl: (url) => _handleNotificationActionUrl(context, url),
+                  ),
+                ),
               );
               if (!mounted) return;
               final uid = scope.authRepository.currentUserId;
@@ -422,7 +464,11 @@ class _MainShellState extends State<MainShell> with SingleTickerProviderStateMix
           onOpenNotifications: () {
             _closeMenu();
             Navigator.of(context).push(
-              MaterialPageRoute<void>(builder: (_) => const NotificationsScreen()),
+              MaterialPageRoute<void>(
+                builder: (_) => NotificationsScreen(
+                  onHandleActionUrl: (url) => _handleNotificationActionUrl(context, url),
+                ),
+              ),
             );
           },
           onOpenMessages: _openMessages,

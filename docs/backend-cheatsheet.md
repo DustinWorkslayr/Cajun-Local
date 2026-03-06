@@ -67,8 +67,8 @@
 | `blog_posts` | CMS content with moderation | slug (unique), title, content, excerpt, cover_image_url, status, author_id | App uses `content` (no `body` column). |
 | `category_banners` | Hero images per category | category_id, image_url, status | → business_categories |
 | `notification_banners` | System-wide announcements | title, message, link, is_active, start/end_date | — |
-| `notifications` | Per-user notifications | user_id, title, body, type, action_url, is_read, created_at. RLS: own SELECT/UPDATE/DELETE; admin INSERT/DELETE. | — |
-| `user_notification_preferences` | Per-user notification toggles | user_id, deals_enabled, listings_enabled, reminders_enabled, updated_at. RLS: own SELECT/INSERT/UPDATE. | → auth.users |
+| `notifications` | Per-user notifications | user_id, title, body, type, action_url, is_read, created_at. RLS: own SELECT/UPDATE/DELETE; admin INSERT/DELETE. Types: deal, event, loyalty, news, reminder, listing, system, team_invite. Triggers create rows on blog_posts/deals/business_events/punch_card_programs and business_managers. | — |
+| `user_notification_preferences` | Per-user notification toggles | user_id, deals_enabled, listings_enabled, reminders_enabled, news_enabled, events_enabled, updated_at. RLS: own SELECT/INSERT/UPDATE. | → auth.users |
 | `email_templates` | Email content templates | name (unique), subject, body | — |
 | `email_queue` | Queue for DB-triggered emails | template_name, to_email, variables (jsonb), status (pending/sent/failed), sent_at, error_message | Triggers enqueue; `process-email-queue` edge function sends |
 | `audit_log` | Admin action logging | action, user_id, target_table, target_id, details | — |
@@ -465,6 +465,13 @@ verify_jwt = false   # JWT validated in code via getUser()
 | `trigger_deal_tier_check` | `deals` | `on_deal_before_insert_update_tier_check()` | Enforces business tier: max active deals and advanced deal types (flash, member_only) only for Local Partner |
 | `trigger_punch_card_tier_check` | `punch_card_programs` | `on_punch_card_before_insert_tier_check()` | Allows INSERT only when business has Local Partner tier |
 | `trigger_business_subscription_pause_excess_deals` | `business_subscriptions` | `on_business_subscription_change_pause_excess_deals()` | On plan/status change: pauses excess active deals when tier downgrade would exceed new limit |
+| `trigger_business_manager_added_notify` | `business_managers` | `on_business_manager_added_notify()` | AFTER INSERT: in-app notification (team_invite) + team_invite email to invitee |
+| `trigger_blog_post_approved_notify` | `blog_posts` | `on_blog_post_approved_notify()` | AFTER UPDATE when status → approved: notify users with news_enabled (cap 1000) |
+| `trigger_deal_approved_notify_favoriters` | `deals` | `on_deal_approved_notify_favoriters()` | AFTER UPDATE when status → approved: notify favoriters of business who have deals_enabled (cap 500) |
+| `trigger_business_event_approved_notify_favoriters` | `business_events` | `on_business_event_approved_notify_favoriters()` | AFTER UPDATE when status → approved: notify favoriters who have events_enabled (cap 500) |
+| `trigger_punch_card_program_insert_notify_favoriters` | `punch_card_programs` | `on_punch_card_program_insert_notify_favoriters()` | AFTER INSERT when is_active = true: notify favoriters who have deals_enabled, type loyalty (cap 500) |
+
+Helpers (SECURITY DEFINER): `notify_team_invite()`, `notify_favoriters_deals()`, `notify_favoriters_events()`, `notify_news_subscribers()`. Action URLs use app scheme (e.g. `app://news/{id}`, `app://listings/{id}`) for in-app deep links.
 
 ### Business subscription and deals
 

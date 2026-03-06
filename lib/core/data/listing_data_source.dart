@@ -295,7 +295,7 @@ class ListingDataSource {
 
 
   /// Filter listings (search, category, subcategory, parish, amenities, dealOnly). Listing with no parish set matches any parish filter.
-  /// When filters specify a single category (and optionally parishes), fetches from the DB with those filters so Choose for me and similar flows see matching businesses.
+  /// When filters specify a single category, fetches by category only (no parish at DB) then applies parish/subcategory in memory so Choose for me matches Explore.
   Future<List<MockListing>> filterListings(ListingFilters filters, {bool openNowOnly = false}) async {
     if (!useSupabase) return Future.error(StateError(kNotConfiguredMessage));
     final String? singleCategoryId = filters.categoryIds != null && filters.categoryIds!.length == 1
@@ -304,7 +304,7 @@ class ListingDataSource {
     final List<MockListing> list = singleCategoryId != null
         ? await _getListingsForCategoryAndParish(
             categoryId: singleCategoryId,
-            parishIds: filters.parishIds,
+            parishIds: {},
           )
         : await getListings();
     Set<String>? amenityIds;

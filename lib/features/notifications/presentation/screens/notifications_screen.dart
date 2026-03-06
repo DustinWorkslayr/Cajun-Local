@@ -7,8 +7,12 @@ import 'package:my_app/core/theme/theme.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 /// Per-user notifications list: filter by type, mark read, delete, open action links.
+/// When [onHandleActionUrl] is set and returns true for an action_url, in-app navigation
+/// (e.g. app://news/id, app://listings/id) is handled by the host; otherwise the URL is launched externally.
 class NotificationsScreen extends StatefulWidget {
-  const NotificationsScreen({super.key});
+  const NotificationsScreen({super.key, this.onHandleActionUrl});
+
+  final bool Function(String actionUrl)? onHandleActionUrl;
 
   @override
   State<NotificationsScreen> createState() => _NotificationsScreenState();
@@ -20,11 +24,11 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   bool _loadingMore = false;
   bool _hasMore = true;
   int _offset = 0;
-  String? _typeFilter; // null = All, or deal, reminder, listing, system
+  String? _typeFilter; // null = All, or deal, reminder, listing, system, news, event, loyalty
 
   static const int _pageSize = 50;
-  static const List<String?> _filterOptions = [null, 'deal', 'reminder', 'listing', 'system'];
-  static const List<String> _filterLabels = ['All', 'Deals', 'Reminders', 'Listings', 'System'];
+  static const List<String?> _filterOptions = [null, 'deal', 'event', 'loyalty', 'news', 'reminder', 'listing', 'system'];
+  static const List<String> _filterLabels = ['All', 'Deals', 'Events', 'Loyalty', 'News', 'Reminders', 'Listings', 'System'];
 
   @override
   void didChangeDependencies() {
@@ -103,7 +107,9 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   void _onAction(AppNotification n) {
     _markAsRead(n);
     final url = n.actionUrl;
-    if (url != null && url.isNotEmpty) _openUrl(url);
+    if (url == null || url.isEmpty) return;
+    if (widget.onHandleActionUrl != null && widget.onHandleActionUrl!(url)) return;
+    _openUrl(url);
   }
 
   Future<void> _openUrl(String url) async {
@@ -128,11 +134,18 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     switch (type?.toLowerCase()) {
       case 'deal':
         return Icons.local_offer_rounded;
+      case 'event':
+        return Icons.event_rounded;
+      case 'loyalty':
+        return Icons.card_membership_rounded;
+      case 'news':
+        return Icons.article_rounded;
       case 'reminder':
         return Icons.schedule_rounded;
       case 'listing':
         return Icons.store_rounded;
       case 'system':
+      case 'team_invite':
         return Icons.info_outline_rounded;
       default:
         return Icons.notifications_rounded;

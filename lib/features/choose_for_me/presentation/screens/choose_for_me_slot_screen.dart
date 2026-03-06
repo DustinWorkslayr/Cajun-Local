@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:math';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:my_app/core/data/app_data_scope.dart';
@@ -69,15 +70,44 @@ class _ChooseForMeSlotScreenState extends State<ChooseForMeSlotScreen>
 
   MockListing? _winner;
   bool _loadFailed = false;
+  /// 'empty' = 0 results after fallbacks; 'error' = request threw (timeout/connection).
+  String? _loadFailureReason;
   bool _loading = true;
   bool _spinning = true;
   bool _showResult = false;
   List<MockListing> _slotList = [];
   int _winnerSlotIndex = 0;
+  /// Seconds remaining before "Spin again" is enabled (null = no cooldown).
+  int? _spinAgainCooldownRemaining;
+  Timer? _cooldownTimer;
+  /// Revealed after a short delay when result is shown (for staggered fade-in).
+  bool _resultActionsRevealed = false;
   late ScrollController _scrollController;
   late AnimationController _slotController;
   late Animation<double> _slotCurve;
   VoidCallback? _slotTickListener;
+
+  static const int _spinAgainCooldownSeconds = 4;
+
+  void _startCooldown() {
+    _cooldownTimer?.cancel();
+    _spinAgainCooldownRemaining = _spinAgainCooldownSeconds;
+    _cooldownTimer = Timer.periodic(const Duration(seconds: 1), (t) {
+      if (!mounted) {
+        t.cancel();
+        return;
+      }
+      setState(() {
+        if (_spinAgainCooldownRemaining == null || _spinAgainCooldownRemaining! <= 1) {
+          _spinAgainCooldownRemaining = null;
+          t.cancel();
+          _cooldownTimer = null;
+        } else {
+          _spinAgainCooldownRemaining = _spinAgainCooldownRemaining! - 1;
+        }
+      });
+    });
+  }
 
   @override
   void initState() {
@@ -102,24 +132,36 @@ class _ChooseForMeSlotScreenState extends State<ChooseForMeSlotScreen>
         setState(() {
           _spinning = false;
           _showResult = true;
+          _resultActionsRevealed = false;
+        });
+        _startCooldown();
+        Future.delayed(const Duration(milliseconds: 300), () {
+          if (mounted) setState(() => _resultActionsRevealed = true);
         });
       }
     });
-    _loadAndSpin();
+    // Defer load so context/InheritedWidget (AppDataScope) is available after initState completes.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _loadAndSpin();
+    });
   }
 
   @override
   void dispose() {
+    _cooldownTimer?.cancel();
     _scrollController.dispose();
     _slotController.dispose();
     super.dispose();
   }
 
-  static const Duration _loadTimeout = Duration(seconds: 10);
+  static const Duration _loadTimeout = Duration(seconds: 25);
 
-  /// Fetch listings for category + parish + subcategory. If parish filter yields none, retries without parish so category matches still show.
+  /// Fetch listings for category + parish + subcategory. If parish filter yields none, retries without parish; if tags yield none, retries without subcategory.
   Future<List<MockListing>> _fetchListingsForSlot() async {
     final ds = AppDataScope.of(context).dataSource;
+    if (kDebugMode) {
+      debugPrint('[ChooseForMe] fetch: categoryIds=${widget.categoryIds}, parishIds=${widget.parishIds}, subcategoryIds=${widget.subcategoryIds}');
+    }
     ListingFilters filters = ListingFilters(
       categoryIds: widget.categoryIds,
       parishIds: widget.parishIds,
@@ -130,18 +172,34 @@ class _ChooseForMeSlotScreenState extends State<ChooseForMeSlotScreen>
         _loadTimeout,
         onTimeout: () => throw TimeoutException('Load timed out'),
       );
+      if (kDebugMode) debugPrint('[ChooseForMe] first fetch: ${listings.length} listings');
       if (listings.isNotEmpty) return listings;
-      if (widget.parishIds.isEmpty) return listings;
-      // Retry without parish filter so category matches still show (e.g. businesses with no parish set or parish ID mismatch).
-      filters = ListingFilters(
-        categoryIds: widget.categoryIds,
-        parishIds: {},
-        subcategoryIds: widget.subcategoryIds,
-      );
-      return ds.filterListings(filters).timeout(
-        _loadTimeout,
-        onTimeout: () => throw TimeoutException('Load timed out'),
-      );
+      if (widget.parishIds.isNotEmpty) {
+        filters = ListingFilters(
+          categoryIds: widget.categoryIds,
+          parishIds: {},
+          subcategoryIds: widget.subcategoryIds,
+        );
+        listings = await ds.filterListings(filters).timeout(
+          _loadTimeout,
+          onTimeout: () => throw TimeoutException('Load timed out'),
+        );
+        if (kDebugMode) debugPrint('[ChooseForMe] after parish fallback: ${listings.length} listings');
+        if (listings.isNotEmpty) return listings;
+      }
+      if (widget.subcategoryIds.isNotEmpty) {
+        filters = ListingFilters(
+          categoryIds: widget.categoryIds,
+          parishIds: widget.parishIds,
+          subcategoryIds: {},
+        );
+        listings = await ds.filterListings(filters).timeout(
+          _loadTimeout,
+          onTimeout: () => throw TimeoutException('Load timed out'),
+        );
+        if (kDebugMode) debugPrint('[ChooseForMe] after subcategory fallback: ${listings.length} listings');
+      }
+      return listings;
     } catch (_) {
       rethrow;
     }
@@ -150,24 +208,32 @@ class _ChooseForMeSlotScreenState extends State<ChooseForMeSlotScreen>
   Future<void> _loadAndSpin() async {
     setState(() {
       _loadFailed = false;
+      _loadFailureReason = null;
       _loading = true;
     });
     try {
       List<MockListing> listings;
       try {
         listings = await _fetchListingsForSlot();
-      } catch (_) {
+      } catch (e, st) {
+        if (kDebugMode) {
+          debugPrint('[ChooseForMe] fetch threw: $e');
+          debugPrintStack(stackTrace: st);
+        }
         if (!mounted) return;
         setState(() {
           _loadFailed = true;
+          _loadFailureReason = 'error';
           _loading = false;
         });
         return;
       }
       if (!mounted) return;
       if (listings.isEmpty) {
+        if (kDebugMode) debugPrint('[ChooseForMe] showing "no match": 0 results after all fallbacks');
         setState(() {
           _loadFailed = true;
+          _loadFailureReason = 'empty';
           _loading = false;
         });
         return;
@@ -212,14 +278,18 @@ class _ChooseForMeSlotScreenState extends State<ChooseForMeSlotScreen>
       };
       _slotController.addListener(_slotTickListener!);
 
-      WidgetsBinding.instance.addPostFrameCallback((_) {
+      void scheduleStartAnimation(int retriesLeft) {
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (!mounted) return;
-          if (!_scrollController.hasClients) return;
-          _scrollController.jumpTo(0);
-          _slotController.forward();
+          if (_scrollController.hasClients) {
+            _scrollController.jumpTo(0);
+            _slotController.forward();
+            return;
+          }
+          if (retriesLeft > 0) scheduleStartAnimation(retriesLeft - 1);
         });
-      });
+      }
+      scheduleStartAnimation(20);
     } catch (_) {
       if (mounted) {
         setState(() {
@@ -235,8 +305,12 @@ class _ChooseForMeSlotScreenState extends State<ChooseForMeSlotScreen>
   }
 
   void _spinAgain() {
+    _cooldownTimer?.cancel();
+    _cooldownTimer = null;
     setState(() {
       _showResult = false;
+      _spinAgainCooldownRemaining = null;
+      _resultActionsRevealed = false;
       _loading = true;
     });
     _loadAndSpin();
@@ -282,7 +356,9 @@ class _ChooseForMeSlotScreenState extends State<ChooseForMeSlotScreen>
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'No places match your selection, or the request timed out. Try different areas or cuisine, or check your connection.',
+                  _loadFailureReason == 'error'
+                      ? 'Request failed or timed out. Check your connection.'
+                      : 'No places match your filters. Try a different area or category.',
                   textAlign: TextAlign.center,
                   style: theme.textTheme.bodyMedium?.copyWith(color: sub),
                 ),
@@ -322,8 +398,8 @@ class _ChooseForMeSlotScreenState extends State<ChooseForMeSlotScreen>
             const SizedBox(height: 16),
             Text(
               _loading
-                  ? 'Loading…'
-                  : (_spinning ? 'Spinning…' : "You got…"),
+                  ? 'Find local businesses with heart'
+                  : (_spinning ? 'Spinning…' : 'We chose…'),
               style: theme.textTheme.titleMedium?.copyWith(
                 fontWeight: FontWeight.w700,
                 color: _loading || _spinning ? sub : AppTheme.specGold,
@@ -332,20 +408,24 @@ class _ChooseForMeSlotScreenState extends State<ChooseForMeSlotScreen>
             const SizedBox(height: 20),
             SizedBox(
               height: _viewportHeight,
-              child: _loading || !showSlot
-                  ? Center(
-                      child: SizedBox(
-                        width: 32,
-                        height: 32,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: nav,
-                        ),
-                      ),
-                    )
-                  : ClipRRect(
-                      borderRadius: BorderRadius.circular(16),
-                      child: ListView.builder(
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  final slotSize = Size(constraints.maxWidth, _viewportHeight);
+                  return Stack(
+                    clipBehavior: Clip.none,
+                    children: [
+                      if (_loading || !showSlot)
+                        Center(
+                          child: _LoadingLocalBusinesses(
+                            textColor: sub,
+                            heartColor: nav,
+                            showLabel: false,
+                          ),
+                        )
+                      else
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(16),
+                          child: ListView.builder(
                         controller: _scrollController,
                         physics: const NeverScrollableScrollPhysics(),
                         padding: EdgeInsets.only(
@@ -354,7 +434,8 @@ class _ChooseForMeSlotScreenState extends State<ChooseForMeSlotScreen>
                         ),
                         itemCount: _slotList.length,
                         itemBuilder: (context, index) {
-                          return Padding(
+                          final isWinner = index == _winnerSlotIndex && _showResult && !_spinning;
+                          final card = Padding(
                             padding: const EdgeInsets.symmetric(horizontal: 20),
                             child: SizedBox(
                               height: _cardHeight,
@@ -365,15 +446,44 @@ class _ChooseForMeSlotScreenState extends State<ChooseForMeSlotScreen>
                               ),
                             ),
                           );
+                          if (isWinner) {
+                            return TweenAnimationBuilder<double>(
+                              tween: Tween(begin: 1.0, end: 1.08),
+                              duration: const Duration(milliseconds: 450),
+                              curve: Curves.elasticOut,
+                              builder: (context, scale, child) => Transform.scale(
+                                scale: scale,
+                                alignment: Alignment.center,
+                                child: _WinnerHighlight(child: child!),
+                              ),
+                              child: card,
+                            );
+                          }
+                          return card;
                         },
                       ),
                     ),
+                      if (_showResult && _winner != null)
+                        Positioned.fill(
+                          child: IgnorePointer(
+                            child: _CelebrationOverlay(size: slotSize),
+                          ),
+                        ),
+                    ],
+                  );
+                },
+              ),
             ),
             const SizedBox(height: 24),
             if (_showResult && _winner != null)
-              _ResultActions(
-                winner: _winner!,
-                onSpinAgain: _spinAgain,
+              AnimatedOpacity(
+                opacity: _resultActionsRevealed ? 1.0 : 0.0,
+                duration: const Duration(milliseconds: 250),
+                child: _ResultActions(
+                  winner: _winner!,
+                  onSpinAgain: _spinAgain,
+                  cooldownSecondsRemaining: _spinAgainCooldownRemaining,
+                ),
               ),
           ],
         ),
@@ -412,6 +522,8 @@ class _ChooseForMeSlotContentState extends State<ChooseForMeSlotContent>
 
   MockListing? _winner;
   bool _loadFailed = false;
+  /// 'empty' = 0 results after fallbacks; 'error' = request threw (timeout/connection).
+  String? _loadFailureReason;
   bool _loading = true;
   bool _spinning = true;
   bool _showResult = false;
@@ -419,10 +531,37 @@ class _ChooseForMeSlotContentState extends State<ChooseForMeSlotContent>
   Map<String, String> _subcategoryNames = {};
   int _winnerSlotIndex = 0;
   double _scrollOffset = 0;
+  /// Seconds remaining before "Spin again" is enabled (null = no cooldown).
+  int? _spinAgainCooldownRemaining;
+  Timer? _cooldownTimer;
+  /// Revealed after a short delay when result is shown (for staggered fade-in).
+  bool _resultActionsRevealed = false;
   late ScrollController _scrollController;
   late AnimationController _slotController;
   late Animation<double> _slotCurve;
   VoidCallback? _slotTickListener;
+
+  static const int _spinAgainCooldownSeconds = 4;
+
+  void _startCooldown() {
+    _cooldownTimer?.cancel();
+    _spinAgainCooldownRemaining = _spinAgainCooldownSeconds;
+    _cooldownTimer = Timer.periodic(const Duration(seconds: 1), (t) {
+      if (!mounted) {
+        t.cancel();
+        return;
+      }
+      setState(() {
+        if (_spinAgainCooldownRemaining == null || _spinAgainCooldownRemaining! <= 1) {
+          _spinAgainCooldownRemaining = null;
+          t.cancel();
+          _cooldownTimer = null;
+        } else {
+          _spinAgainCooldownRemaining = _spinAgainCooldownRemaining! - 1;
+        }
+      });
+    });
+  }
 
   @override
   void initState() {
@@ -447,28 +586,41 @@ class _ChooseForMeSlotContentState extends State<ChooseForMeSlotContent>
         setState(() {
           _spinning = false;
           _showResult = true;
+          _resultActionsRevealed = false;
+        });
+        _startCooldown();
+        Future.delayed(const Duration(milliseconds: 300), () {
+          if (mounted) setState(() => _resultActionsRevealed = true);
         });
       }
     });
-    _loadAndSpin();
+    // Defer load so context/InheritedWidget (AppDataScope) is available after initState completes.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _loadAndSpin();
+    });
   }
 
   @override
   void dispose() {
+    _cooldownTimer?.cancel();
     _scrollController.dispose();
     _slotController.dispose();
     super.dispose();
   }
 
-  static const Duration _loadTimeout = Duration(seconds: 10);
+  static const Duration _loadTimeout = Duration(seconds: 25);
 
   Future<void> _loadAndSpin() async {
     setState(() {
       _loadFailed = false;
+      _loadFailureReason = null;
       _loading = true;
     });
     try {
       final ds = AppDataScope.of(context).dataSource;
+      if (kDebugMode) {
+        debugPrint('[ChooseForMe] dialog fetch: categoryIds=${widget.categoryIds}, parishIds=${widget.parishIds}, subcategoryIds=${widget.subcategoryIds}');
+      }
       try {
         final categories = await ds.getCategories();
         if (!mounted) return;
@@ -495,10 +647,16 @@ class _ChooseForMeSlotContentState extends State<ChooseForMeSlotContent>
           _loadTimeout,
           onTimeout: () => throw TimeoutException('Load timed out'),
         );
-      } catch (_) {
+        if (kDebugMode) debugPrint('[ChooseForMe] dialog first fetch: ${listings.length} listings');
+      } catch (e, st) {
+        if (kDebugMode) {
+          debugPrint('[ChooseForMe] dialog fetch threw: $e');
+          debugPrintStack(stackTrace: st);
+        }
         if (!mounted) return;
         setState(() {
           _loadFailed = true;
+          _loadFailureReason = 'error';
           _loading = false;
         });
         return;
@@ -515,14 +673,34 @@ class _ChooseForMeSlotContentState extends State<ChooseForMeSlotContent>
             _loadTimeout,
             onTimeout: () => throw TimeoutException('Load timed out'),
           );
+          if (kDebugMode) debugPrint('[ChooseForMe] dialog after parish fallback: ${listings.length} listings');
+        } catch (_) {
+          listings = [];
+        }
+      }
+      if (!mounted) return;
+      if (listings.isEmpty && widget.subcategoryIds.isNotEmpty) {
+        try {
+          filters = ListingFilters(
+            categoryIds: widget.categoryIds,
+            parishIds: widget.parishIds,
+            subcategoryIds: {},
+          );
+          listings = await ds.filterListings(filters).timeout(
+            _loadTimeout,
+            onTimeout: () => throw TimeoutException('Load timed out'),
+          );
+          if (kDebugMode) debugPrint('[ChooseForMe] dialog after subcategory fallback: ${listings.length} listings');
         } catch (_) {
           listings = [];
         }
       }
       if (!mounted) return;
       if (listings.isEmpty) {
+        if (kDebugMode) debugPrint('[ChooseForMe] dialog showing "no match": 0 results after all fallbacks');
         setState(() {
           _loadFailed = true;
+          _loadFailureReason = 'empty';
           _loading = false;
         });
         return;
@@ -571,19 +749,28 @@ class _ChooseForMeSlotContentState extends State<ChooseForMeSlotContent>
       };
       _slotController.addListener(_slotTickListener!);
 
-      WidgetsBinding.instance.addPostFrameCallback((_) {
+      void scheduleStartAnimation(int retriesLeft) {
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (!mounted) return;
-          if (!_scrollController.hasClients) return;
-          _scrollController.jumpTo(0);
-          setState(() => _scrollOffset = 0);
-          _slotController.forward();
+          if (_scrollController.hasClients) {
+            _scrollController.jumpTo(0);
+            setState(() => _scrollOffset = 0);
+            _slotController.forward();
+            return;
+          }
+          if (retriesLeft > 0) scheduleStartAnimation(retriesLeft - 1);
         });
-      });
-    } catch (_) {
+      }
+      scheduleStartAnimation(20);
+    } catch (e, st) {
+      if (kDebugMode) {
+        debugPrint('[ChooseForMe] dialog unexpected throw: $e');
+        debugPrintStack(stackTrace: st);
+      }
       if (mounted) {
         setState(() {
           _loadFailed = true;
+          _loadFailureReason = 'error';
           _loading = false;
         });
       }
@@ -595,8 +782,12 @@ class _ChooseForMeSlotContentState extends State<ChooseForMeSlotContent>
   }
 
   void _spinAgain() {
+    _cooldownTimer?.cancel();
+    _cooldownTimer = null;
     setState(() {
       _showResult = false;
+      _spinAgainCooldownRemaining = null;
+      _resultActionsRevealed = false;
       _loading = true;
     });
     _loadAndSpin();
@@ -656,7 +847,9 @@ class _ChooseForMeSlotContentState extends State<ChooseForMeSlotContent>
               ),
               const SizedBox(height: 8),
               Text(
-                'Try different areas, category, or tags—or check your connection.',
+                _loadFailureReason == 'error'
+                    ? 'Request failed or timed out. Check your connection.'
+                    : 'No places match your filters. Try a different area or category.',
                 textAlign: TextAlign.center,
                 style: theme.textTheme.bodyMedium?.copyWith(color: sub),
               ),
@@ -703,8 +896,8 @@ class _ChooseForMeSlotContentState extends State<ChooseForMeSlotContent>
               const SizedBox(height: 8),
               Text(
                 _loading
-                    ? 'Loading…'
-                    : (_spinning ? 'Spinning…' : "You got…"),
+                    ? 'Find local businesses with heart'
+                    : (_spinning ? 'Spinning…' : 'We chose…'),
                 style: theme.textTheme.titleMedium?.copyWith(
                   fontWeight: FontWeight.w700,
                   color: _loading || _spinning ? sub : AppTheme.specGold,
@@ -713,30 +906,35 @@ class _ChooseForMeSlotContentState extends State<ChooseForMeSlotContent>
               const SizedBox(height: 16),
               SizedBox(
                 height: _viewportHeight,
-                child: _loading || !showSlot
-                    ? Center(
-                        child: SizedBox(
-                          width: 32,
-                          height: 32,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: nav,
-                          ),
-                        ),
-                      )
-                    : ClipRRect(
-                        borderRadius: BorderRadius.circular(20),
-                        child: ListView.builder(
-                          controller: _scrollController,
-                          physics: const NeverScrollableScrollPhysics(),
-                          padding: EdgeInsets.only(
-                            top: (_viewportHeight - _cardHeight) / 2,
-                            bottom: (_viewportHeight - _cardHeight) / 2,
-                          ),
-                          itemCount: _slotList.length,
-                          itemBuilder: (context, index) {
-                            final tilt = _tiltForIndex(index);
-                            return Padding(
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    final slotSize = Size(constraints.maxWidth, _viewportHeight);
+                    return Stack(
+                      clipBehavior: Clip.none,
+                      children: [
+                        if (_loading || !showSlot)
+                          Center(
+                            child: _LoadingLocalBusinesses(
+                              textColor: sub,
+                              heartColor: nav,
+                              showLabel: false,
+                            ),
+                          )
+                        else
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(20),
+                            child: ListView.builder(
+                              controller: _scrollController,
+                              physics: const NeverScrollableScrollPhysics(),
+                              padding: EdgeInsets.only(
+                                top: (_viewportHeight - _cardHeight) / 2,
+                                bottom: (_viewportHeight - _cardHeight) / 2,
+                              ),
+                              itemCount: _slotList.length,
+                              itemBuilder: (context, index) {
+                                final tilt = _tiltForIndex(index);
+                                final isWinner = index == _winnerSlotIndex && _showResult && !_spinning;
+                            final card = Padding(
                               padding: const EdgeInsets.symmetric(horizontal: 12),
                               child: SizedBox(
                                 height: _cardHeight,
@@ -755,16 +953,45 @@ class _ChooseForMeSlotContentState extends State<ChooseForMeSlotContent>
                                 ),
                               ),
                             );
+                            if (isWinner) {
+                              return TweenAnimationBuilder<double>(
+                                tween: Tween(begin: 1.0, end: 1.08),
+                                duration: const Duration(milliseconds: 450),
+                                curve: Curves.elasticOut,
+                                builder: (context, scale, child) => Transform.scale(
+                                  scale: scale,
+                                  alignment: Alignment.center,
+                                  child: _WinnerHighlight(child: child!),
+                                ),
+                                child: card,
+                              );
+                            }
+                            return card;
                           },
                         ),
                       ),
+                        if (_showResult && _winner != null)
+                          Positioned.fill(
+                            child: IgnorePointer(
+                              child: _CelebrationOverlay(size: slotSize),
+                            ),
+                          ),
+                      ],
+                    );
+                  },
+                ),
               ),
               const SizedBox(height: 20),
               if (_showResult && _winner != null)
-                _ResultActions(
-                  winner: _winner!,
-                  onSpinAgain: _spinAgain,
-                  onClose: widget.onClose,
+                AnimatedOpacity(
+                  opacity: _resultActionsRevealed ? 1.0 : 0.0,
+                  duration: const Duration(milliseconds: 250),
+                  child: _ResultActions(
+                    winner: _winner!,
+                    onSpinAgain: _spinAgain,
+                    onClose: widget.onClose,
+                    cooldownSecondsRemaining: _spinAgainCooldownRemaining,
+                  ),
                 ),
             ],
           ),
@@ -774,28 +1001,195 @@ class _ChooseForMeSlotContentState extends State<ChooseForMeSlotContent>
   }
 }
 
+/// User-friendly loading state for Choose for me: optional label + pulsing heart.
+class _LoadingLocalBusinesses extends StatefulWidget {
+  const _LoadingLocalBusinesses({
+    this.textColor,
+    this.heartColor,
+    this.showLabel = true,
+  });
+
+  final Color? textColor;
+  final Color? heartColor;
+  /// When false, only the pulsing heart is shown (title shows "Find local businesses with heart").
+  final bool showLabel;
+
+  @override
+  State<_LoadingLocalBusinesses> createState() => _LoadingLocalBusinessesState();
+}
+
+class _LoadingLocalBusinessesState extends State<_LoadingLocalBusinesses>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _pulse;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 900),
+    )..repeat(reverse: true);
+    _pulse = Tween<double>(begin: 0.85, end: 1.15).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
+    );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final textColor = widget.textColor ?? theme.colorScheme.onSurface;
+    final heartColor = widget.heartColor ?? AppTheme.specGold;
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        if (widget.showLabel) ...[
+          Text(
+            'Loading local businesses',
+            style: theme.textTheme.titleSmall?.copyWith(
+              fontWeight: FontWeight.w600,
+              color: textColor,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 16),
+        ],
+        AnimatedBuilder(
+          animation: _pulse,
+          builder: (context, child) {
+            return Transform.scale(
+              scale: _pulse.value,
+              child: Icon(
+                Icons.favorite_rounded,
+                size: 40,
+                color: heartColor,
+              ),
+            );
+          },
+        ),
+      ],
+    );
+  }
+}
+
+/// Celebratory animated highlight for the winner card: breathing gold outline, glow, and scale pulse.
+class _WinnerHighlight extends StatefulWidget {
+  const _WinnerHighlight({required this.child});
+
+  final Widget child;
+
+  @override
+  State<_WinnerHighlight> createState() => _WinnerHighlightState();
+}
+
+class _WinnerHighlightState extends State<_WinnerHighlight>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _scale;
+  late Animation<double> _glow;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 900),
+    )..repeat(reverse: true);
+    _scale = Tween<double>(begin: 1.0, end: 1.06).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
+    );
+    _glow = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
+    );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final gold = AppTheme.specGold;
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, child) {
+        final borderWidth = 2.5 + _glow.value * 2.5;
+        final blurRadius = 12.0 + _glow.value * 16.0;
+        final spreadRadius = _glow.value * 3.0;
+        final shadowOpacity = 0.35 + _glow.value * 0.45;
+        return Transform.scale(
+          scale: _scale.value,
+          alignment: Alignment.center,
+          child: Container(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: gold,
+                width: borderWidth,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: gold.withValues(alpha: shadowOpacity),
+                  blurRadius: blurRadius,
+                  spreadRadius: spreadRadius,
+                ),
+                BoxShadow(
+                  color: gold.withValues(alpha: 0.15),
+                  blurRadius: blurRadius * 1.5,
+                  spreadRadius: spreadRadius + 2,
+                ),
+              ],
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(17),
+              child: child,
+            ),
+          ),
+        );
+      },
+      child: widget.child,
+    );
+  }
+}
+
 class _ResultActions extends StatelessWidget {
   const _ResultActions({
     required this.winner,
     required this.onSpinAgain,
     this.onClose,
+    this.cooldownSecondsRemaining,
   });
 
   final MockListing winner;
   final VoidCallback onSpinAgain;
   final VoidCallback? onClose;
+  /// When non-null and > 0, "Spin again" is disabled and shows countdown.
+  final int? cooldownSecondsRemaining;
 
   @override
   Widget build(BuildContext context) {
+    final canSpinAgain = cooldownSecondsRemaining == null || cooldownSecondsRemaining! <= 0;
+    final spinLabel = (cooldownSecondsRemaining != null && cooldownSecondsRemaining! > 0)
+        ? 'Spin again ($cooldownSecondsRemaining)'
+        : 'Spin again';
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 8),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           TextButton.icon(
-            onPressed: onSpinAgain,
+            onPressed: canSpinAgain ? onSpinAgain : null,
             icon: const Icon(Icons.refresh_rounded, size: 20),
-            label: const Text('Spin again'),
+            label: Text(spinLabel),
           ),
           const SizedBox(width: 12),
           AppPrimaryButton(
@@ -816,4 +1210,157 @@ class _ResultActions extends StatelessWidget {
       ),
     );
   }
+}
+
+/// Celebratory confetti overlay: continuous rain of circles, rectangles, and sparkles with rotation.
+class _CelebrationOverlay extends StatefulWidget {
+  const _CelebrationOverlay({required this.size});
+
+  final Size size;
+
+  @override
+  State<_CelebrationOverlay> createState() => _CelebrationOverlayState();
+}
+
+class _CelebrationOverlayState extends State<_CelebrationOverlay>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late List<_ConfettiParticle> _particles;
+
+  static const _celebratoryColors = [
+    Color(0xFFF4B400), // specGold
+    Color(0xFF0B2A55), // specNavy
+    Color(0xFFFFFFFF), // white
+    Color(0xFFFFF8E7), // champagne
+    Color(0xFFFFD54F), // light gold
+    Color(0xFFE3F2FD), // very light blue
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 2500),
+    )..repeat();
+    final rng = Random();
+    final w = widget.size.width;
+    _particles = List.generate(90, (_) {
+      final isRect = rng.nextBool();
+      return _ConfettiParticle(
+        offset: Offset(
+          rng.nextDouble() * w,
+          -20 - rng.nextDouble() * 60,
+        ),
+        velocity: Offset(
+          (rng.nextDouble() - 0.5) * 180,
+          120 + rng.nextDouble() * 140,
+        ),
+        color: _celebratoryColors[rng.nextInt(_celebratoryColors.length)],
+        radius: 2.5 + rng.nextDouble() * 4,
+        phase: rng.nextDouble(),
+        rotationSpeed: (rng.nextDouble() - 0.5) * 12,
+        isRect: isRect,
+        size: isRect ? (4 + rng.nextDouble() * 8) : (3 + rng.nextDouble() * 5),
+      );
+    });
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, _) {
+        return CustomPaint(
+          size: widget.size,
+          painter: _ConfettiPainter(
+            progress: _controller.value,
+            particles: _particles,
+            viewHeight: widget.size.height,
+            viewWidth: widget.size.width,
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _ConfettiParticle {
+  _ConfettiParticle({
+    required this.offset,
+    required this.velocity,
+    required this.color,
+    required this.radius,
+    required this.phase,
+    required this.rotationSpeed,
+    required this.isRect,
+    required this.size,
+  });
+  final Offset offset;
+  final Offset velocity;
+  final Color color;
+  final double radius;
+  final double phase;
+  final double rotationSpeed;
+  final bool isRect;
+  final double size;
+}
+
+class _ConfettiPainter extends CustomPainter {
+  _ConfettiPainter({
+    required this.progress,
+    required this.particles,
+    required this.viewHeight,
+    required this.viewWidth,
+  });
+
+  final double progress;
+  final List<_ConfettiParticle> particles;
+  final double viewHeight;
+  final double viewWidth;
+
+  static const _velocityScale = 1.4;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    for (final p in particles) {
+      final t = (progress + p.phase) % 1.0;
+      final dx = p.offset.dx + p.velocity.dx * t * _velocityScale;
+      final dy = p.offset.dy + p.velocity.dy * t * _velocityScale;
+      final rotation = t * p.rotationSpeed * pi;
+      final opacity = (t < 0.85) ? 1.0 : ((1.0 - t) / 0.15).clamp(0.0, 1.0);
+
+      canvas.save();
+      canvas.translate(dx, dy);
+      canvas.rotate(rotation);
+
+      final paint = Paint()
+        ..color = p.color.withValues(alpha: opacity)
+        ..style = PaintingStyle.fill;
+
+      if (p.isRect) {
+        canvas.drawRRect(
+          RRect.fromRectAndRadius(
+            Rect.fromCenter(center: Offset.zero, width: p.size * 1.6, height: p.size),
+            const Radius.circular(2),
+          ),
+          paint,
+        );
+      } else {
+        canvas.drawCircle(Offset.zero, p.radius, paint);
+      }
+
+      canvas.restore();
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _ConfettiPainter oldDelegate) =>
+      oldDelegate.progress != progress;
 }

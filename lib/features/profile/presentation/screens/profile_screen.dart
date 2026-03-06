@@ -36,13 +36,16 @@ import 'package:url_launcher/url_launcher.dart';
 const _anonymousUser = MockUser(displayName: '', email: null, avatarUrl: null, ownedListingIds: []);
 
 class ProfileScreen extends StatefulWidget {
-  const ProfileScreen({super.key, this.onMyListings, this.onNavigateToHome});
+  const ProfileScreen({super.key, this.onMyListings, this.onNavigateToHome, this.onHandleNotificationActionUrl});
 
   /// When set (e.g. from MainShell), opens My Listings in-shell instead of pushing a route.
   final VoidCallback? onMyListings;
 
   /// When set (e.g. from MainShell in tablet mode), navigates back to the Home tab. Shown as Home in the left rail.
   final VoidCallback? onNavigateToHome;
+
+  /// When set, notifications opened from Profile use this to handle in-app action URLs (e.g. app://news/id).
+  final bool Function(String actionUrl)? onHandleNotificationActionUrl;
 
   @override
   State<ProfileScreen> createState() => _ProfileScreenState();
@@ -265,6 +268,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           },
           onMyListings: widget.onMyListings,
           onNavigateToHome: widget.onNavigateToHome,
+          onHandleNotificationActionUrl: widget.onHandleNotificationActionUrl,
           onStartStripeCheckout: _startStripeCheckout,
           onOpenCustomerPortal: _openCustomerPortal,
         );
@@ -349,6 +353,7 @@ class _ProfileContent extends StatefulWidget {
     this.loadError,
     this.onMyListings,
     this.onNavigateToHome,
+    this.onHandleNotificationActionUrl,
     this.onStartStripeCheckout,
     this.onOpenCustomerPortal,
   });
@@ -361,6 +366,7 @@ class _ProfileContent extends StatefulWidget {
   final String? loadError;
   final VoidCallback? onMyListings;
   final VoidCallback? onNavigateToHome;
+  final bool Function(String actionUrl)? onHandleNotificationActionUrl;
   final Future<void> Function()? onStartStripeCheckout;
   final Future<void> Function()? onOpenCustomerPortal;
 
@@ -387,6 +393,8 @@ class _ProfileContentState extends State<_ProfileContent>
   bool _notificationsDeals = true;
   bool _notificationsListings = true;
   bool _notificationsReminders = false;
+  bool _notificationsNews = true;
+  bool _notificationsEvents = true;
   bool _notificationPrefsLoaded = false;
 
   late TabController _tabController;
@@ -446,6 +454,8 @@ class _ProfileContentState extends State<_ProfileContent>
         _notificationsDeals = prefs.dealsEnabled;
         _notificationsListings = prefs.listingsEnabled;
         _notificationsReminders = prefs.remindersEnabled;
+        _notificationsNews = prefs.newsEnabled;
+        _notificationsEvents = prefs.eventsEnabled;
       });
     }
   }
@@ -457,6 +467,8 @@ class _ProfileContentState extends State<_ProfileContent>
       dealsEnabled: _notificationsDeals,
       listingsEnabled: _notificationsListings,
       remindersEnabled: _notificationsReminders,
+      newsEnabled: _notificationsNews,
+      eventsEnabled: _notificationsEvents,
     ));
   }
 
@@ -1367,6 +1379,8 @@ class _ProfileContentState extends State<_ProfileContent>
           dealsEnabled: _notificationsDeals,
           listingsEnabled: _notificationsListings,
           remindersEnabled: _notificationsReminders,
+          newsEnabled: _notificationsNews,
+          eventsEnabled: _notificationsEvents,
           onDealsChanged: (v) {
             setState(() => _notificationsDeals = v);
             _saveNotificationPrefs();
@@ -1379,9 +1393,21 @@ class _ProfileContentState extends State<_ProfileContent>
             setState(() => _notificationsReminders = v);
             _saveNotificationPrefs();
           },
+          onNewsChanged: (v) {
+            setState(() => _notificationsNews = v);
+            _saveNotificationPrefs();
+          },
+          onEventsChanged: (v) {
+            setState(() => _notificationsEvents = v);
+            _saveNotificationPrefs();
+          },
           onManageTap: () {
             Navigator.of(context).push(
-              MaterialPageRoute<void>(builder: (_) => const NotificationsScreen()),
+              MaterialPageRoute<void>(
+                builder: (_) => NotificationsScreen(
+                  onHandleActionUrl: widget.onHandleNotificationActionUrl,
+                ),
+              ),
             );
           },
         ),
@@ -1984,18 +2010,26 @@ class _NotificationsCard extends StatelessWidget {
     required this.dealsEnabled,
     required this.listingsEnabled,
     required this.remindersEnabled,
+    required this.newsEnabled,
+    required this.eventsEnabled,
     required this.onDealsChanged,
     required this.onListingsChanged,
     required this.onRemindersChanged,
+    required this.onNewsChanged,
+    required this.onEventsChanged,
     this.onManageTap,
   });
 
   final bool dealsEnabled;
   final bool listingsEnabled;
   final bool remindersEnabled;
+  final bool newsEnabled;
+  final bool eventsEnabled;
   final ValueChanged<bool> onDealsChanged;
   final ValueChanged<bool> onListingsChanged;
   final ValueChanged<bool> onRemindersChanged;
+  final ValueChanged<bool> onNewsChanged;
+  final ValueChanged<bool> onEventsChanged;
   final VoidCallback? onManageTap;
 
   @override
@@ -2007,9 +2041,23 @@ class _NotificationsCard extends StatelessWidget {
         children: [
           _NotificationRow(
             label: 'Deals & promotions',
-            subtitle: 'New deals and punch card offers',
+            subtitle: 'New deals and punch card offers at saved businesses',
             value: dealsEnabled,
             onChanged: onDealsChanged,
+          ),
+          Divider(height: 1, color: AppTheme.specNavy.withValues(alpha: 0.08)),
+          _NotificationRow(
+            label: 'Events at saved places',
+            subtitle: 'New events at businesses you saved',
+            value: eventsEnabled,
+            onChanged: onEventsChanged,
+          ),
+          Divider(height: 1, color: AppTheme.specNavy.withValues(alpha: 0.08)),
+          _NotificationRow(
+            label: 'News & stories',
+            subtitle: 'New articles and updates',
+            value: newsEnabled,
+            onChanged: onNewsChanged,
           ),
           Divider(height: 1, color: AppTheme.specNavy.withValues(alpha: 0.08)),
           _NotificationRow(

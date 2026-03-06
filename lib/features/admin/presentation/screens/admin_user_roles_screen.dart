@@ -203,6 +203,8 @@ class _UserEditPanelContentState extends State<_UserEditPanelContent> {
   bool _notifDeals = true;
   bool _notifListings = true;
   bool _notifReminders = false;
+  bool _notifNews = true;
+  bool _notifEvents = true;
 
   @override
   void initState() {
@@ -238,6 +240,8 @@ class _UserEditPanelContentState extends State<_UserEditPanelContent> {
       _notifDeals = prefs.dealsEnabled;
       _notifListings = prefs.listingsEnabled;
       _notifReminders = prefs.remindersEnabled;
+      _notifNews = prefs.newsEnabled;
+      _notifEvents = prefs.eventsEnabled;
       _loading = false;
     });
   }
@@ -250,6 +254,8 @@ class _UserEditPanelContentState extends State<_UserEditPanelContent> {
           dealsEnabled: _notifDeals,
           listingsEnabled: _notifListings,
           remindersEnabled: _notifReminders,
+          newsEnabled: _notifNews,
+          eventsEnabled: _notifEvents,
         ),
       );
       if (mounted) {
@@ -687,6 +693,24 @@ class _UserEditPanelContentState extends State<_UserEditPanelContent> {
           onChanged: (v) => setState(() => _notifReminders = v),
           title: Text(
             'Reminders',
+            style: theme.textTheme.bodyMedium?.copyWith(color: AppTheme.specNavy),
+          ),
+          activeThumbColor: AppTheme.specNavy,
+        ),
+        SwitchListTile(
+          value: _notifNews,
+          onChanged: (v) => setState(() => _notifNews = v),
+          title: Text(
+            'News',
+            style: theme.textTheme.bodyMedium?.copyWith(color: AppTheme.specNavy),
+          ),
+          activeThumbColor: AppTheme.specNavy,
+        ),
+        SwitchListTile(
+          value: _notifEvents,
+          onChanged: (v) => setState(() => _notifEvents = v),
+          title: Text(
+            'Events at saved places',
             style: theme.textTheme.bodyMedium?.copyWith(color: AppTheme.specNavy),
           ),
           activeThumbColor: AppTheme.specNavy,
