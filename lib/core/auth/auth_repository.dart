@@ -1,21 +1,23 @@
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:my_app/core/data/models/profile.dart';
 import 'package:my_app/core/data/repositories/user_roles_repository.dart';
+import 'package:my_app/core/network/dio_client.dart';
 import 'package:my_app/core/supabase/supabase_config.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 /// Auth and profile access. Uses Supabase Auth when configured.
 /// Profiles: RLS allows own row only (backend-cheatsheet §2).
 class AuthRepository {
-  AuthRepository({UserRolesRepository? userRolesRepository})
-      : _userRoles = userRolesRepository ?? UserRolesRepository();
+  AuthRepository({UserRolesRepository? userRolesRepository, DioClient? dioClient})
+    : _userRoles = userRolesRepository ?? UserRolesRepository(),
+      _dioClient = dioClient;
 
   final UserRolesRepository _userRoles;
 
   bool get isConfigured => SupabaseConfig.isConfigured;
 
-  SupabaseClient? get _client =>
-      SupabaseConfig.isConfigured ? Supabase.instance.client : null;
+  SupabaseClient? get _client => SupabaseConfig.isConfigured ? Supabase.instance.client : null;
+  final DioClient? _dioClient;
 
   /// Current session if signed in.
   Session? get currentSession => _client?.auth.currentSession;
@@ -24,8 +26,7 @@ class AuthRepository {
   String? get currentUserId => _client?.auth.currentUser?.id;
 
   /// Stream of auth state changes (session added/removed).
-  Stream<AuthState> get authStateChanges =>
-      _client?.auth.onAuthStateChange ?? const Stream.empty();
+  Stream<AuthState> get authStateChanges => _client?.auth.onAuthStateChange ?? const Stream.empty();
 
   /// Redirect URL for email confirmation link (deep link). Add to Supabase
   /// Dashboard → Auth → URL Configuration → Redirect URLs (e.g. cajunlocal://auth/confirm/**).
@@ -33,11 +34,7 @@ class AuthRepository {
 
   /// Sign up with email and password. Confirmation email is sent by Supabase Auth
   /// using your project's custom SMTP. Trigger creates profile + user role (§9).
-  Future<AuthResponse> signUp({
-    required String email,
-    required String password,
-    String? displayName,
-  }) async {
+  Future<AuthResponse> signUp({required String email, required String password, String? displayName}) async {
     final client = _client;
     if (client == null) throw StateError('Supabase not configured');
     final res = await client.auth.signUp(
@@ -50,10 +47,7 @@ class AuthRepository {
   }
 
   /// Sign in with email and password.
-  Future<AuthResponse> signIn({
-    required String email,
-    required String password,
-  }) async {
+  Future<AuthResponse> signIn({required String email, required String password}) async {
     final client = _client;
     if (client == null) throw StateError('Supabase not configured');
     return client.auth.signInWithPassword(email: email, password: password);
@@ -64,10 +58,7 @@ class AuthRepository {
   Future<void> signInWithGoogle() async {
     final client = _client;
     if (client == null) throw StateError('Supabase not configured');
-    await client.auth.signInWithOAuth(
-      OAuthProvider.google,
-      redirectTo: kIsWeb ? null : _oauthRedirectUrl,
-    );
+    await client.auth.signInWithOAuth(OAuthProvider.google, redirectTo: kIsWeb ? null : _oauthRedirectUrl);
   }
 
   static const String _oauthRedirectUrl = 'cajunlocal://auth/callback';
@@ -77,16 +68,12 @@ class AuthRepository {
   Future<void> resetPasswordForEmail(String email) async {
     final client = _client;
     if (client == null) throw StateError('Supabase not configured');
-    await client.auth.resetPasswordForEmail(
-      email,
-      redirectTo: kIsWeb ? null : _passwordResetRedirectUrl,
-    );
+    await client.auth.resetPasswordForEmail(email, redirectTo: kIsWeb ? null : _passwordResetRedirectUrl);
   }
 
   /// Redirect URL for password reset deep link. Add this to Supabase Dashboard
   /// Auth → URL Configuration → Redirect URLs (e.g. cajunlocal://reset-password/**).
-  static const String _passwordResetRedirectUrl =
-      'cajunlocal://reset-password/';
+  static const String _passwordResetRedirectUrl = 'cajunlocal://reset-password/';
 
   /// Update the current user's password (e.g. after opening the reset link).
   Future<void> updatePassword(String newPassword) async {
@@ -120,11 +107,7 @@ class AuthRepository {
     final client = _client;
     final uid = currentUserId;
     if (client == null || uid == null) return null;
-    final res = await client
-        .from('profiles')
-        .select()
-        .eq('user_id', uid)
-        .maybeSingle();
+    final res = await client.from('profiles').select().eq('user_id', uid).maybeSingle();
     if (res == null) return null;
     return Profile.fromJson(Map<String, dynamic>.from(res));
   }
@@ -147,10 +130,7 @@ class AuthRepository {
   }
 
   /// Update the current user's own profile (e.g. avatar_url). RLS must allow own-row UPDATE.
-  Future<void> updateOwnProfile({
-    String? displayName,
-    String? avatarUrl,
-  }) async {
+  Future<void> updateOwnProfile({String? displayName, String? avatarUrl}) async {
     final client = _client;
     final uid = currentUserId;
     if (client == null || uid == null) return;
@@ -162,11 +142,7 @@ class AuthRepository {
   }
 
   /// Admin: update a user's profile (e.g. display_name, avatar_url). RLS: admin can UPDATE.
-  Future<void> updateProfileForAdmin(
-    String userId, {
-    String? displayName,
-    String? avatarUrl,
-  }) async {
+  Future<void> updateProfileForAdmin(String userId, {String? displayName, String? avatarUrl}) async {
     final client = _client;
     if (client == null) return;
     final data = <String, dynamic>{};
@@ -174,6 +150,10 @@ class AuthRepository {
     if (avatarUrl != null) data['avatar_url'] = avatarUrl;
     if (data.isEmpty) return;
     await client.from('profiles').update(data).eq('user_id', userId);
+  }
+
+  Future<String?> getRefreshToken() async {
+    return _client?.auth.currentSession?.refreshToken;
   }
 
   /// Admin: remove user from app (profile, role, subscription). Does not delete from auth.users;

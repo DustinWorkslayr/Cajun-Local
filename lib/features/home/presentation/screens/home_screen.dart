@@ -110,10 +110,7 @@ class _HomeScreenState extends State<HomeScreen> {
       ]).then((r) => (r[0] as List<MockSpot>, r[1] as List<MockCategory>));
     }
     _latestPostsFuture ??= UserParishPreferences.getPreferredParishIds().then((ids) async {
-      final posts = await BlogPostsRepository().listApproved(
-        limit: 10,
-        forParishIds: ids.isEmpty ? null : ids,
-      );
+      final posts = await BlogPostsRepository().listApproved(limit: 10, forParishIds: ids.isEmpty ? null : ids);
       final parishes = await ParishRepository().listParishes();
       return (posts, parishes);
     });
@@ -146,10 +143,7 @@ class _HomeScreenState extends State<HomeScreen> {
         ds.getCategories(),
       ]).then((r) => (r[0] as List<MockSpot>, r[1] as List<MockCategory>));
       _latestPostsFuture = UserParishPreferences.getPreferredParishIds().then((ids) async {
-        final posts = await BlogPostsRepository().listApproved(
-          limit: 10,
-          forParishIds: ids.isEmpty ? null : ids,
-        );
+        final posts = await BlogPostsRepository().listApproved(limit: 10, forParishIds: ids.isEmpty ? null : ids);
         final parishes = await ParishRepository().listParishes();
         return (posts, parishes);
       });
@@ -191,11 +185,9 @@ class _HomeScreenState extends State<HomeScreen> {
 
   void _onSearchSubmitted() {
     final query = _searchController.text.trim();
-    Navigator.of(context).push(
-      MaterialPageRoute<void>(
-        builder: (_) => CategoriesScreen(initialSearch: query.isEmpty ? null : query),
-      ),
-    );
+    Navigator.of(
+      context,
+    ).push(MaterialPageRoute<void>(builder: (_) => CategoriesScreen(initialSearch: query.isEmpty ? null : query)));
   }
 
   @override
@@ -226,332 +218,416 @@ class _HomeScreenState extends State<HomeScreen> {
     return LayoutBuilder(
       builder: (context, contentConstraints) {
         return Container(
-      color: AppTheme.specOffWhite,
-      child: FutureBuilder<(List<MockSpot>, List<MockCategory>)>(
-        future: _homeFuture,
-        builder: (context, snapshot) {
-          if (snapshot.hasError) {
-            return Center(
-              child: Padding(
-                padding: const EdgeInsets.all(24),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      'Loading data failed.',
-                      style: theme.textTheme.bodyLarge?.copyWith(color: AppTheme.specNavy),
-                      textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: 16),
-                    FilledButton(
-                      onPressed: () => setState(() {
-                        _homeFuture = null;
-                        final ds = AppDataScope.of(context).dataSource;
-                        _homeFuture = Future.wait([
-                          ds.getFeaturedSpots(),
-                          ds.getCategories(),
-                        ]).then((r) => (r[0] as List<MockSpot>, r[1] as List<MockCategory>));
-                      }),
-                      child: const Text('Retry'),
-                    ),
-                  ],
-                ),
-              ),
-            );
-          }
-          if (snapshot.connectionState == ConnectionState.waiting && !snapshot.hasData) {
-            return const Center(
-              child: CircularProgressIndicator(color: AppTheme.specNavy),
-            );
-          }
-          final spots = snapshot.data?.$1 ?? <MockSpot>[];
-          final categories = snapshot.data?.$2 ?? <MockCategory>[];
-          return RefreshIndicator(
-            onRefresh: _refreshHome,
-            color: AppTheme.specNavy,
-            child: CustomScrollView(
-              slivers: [
-              // ——— Notification banner (below topbar) ———
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: EdgeInsets.fromLTRB(padding.left, 4, padding.right, 0),
-                  child: DismissibleAlertBanner(horizontalPadding: padding, compact: true),
-                ),
-              ),
-              // ——— Hero ( + on tablet: Popular in your parish preview right column ) ———
-              SliverToBoxAdapter(
-                child: AnimatedEntrance(
+          color: AppTheme.specOffWhite,
+          child: FutureBuilder<(List<MockSpot>, List<MockCategory>)>(
+            future: _homeFuture,
+            builder: (context, snapshot) {
+              if (snapshot.hasError) {
+                return Center(
                   child: Padding(
-                    padding: EdgeInsets.fromLTRB(padding.left + 11.5, 8, padding.right + 11.5, isTablet ? _sectionSpacingLarge : _sectionSpacing),
-                    child: isTablet
-                        ? Row(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: [
-                              Expanded(
-                                child: _HomeHero(
-                                  isTablet: true,
+                    padding: const EdgeInsets.all(24),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          'Loading data failed.',
+                          style: theme.textTheme.bodyLarge?.copyWith(color: AppTheme.specNavy),
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: 16),
+                        FilledButton(
+                          onPressed: () => setState(() {
+                            _homeFuture = null;
+                            final ds = AppDataScope.of(context).dataSource;
+                            _homeFuture = Future.wait([
+                              ds.getFeaturedSpots(),
+                              ds.getCategories(),
+                            ]).then((r) => (r[0] as List<MockSpot>, r[1] as List<MockCategory>));
+                          }),
+                          child: const Text('Retry'),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              }
+              if (snapshot.connectionState == ConnectionState.waiting && !snapshot.hasData) {
+                return const Center(child: CircularProgressIndicator(color: AppTheme.specNavy));
+              }
+              final spots = snapshot.data?.$1 ?? <MockSpot>[];
+              final categories = snapshot.data?.$2 ?? <MockCategory>[];
+              return RefreshIndicator(
+                onRefresh: _refreshHome,
+                color: AppTheme.specNavy,
+                child: CustomScrollView(
+                  slivers: [
+                    // ——— Notification banner (below topbar) ———
+                    SliverToBoxAdapter(
+                      child: Padding(
+                        padding: EdgeInsets.fromLTRB(padding.left, 4, padding.right, 0),
+                        child: DismissibleAlertBanner(horizontalPadding: padding, compact: true),
+                      ),
+                    ),
+                    // ——— Hero ( + on tablet: Popular in your parish preview right column ) ———
+                    SliverToBoxAdapter(
+                      child: AnimatedEntrance(
+                        child: Padding(
+                          padding: EdgeInsets.fromLTRB(
+                            padding.left + 11.5,
+                            8,
+                            padding.right + 11.5,
+                            isTablet ? _sectionSpacingLarge : _sectionSpacing,
+                          ),
+                          child: isTablet
+                              ? SizedBox(
+                                  height: _bannerMinHeightTablet,
+                                  child: Row(
+                                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                                    children: [
+                                      Expanded(
+                                        child: _HomeHero(
+                                          isTablet: true,
+                                          onExplore: () {
+                                            if (widget.onNavigateToExplore != null) {
+                                              widget.onNavigateToExplore!();
+                                            } else {
+                                              Navigator.of(
+                                                context,
+                                              ).push(MaterialPageRoute<void>(builder: (_) => const CategoriesScreen()));
+                                            }
+                                          },
+                                          onFavorites: () {
+                                            if (widget.onNavigateToFavorites != null) {
+                                              widget.onNavigateToFavorites!();
+                                            } else {
+                                              Navigator.of(
+                                                context,
+                                              ).push(MaterialPageRoute<void>(builder: (_) => const FavoritesScreen()));
+                                            }
+                                          },
+                                        ),
+                                      ),
+                                      const SizedBox(width: _cardGap),
+                                      Expanded(
+                                        child: _HomeTabletRightColumn(
+                                          spots: spots,
+                                          previewScrollController: _heroPreviewScrollController,
+                                          onExplore: () {
+                                            if (widget.onNavigateToExplore != null) {
+                                              widget.onNavigateToExplore!();
+                                            } else {
+                                              Navigator.of(
+                                                context,
+                                              ).push(MaterialPageRoute<void>(builder: (_) => const CategoriesScreen()));
+                                            }
+                                          },
+                                          onTapSpot: (spot) {
+                                            Navigator.of(context).push(
+                                              MaterialPageRoute<void>(
+                                                builder: (_) => ListingDetailScreen(listingId: spot.id),
+                                              ),
+                                            );
+                                          },
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                )
+                              : _HomeHero(
+                                  isTablet: false,
                                   onExplore: () {
                                     if (widget.onNavigateToExplore != null) {
                                       widget.onNavigateToExplore!();
                                     } else {
-                                      Navigator.of(context).push(
-                                        MaterialPageRoute<void>(builder: (_) => const CategoriesScreen()),
-                                      );
+                                      Navigator.of(
+                                        context,
+                                      ).push(MaterialPageRoute<void>(builder: (_) => const CategoriesScreen()));
                                     }
                                   },
                                   onFavorites: () {
                                     if (widget.onNavigateToFavorites != null) {
                                       widget.onNavigateToFavorites!();
                                     } else {
-                                      Navigator.of(context).push(
-                                        MaterialPageRoute<void>(builder: (_) => const FavoritesScreen()),
-                                      );
+                                      Navigator.of(
+                                        context,
+                                      ).push(MaterialPageRoute<void>(builder: (_) => const FavoritesScreen()));
                                     }
                                   },
                                 ),
-                              ),
-                              const SizedBox(width: _cardGap),
-                              Expanded(
-                                child: _HomeTabletRightColumn(
-                                  spots: spots,
-                                  previewScrollController: _heroPreviewScrollController,
-                                  onExplore: () {
-                                    if (widget.onNavigateToExplore != null) {
-                                      widget.onNavigateToExplore!();
-                                    } else {
-                                      Navigator.of(context).push(
-                                        MaterialPageRoute<void>(builder: (_) => const CategoriesScreen()),
-                                      );
-                                    }
-                                  },
-                                  onTapSpot: (spot) {
-                                    Navigator.of(context).push(
-                                      MaterialPageRoute<void>(
-                                        builder: (_) => ListingDetailScreen(listingId: spot.id),
-                                      ),
-                                    );
-                                  },
-                                ),
-                              ),
-                            ],
-                          )
-                        : _HomeHero(
-                            isTablet: false,
-                            onExplore: () {
-                              if (widget.onNavigateToExplore != null) {
-                                widget.onNavigateToExplore!();
-                              } else {
-                                Navigator.of(context).push(
-                                  MaterialPageRoute<void>(builder: (_) => const CategoriesScreen()),
-                                );
-                              }
-                            },
-                            onFavorites: () {
-                              if (widget.onNavigateToFavorites != null) {
-                                widget.onNavigateToFavorites!();
-                              } else {
-                                Navigator.of(context).push(
-                                  MaterialPageRoute<void>(builder: (_) => const FavoritesScreen()),
-                                );
-                              }
-                            },
-                          ),
-                  ),
-                ),
-              ),
+                        ),
+                      ),
+                    ),
 
-              // ——— Your area (parish chip, tappable) ———
-              SliverToBoxAdapter(
-                child: FutureBuilder<List<String>>(
-                  future: _parishNamesFuture,
-                  builder: (context, snapshot) {
-                    final names = snapshot.data;
-                    if (names == null || names.isEmpty) return const SizedBox.shrink();
-                    final label = names.length == 1
-                        ? names.single
-                        : names.take(3).join(', ') + (names.length > 3 ? ' ···' : '');
-                    return AnimatedEntrance(
-                      delay: const Duration(milliseconds: 40),
-                      child: Padding(
-                        padding: EdgeInsets.fromLTRB(padding.left, 0, padding.right, 12),
-                        child: Material(
-                          color: Colors.transparent,
-                          child: InkWell(
-                            onTap: () {
-                              WidgetsBinding.instance.addPostFrameCallback((_) async {
-                                final ids = await UserParishPreferences.getPreferredParishIds();
-                                if (!context.mounted) return;
-                                await showDialog<void>(
-                                  context: context,
-                                  builder: (ctx) => ParishOnboardingDialog(
-                                    initialParishIds: ids,
-                                    parishOnly: true,
-                                    onComplete: (newIds) async {
-                                      await UserParishPreferences.setPreferredParishIds(newIds);
-                                      if (ctx.mounted) Navigator.of(ctx).pop();
-                                      if (mounted) {
-                                        setState(() {
-                                          _parishNamesFuture = _loadParishNamesForDisplay();
-                                          _homeFuture = null;
-                                        });
-                                      }
-                                    },
-                                  ),
-                                );
-                              });
-                            },
-                            borderRadius: BorderRadius.circular(20),
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                              decoration: BoxDecoration(
-                                color: AppTheme.specWhite,
-                                borderRadius: BorderRadius.circular(20),
-                                border: Border.all(
-                                  color: AppTheme.specNavy.withValues(alpha: 0.12),
-                                ),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.black.withValues(alpha: 0.04),
-                                    blurRadius: 8,
-                                    offset: const Offset(0, 2),
-                                  ),
-                                ],
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Icon(
-                                    Icons.location_on_outlined,
-                                    size: 18,
-                                    color: AppTheme.specGold,
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Text(
-                                    'In your parish · $label',
-                                    style: theme.textTheme.labelLarge?.copyWith(
-                                      color: AppTheme.specNavy,
-                                      fontWeight: FontWeight.w600,
+                    // ——— Your area (parish chip, tappable) ———
+                    SliverToBoxAdapter(
+                      child: FutureBuilder<List<String>>(
+                        future: _parishNamesFuture,
+                        builder: (context, snapshot) {
+                          final names = snapshot.data;
+                          if (names == null || names.isEmpty) return const SizedBox.shrink();
+                          final label = names.length == 1
+                              ? names.single
+                              : names.take(3).join(', ') + (names.length > 3 ? ' ···' : '');
+                          return AnimatedEntrance(
+                            delay: const Duration(milliseconds: 40),
+                            child: Padding(
+                              padding: EdgeInsets.fromLTRB(padding.left, 0, padding.right, 12),
+                              child: Material(
+                                color: Colors.transparent,
+                                child: InkWell(
+                                  onTap: () {
+                                    WidgetsBinding.instance.addPostFrameCallback((_) async {
+                                      final ids = await UserParishPreferences.getPreferredParishIds();
+                                      if (!context.mounted) return;
+                                      await showDialog<void>(
+                                        context: context,
+                                        builder: (ctx) => ParishOnboardingDialog(
+                                          initialParishIds: ids,
+                                          parishOnly: true,
+                                          onComplete: (newIds) async {
+                                            await UserParishPreferences.setPreferredParishIds(newIds);
+                                            if (ctx.mounted) Navigator.of(ctx).pop();
+                                            if (mounted) {
+                                              setState(() {
+                                                _parishNamesFuture = _loadParishNamesForDisplay();
+                                                _homeFuture = null;
+                                              });
+                                            }
+                                          },
+                                        ),
+                                      );
+                                    });
+                                  },
+                                  borderRadius: BorderRadius.circular(20),
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                                    decoration: BoxDecoration(
+                                      color: AppTheme.specWhite,
+                                      borderRadius: BorderRadius.circular(20),
+                                      border: Border.all(color: AppTheme.specNavy.withValues(alpha: 0.12)),
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: Colors.black.withValues(alpha: 0.04),
+                                          blurRadius: 8,
+                                          offset: const Offset(0, 2),
+                                        ),
+                                      ],
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Icon(Icons.location_on_outlined, size: 18, color: AppTheme.specGold),
+                                        const SizedBox(width: 8),
+                                        Text(
+                                          'In your parish · $label',
+                                          style: theme.textTheme.labelLarge?.copyWith(
+                                            color: AppTheme.specNavy,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                      ],
                                     ),
                                   ),
+                                ),
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+
+                    // ——— Search section ———
+                    SliverToBoxAdapter(
+                      child: AnimatedEntrance(
+                        delay: const Duration(milliseconds: 60),
+                        child: Padding(
+                          padding: EdgeInsets.fromLTRB(padding.left, 0, padding.right, _sectionSpacingLarge),
+                          child: Material(
+                            color: AppTheme.specWhite,
+                            borderRadius: BorderRadius.circular(_cardRadius),
+                            elevation: 0,
+                            shadowColor: Colors.black.withValues(alpha: 0.08),
+                            child: Container(
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(_cardRadius),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withValues(alpha: 0.06),
+                                    blurRadius: 12,
+                                    offset: const Offset(0, 4),
+                                  ),
                                 ],
+                              ),
+                              child: TextField(
+                                controller: _searchController,
+                                focusNode: _searchFocusNode,
+                                onSubmitted: (_) => _onSearchSubmitted(),
+                                decoration: InputDecoration(
+                                  hintText: 'Find by name or category — then explore',
+                                  hintStyle: theme.textTheme.bodyLarge?.copyWith(
+                                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                                  ),
+                                  prefixIcon: Icon(Icons.search_rounded, color: AppTheme.specNavy, size: 24),
+                                  suffixIcon: ValueListenableBuilder<TextEditingValue>(
+                                    valueListenable: _searchController,
+                                    builder: (context, value, _) {
+                                      if (value.text.isNotEmpty) {
+                                        return IconButton(
+                                          icon: Icon(Icons.clear_rounded, color: AppTheme.specNavy, size: 22),
+                                          onPressed: () {
+                                            _searchController.clear();
+                                          },
+                                          tooltip: 'Clear',
+                                        );
+                                      }
+                                      return IconButton(
+                                        icon: Icon(Icons.arrow_forward_rounded, color: AppTheme.specNavy, size: 22),
+                                        onPressed: _onSearchSubmitted,
+                                        tooltip: 'Search in Explore',
+                                      );
+                                    },
+                                  ),
+                                  border: InputBorder.none,
+                                  enabledBorder: InputBorder.none,
+                                  focusedBorder: InputBorder.none,
+                                  contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                                ),
+                                textInputAction: TextInputAction.search,
                               ),
                             ),
                           ),
                         ),
                       ),
-                    );
-                  },
-                ),
-              ),
+                    ),
 
-              // ——— Search section ———
-              SliverToBoxAdapter(
-                child: AnimatedEntrance(
-                  delay: const Duration(milliseconds: 60),
-                  child: Padding(
-                    padding: EdgeInsets.fromLTRB(padding.left, 0, padding.right, _sectionSpacingLarge),
-                    child: Material(
-                      color: AppTheme.specWhite,
-                      borderRadius: BorderRadius.circular(_cardRadius),
-                      elevation: 0,
-                      shadowColor: Colors.black.withValues(alpha: 0.08),
-                      child: Container(
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(_cardRadius),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.06),
-                              blurRadius: 12,
-                              offset: const Offset(0, 4),
-                            ),
-                          ],
-                        ),
-                        child: TextField(
-                          controller: _searchController,
-                          focusNode: _searchFocusNode,
-                          onSubmitted: (_) => _onSearchSubmitted(),
-                          decoration: InputDecoration(
-                            hintText: 'Find by name or category — then explore',
-                            hintStyle: theme.textTheme.bodyLarge?.copyWith(
-                              color: Theme.of(context).colorScheme.onSurfaceVariant,
-                            ),
-                            prefixIcon: Icon(
-                              Icons.search_rounded,
-                              color: AppTheme.specNavy,
-                              size: 24,
-                            ),
-                            suffixIcon: ValueListenableBuilder<TextEditingValue>(
-                              valueListenable: _searchController,
-                              builder: (context, value, _) {
-                                if (value.text.isNotEmpty) {
-                                  return IconButton(
-                                    icon: Icon(Icons.clear_rounded, color: AppTheme.specNavy, size: 22),
-                                    onPressed: () {
-                                      _searchController.clear();
-                                    },
-                                    tooltip: 'Clear',
-                                  );
-                                }
-                                return IconButton(
-                                  icon: Icon(Icons.arrow_forward_rounded, color: AppTheme.specNavy, size: 22),
-                                  onPressed: _onSearchSubmitted,
-                                  tooltip: 'Search in Explore',
-                                );
-                              },
-                            ),
-                            border: InputBorder.none,
-                            enabledBorder: InputBorder.none,
-                            focusedBorder: InputBorder.none,
-                            contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                    // ——— Quick actions: Deals, Events, Choose for Me ———
+                    SliverToBoxAdapter(
+                      child: AnimatedEntrance(
+                        delay: const Duration(milliseconds: 80),
+                        child: Padding(
+                          padding: EdgeInsets.fromLTRB(padding.left, 0, padding.right, _sectionSpacingLarge),
+                          child: _QuickActions(
+                            isTablet: isTablet,
+                            onDeals: widget.onNavigateToDeals,
+                            onEvents: widget.onOpenLocalEvents,
+                            onChooseForMe: widget.onOpenChooseForMe,
                           ),
-                          textInputAction: TextInputAction.search,
                         ),
                       ),
                     ),
-                  ),
-                ),
-              ),
 
-              // ——— Quick actions: Deals, Events, Choose for Me ———
-              SliverToBoxAdapter(
-                child: AnimatedEntrance(
-                  delay: const Duration(milliseconds: 80),
-                  child: Padding(
-                    padding: EdgeInsets.fromLTRB(padding.left, 0, padding.right, _sectionSpacingLarge),
-                    child: _QuickActions(
-                      isTablet: isTablet,
-                      onDeals: widget.onNavigateToDeals,
-                      onEvents: widget.onOpenLocalEvents,
-                      onChooseForMe: widget.onOpenChooseForMe,
-                    ),
-                  ),
-                ),
-              ),
-
-              // ——— Upcoming events strip ———
-              SliverToBoxAdapter(
-                child: FutureBuilder<List<(MockEvent, String)>>(
-                  future: _upcomingEventsFuture,
-                  builder: (context, snapshot) {
-                    if (snapshot.connectionState == ConnectionState.waiting && !snapshot.hasData) {
-                      return Padding(
-                        padding: EdgeInsets.fromLTRB(padding.left, 0, padding.right, _sectionSpacing),
-                        child: SizedBox(
-                          height: 100,
-                          child: Center(
-                            child: SizedBox(
-                              width: 24,
-                              height: 24,
-                              child: CircularProgressIndicator(strokeWidth: 2, color: AppTheme.specNavy.withValues(alpha: 0.4)),
+                    // ——— Upcoming events strip ———
+                    SliverToBoxAdapter(
+                      child: FutureBuilder<List<(MockEvent, String)>>(
+                        future: _upcomingEventsFuture,
+                        builder: (context, snapshot) {
+                          if (snapshot.connectionState == ConnectionState.waiting && !snapshot.hasData) {
+                            return Padding(
+                              padding: EdgeInsets.fromLTRB(padding.left, 0, padding.right, _sectionSpacing),
+                              child: SizedBox(
+                                height: 100,
+                                child: Center(
+                                  child: SizedBox(
+                                    width: 24,
+                                    height: 24,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      color: AppTheme.specNavy.withValues(alpha: 0.4),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            );
+                          }
+                          final list = snapshot.data ?? [];
+                          if (list.isEmpty) return const SizedBox.shrink();
+                          return AnimatedEntrance(
+                            delay: const Duration(milliseconds: 90),
+                            child: Padding(
+                              padding: EdgeInsets.fromLTRB(padding.left, 0, padding.right, 0),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                    crossAxisAlignment: CrossAxisAlignment.end,
+                                    children: [
+                                      _SectionHeader(
+                                        title: 'This week in Acadiana',
+                                        titleStyle: theme.textTheme.titleMedium?.copyWith(
+                                          fontWeight: FontWeight.w700,
+                                          color: AppTheme.specNavy,
+                                        ),
+                                      ),
+                                      TextButton(
+                                        onPressed: () {
+                                          if (widget.onOpenLocalEvents != null) {
+                                            widget.onOpenLocalEvents!();
+                                          } else {
+                                            Navigator.of(
+                                              context,
+                                            ).push(MaterialPageRoute<void>(builder: (_) => const LocalEventsScreen()));
+                                          }
+                                        },
+                                        style: TextButton.styleFrom(
+                                          foregroundColor: AppTheme.specGold,
+                                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                          minimumSize: Size.zero,
+                                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                        ),
+                                        child: Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            Text(
+                                              'See all',
+                                              style: theme.textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w600),
+                                            ),
+                                            const SizedBox(width: 2),
+                                            Icon(Icons.arrow_forward_rounded, size: 16, color: AppTheme.specGold),
+                                          ],
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 12),
+                                  SizedBox(
+                                    height: 112,
+                                    child: ListView.builder(
+                                      controller: _eventsScrollController,
+                                      scrollDirection: Axis.horizontal,
+                                      padding: EdgeInsets.only(bottom: 4),
+                                      clipBehavior: Clip.none,
+                                      itemCount: list.length,
+                                      itemBuilder: (context, index) {
+                                        final (event, businessName) = list[index];
+                                        return Padding(
+                                          padding: EdgeInsets.only(right: _cardGap),
+                                          child: _UpcomingEventCard(
+                                            event: event,
+                                            businessName: businessName,
+                                            onTap: () {
+                                              Navigator.of(context).push(
+                                                MaterialPageRoute<void>(
+                                                  builder: (_) => ListingDetailScreen(listingId: event.listingId),
+                                                ),
+                                              );
+                                            },
+                                          ),
+                                        );
+                                      },
+                                    ),
+                                  ),
+                                  SizedBox(height: _sectionSpacingLarge),
+                                ],
+                              ),
                             ),
-                          ),
-                        ),
-                      );
-                    }
-                    final list = snapshot.data ?? [];
-                    if (list.isEmpty) return const SizedBox.shrink();
-                    return AnimatedEntrance(
-                      delay: const Duration(milliseconds: 90),
+                          );
+                        },
+                      ),
+                    ),
+
+                    // ——— Popular Near You ———
+                    SliverToBoxAdapter(
                       child: Padding(
                         padding: EdgeInsets.fromLTRB(padding.left, 0, padding.right, 0),
                         child: Column(
@@ -562,27 +638,27 @@ class _HomeScreenState extends State<HomeScreen> {
                               crossAxisAlignment: CrossAxisAlignment.end,
                               children: [
                                 _SectionHeader(
-                                  title: 'This week in Acadiana',
-                                  titleStyle: theme.textTheme.titleMedium?.copyWith(
-                                    fontWeight: FontWeight.w700,
+                                  title: 'Popular Near You',
+                                  subtitle: 'Top spots in your parish',
+                                  titleStyle: theme.textTheme.titleLarge?.copyWith(
+                                    fontWeight: FontWeight.w800,
                                     color: AppTheme.specNavy,
+                                    letterSpacing: -0.2,
                                   ),
                                 ),
                                 TextButton(
                                   onPressed: () {
-                                    if (widget.onOpenLocalEvents != null) {
-                                      widget.onOpenLocalEvents!();
+                                    if (widget.onNavigateToExplore != null) {
+                                      widget.onNavigateToExplore!();
                                     } else {
-                                      Navigator.of(context).push(
-                                        MaterialPageRoute<void>(builder: (_) => const LocalEventsScreen()),
-                                      );
+                                      Navigator.of(
+                                        context,
+                                      ).push(MaterialPageRoute<void>(builder: (_) => const CategoriesScreen()));
                                     }
                                   },
                                   style: TextButton.styleFrom(
                                     foregroundColor: AppTheme.specGold,
-                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                                    minimumSize: Size.zero,
-                                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                                   ),
                                   child: Row(
                                     mainAxisSize: MainAxisSize.min,
@@ -591,390 +667,283 @@ class _HomeScreenState extends State<HomeScreen> {
                                         'See all',
                                         style: theme.textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w600),
                                       ),
-                                      const SizedBox(width: 2),
-                                      Icon(Icons.arrow_forward_rounded, size: 16, color: AppTheme.specGold),
+                                      const SizedBox(width: 4),
+                                      Icon(Icons.arrow_forward_rounded, size: 18, color: AppTheme.specGold),
                                     ],
                                   ),
                                 ),
                               ],
                             ),
-                            const SizedBox(height: 12),
-                            SizedBox(
-                              height: 112,
+                            const SizedBox(height: 14),
+                          ],
+                        ),
+                      ),
+                    ),
+                    isTablet
+                        ? SliverPadding(
+                            padding: EdgeInsets.fromLTRB(padding.left, 0, padding.right, _sectionSpacing),
+                            sliver: SliverGrid(
+                              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                                crossAxisCount: isLargeTablet ? 4 : 3,
+                                mainAxisSpacing: _cardGap,
+                                crossAxisSpacing: _cardGap,
+                                childAspectRatio: isLargeTablet ? 1.85 : 1.75,
+                              ),
+                              delegate: SliverChildBuilderDelegate((context, index) {
+                                final spot = spots[index];
+                                return AnimatedEntrance(
+                                  delay: Duration(milliseconds: 80 + (index * 60)),
+                                  child: _PopularCard(
+                                    spot: spot,
+                                    onTap: () {
+                                      Navigator.of(context).push(
+                                        MaterialPageRoute<void>(
+                                          builder: (_) => ListingDetailScreen(listingId: spot.id),
+                                        ),
+                                      );
+                                    },
+                                  ),
+                                );
+                              }, childCount: spots.length),
+                            ),
+                          )
+                        : SliverToBoxAdapter(
+                            child: SizedBox(
+                              height: 120,
                               child: ListView.builder(
-                                controller: _eventsScrollController,
+                                controller: _popularScrollController,
                                 scrollDirection: Axis.horizontal,
-                                padding: EdgeInsets.only(bottom: 4),
+                                padding: EdgeInsets.only(left: padding.left, right: padding.right, bottom: 4),
                                 clipBehavior: Clip.none,
-                                itemCount: list.length,
+                                itemCount: spots.length,
                                 itemBuilder: (context, index) {
-                                  final (event, businessName) = list[index];
+                                  final spot = spots[index];
+                                  final cardWidth = (width - padding.left - padding.right - _cardGap * 2) * 0.72;
                                   return Padding(
                                     padding: EdgeInsets.only(right: _cardGap),
-                                    child: _UpcomingEventCard(
-                                      event: event,
-                                      businessName: businessName,
+                                    child: AnimatedEntrance(
+                                      delay: Duration(milliseconds: 80 + (index * 60)),
+                                      child: _PopularCard(
+                                        spot: spot,
+                                        onTap: () {
+                                          Navigator.of(context).push(
+                                            MaterialPageRoute<void>(
+                                              builder: (_) => ListingDetailScreen(listingId: spot.id),
+                                            ),
+                                          );
+                                        },
+                                        cardWidth: cardWidth,
+                                      ),
+                                    ),
+                                  );
+                                },
+                              ),
+                            ),
+                          ),
+
+                    // ——— Local Stories (blog) ———
+                    SliverToBoxAdapter(
+                      child: Padding(
+                        padding: EdgeInsets.fromLTRB(padding.left, _sectionSpacingLarge, padding.right, 0),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              crossAxisAlignment: CrossAxisAlignment.end,
+                              children: [
+                                _SectionHeader(
+                                  title: 'Local Stories',
+                                  subtitle: 'Stories from Cajun country',
+                                  titleStyle: theme.textTheme.titleLarge?.copyWith(
+                                    fontWeight: FontWeight.w800,
+                                    color: AppTheme.specNavy,
+                                    letterSpacing: -0.2,
+                                  ),
+                                ),
+                                TextButton(
+                                  onPressed: () {
+                                    widget.onNavigateToNews?.call();
+                                  },
+                                  style: TextButton.styleFrom(
+                                    foregroundColor: AppTheme.specGold,
+                                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Text(
+                                        'See all',
+                                        style: theme.textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w600),
+                                      ),
+                                      const SizedBox(width: 4),
+                                      Icon(Icons.arrow_forward_rounded, size: 18, color: AppTheme.specGold),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 14),
+                          ],
+                        ),
+                      ),
+                    ),
+                    SliverToBoxAdapter(
+                      child: FutureBuilder<(List<BlogPost>, List<Parish>)>(
+                        future: _latestPostsFuture,
+                        builder: (context, snapshot) {
+                          if (snapshot.connectionState == ConnectionState.waiting && !snapshot.hasData) {
+                            return Padding(
+                              padding: EdgeInsets.fromLTRB(padding.left, 0, padding.right, _sectionSpacing),
+                              child: SizedBox(
+                                height: 200,
+                                child: Center(child: CircularProgressIndicator(color: AppTheme.specNavy)),
+                              ),
+                            );
+                          }
+                          final posts = snapshot.data?.$1 ?? [];
+                          final parishes = snapshot.data?.$2 ?? [];
+                          final idToName = {for (final p in parishes) p.id: p.name};
+                          if (posts.isEmpty) {
+                            return Padding(
+                              padding: EdgeInsets.fromLTRB(padding.left, 0, padding.right, _sectionSpacing),
+                              child: Container(
+                                height: 160,
+                                alignment: Alignment.center,
+                                decoration: BoxDecoration(
+                                  color: AppTheme.specWhite,
+                                  borderRadius: BorderRadius.circular(_cardRadius),
+                                  border: Border.all(color: AppTheme.specNavy.withValues(alpha: 0.12)),
+                                ),
+                                child: Text(
+                                  'No stories yet. Check back soon.',
+                                  style: theme.textTheme.bodyMedium?.copyWith(
+                                    color: AppTheme.specNavy.withValues(alpha: 0.6),
+                                  ),
+                                ),
+                              ),
+                            );
+                          }
+                          if (isTablet) {
+                            final largeTablet = MediaQuery.sizeOf(context).width >= AppTheme.breakpointLargeTablet;
+                            return Padding(
+                              padding: EdgeInsets.fromLTRB(padding.left, 0, padding.right, _sectionSpacing),
+                              child: GridView.builder(
+                                shrinkWrap: true,
+                                physics: const NeverScrollableScrollPhysics(),
+                                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                                  crossAxisCount: largeTablet ? 4 : 2,
+                                  mainAxisSpacing: _cardGap,
+                                  crossAxisSpacing: _cardGap,
+                                  childAspectRatio: largeTablet ? 0.75 : 1.15,
+                                ),
+                                itemCount: posts.length,
+                                itemBuilder: (context, index) {
+                                  final post = posts[index];
+                                  return AnimatedEntrance(
+                                    delay: Duration(milliseconds: 100 + (index * 60)),
+                                    child: _LatestPostCard(
+                                      post: post,
+                                      parishLabel: _parishLabelForPost(post, idToName),
                                       onTap: () {
-                                        Navigator.of(context).push(
-                                          MaterialPageRoute<void>(
-                                            builder: (_) => ListingDetailScreen(listingId: event.listingId),
-                                          ),
-                                        );
+                                        widget.onNavigateToNewsPost?.call(post.id);
                                       },
                                     ),
                                   );
                                 },
                               ),
-                            ),
-                            SizedBox(height: _sectionSpacingLarge),
-                          ],
-                        ),
-                      ),
-                    );
-                  },
-                ),
-              ),
-
-              // ——— Popular Near You ———
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: EdgeInsets.fromLTRB(padding.left, 0, padding.right, 0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        crossAxisAlignment: CrossAxisAlignment.end,
-                        children: [
-                          _SectionHeader(
-                            title: 'Popular Near You',
-                            subtitle: 'Top spots in your parish',
-                            titleStyle: theme.textTheme.titleLarge?.copyWith(
-                              fontWeight: FontWeight.w800,
-                              color: AppTheme.specNavy,
-                              letterSpacing: -0.2,
-                            ),
-                          ),
-                          TextButton(
-                            onPressed: () {
-                              if (widget.onNavigateToExplore != null) {
-                                widget.onNavigateToExplore!();
-                              } else {
-                                Navigator.of(context).push(
-                                  MaterialPageRoute<void>(builder: (_) => const CategoriesScreen()),
-                                );
-                              }
-                            },
-                            style: TextButton.styleFrom(
-                              foregroundColor: AppTheme.specGold,
-                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Text(
-                                  'See all',
-                                  style: theme.textTheme.labelLarge?.copyWith(
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                                const SizedBox(width: 4),
-                                Icon(Icons.arrow_forward_rounded, size: 18, color: AppTheme.specGold),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 14),
-                    ],
-                  ),
-                ),
-              ),
-              isTablet
-                  ? SliverPadding(
-                      padding: EdgeInsets.fromLTRB(padding.left, 0, padding.right, _sectionSpacing),
-                      sliver: SliverGrid(
-                        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: isLargeTablet ? 4 : 3,
-                          mainAxisSpacing: _cardGap,
-                          crossAxisSpacing: _cardGap,
-                          childAspectRatio: isLargeTablet ? 1.85 : 1.75,
-                        ),
-                        delegate: SliverChildBuilderDelegate(
-                          (context, index) {
-                            final spot = spots[index];
-                            return AnimatedEntrance(
-                              delay: Duration(milliseconds: 80 + (index * 60)),
-                              child: _PopularCard(
-                                spot: spot,
-                                onTap: () {
-                                  Navigator.of(context).push(
-                                    MaterialPageRoute<void>(
-                                      builder: (_) => ListingDetailScreen(listingId: spot.id),
+                            );
+                          }
+                          // Mobile: horizontal scroll for compact, swipeable showcase
+                          final blogCardWidth = (width - padding.left - padding.right - _cardGap * 2) * 0.78;
+                          return Padding(
+                            padding: EdgeInsets.only(bottom: _sectionSpacing),
+                            child: SizedBox(
+                              height: 268,
+                              child: ListView.builder(
+                                controller: _blogScrollController,
+                                scrollDirection: Axis.horizontal,
+                                padding: EdgeInsets.only(left: padding.left, right: padding.right, bottom: 4),
+                                clipBehavior: Clip.none,
+                                itemCount: posts.length,
+                                itemBuilder: (context, index) {
+                                  final post = posts[index];
+                                  return Padding(
+                                    padding: EdgeInsets.only(right: _cardGap),
+                                    child: AnimatedEntrance(
+                                      delay: Duration(milliseconds: 100 + (index * 60)),
+                                      child: _LatestPostCard(
+                                        post: post,
+                                        parishLabel: _parishLabelForPost(post, idToName),
+                                        onTap: () {
+                                          widget.onNavigateToNewsPost?.call(post.id);
+                                        },
+                                        cardWidth: blogCardWidth,
+                                      ),
                                     ),
                                   );
                                 },
-                              ),
-                            );
-                          },
-                          childCount: spots.length,
-                        ),
-                      ),
-                    )
-                  : SliverToBoxAdapter(
-                      child: SizedBox(
-                        height: 120,
-                        child: ListView.builder(
-                          controller: _popularScrollController,
-                          scrollDirection: Axis.horizontal,
-                          padding: EdgeInsets.only(
-                            left: padding.left,
-                            right: padding.right,
-                            bottom: 4,
-                          ),
-                          clipBehavior: Clip.none,
-                          itemCount: spots.length,
-                          itemBuilder: (context, index) {
-                            final spot = spots[index];
-                            final cardWidth = (width - padding.left - padding.right - _cardGap * 2) * 0.72;
-                            return Padding(
-                              padding: EdgeInsets.only(right: _cardGap),
-                              child: AnimatedEntrance(
-                                delay: Duration(milliseconds: 80 + (index * 60)),
-                                child: _PopularCard(
-                                  spot: spot,
-                                  onTap: () {
-                                    Navigator.of(context).push(
-                                      MaterialPageRoute<void>(
-                                        builder: (_) => ListingDetailScreen(listingId: spot.id),
-                                      ),
-                                    );
-                                  },
-                                  cardWidth: cardWidth,
-                                ),
-                              ),
-                            );
-                          },
-                        ),
-                      ),
-                    ),
-
-              // ——— Local Stories (blog) ———
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: EdgeInsets.fromLTRB(padding.left, _sectionSpacingLarge, padding.right, 0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        crossAxisAlignment: CrossAxisAlignment.end,
-                        children: [
-                          _SectionHeader(
-                            title: 'Local Stories',
-                            subtitle: 'Stories from Cajun country',
-                            titleStyle: theme.textTheme.titleLarge?.copyWith(
-                              fontWeight: FontWeight.w800,
-                              color: AppTheme.specNavy,
-                              letterSpacing: -0.2,
-                            ),
-                          ),
-                          TextButton(
-                            onPressed: () {
-                              widget.onNavigateToNews?.call();
-                            },
-                            style: TextButton.styleFrom(
-                              foregroundColor: AppTheme.specGold,
-                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Text(
-                                  'See all',
-                                  style: theme.textTheme.labelLarge?.copyWith(
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                                const SizedBox(width: 4),
-                                Icon(Icons.arrow_forward_rounded, size: 18, color: AppTheme.specGold),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 14),
-                    ],
-                  ),
-                ),
-              ),
-              SliverToBoxAdapter(
-                child: FutureBuilder<(List<BlogPost>, List<Parish>)>(
-                  future: _latestPostsFuture,
-                  builder: (context, snapshot) {
-                    if (snapshot.connectionState == ConnectionState.waiting && !snapshot.hasData) {
-                      return Padding(
-                        padding: EdgeInsets.fromLTRB(padding.left, 0, padding.right, _sectionSpacing),
-                        child: SizedBox(
-                          height: 200,
-                          child: Center(
-                            child: CircularProgressIndicator(color: AppTheme.specNavy),
-                          ),
-                        ),
-                      );
-                    }
-                    final posts = snapshot.data?.$1 ?? [];
-                    final parishes = snapshot.data?.$2 ?? [];
-                    final idToName = {for (final p in parishes) p.id: p.name};
-                    if (posts.isEmpty) {
-                      return Padding(
-                        padding: EdgeInsets.fromLTRB(padding.left, 0, padding.right, _sectionSpacing),
-                        child: Container(
-                          height: 160,
-                          alignment: Alignment.center,
-                          decoration: BoxDecoration(
-                            color: AppTheme.specWhite,
-                            borderRadius: BorderRadius.circular(_cardRadius),
-                            border: Border.all(
-                              color: AppTheme.specNavy.withValues(alpha: 0.12),
-                            ),
-                          ),
-                          child: Text(
-                            'No stories yet. Check back soon.',
-                            style: theme.textTheme.bodyMedium?.copyWith(
-                              color: AppTheme.specNavy.withValues(alpha: 0.6),
-                            ),
-                          ),
-                        ),
-                      );
-                    }
-                    if (isTablet) {
-                      final largeTablet = MediaQuery.sizeOf(context).width >= AppTheme.breakpointLargeTablet;
-                      return Padding(
-                        padding: EdgeInsets.fromLTRB(padding.left, 0, padding.right, _sectionSpacing),
-                        child: GridView.builder(
-                          shrinkWrap: true,
-                          physics: const NeverScrollableScrollPhysics(),
-                          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                            crossAxisCount: largeTablet ? 4 : 2,
-                            mainAxisSpacing: _cardGap,
-                            crossAxisSpacing: _cardGap,
-                            childAspectRatio: largeTablet ? 0.75 : 1.15,
-                          ),
-                          itemCount: posts.length,
-                          itemBuilder: (context, index) {
-                            final post = posts[index];
-                            return AnimatedEntrance(
-                              delay: Duration(milliseconds: 100 + (index * 60)),
-                              child: _LatestPostCard(
-                                post: post,
-                                parishLabel: _parishLabelForPost(post, idToName),
-                                onTap: () {
-                                  widget.onNavigateToNewsPost?.call(post.id);
-                                },
-                              ),
-                            );
-                          },
-                        ),
-                      );
-                    }
-                    // Mobile: horizontal scroll for compact, swipeable showcase
-                    final blogCardWidth = (width - padding.left - padding.right - _cardGap * 2) * 0.78;
-                    return Padding(
-                      padding: EdgeInsets.only(bottom: _sectionSpacing),
-                      child: SizedBox(
-                        height: 268,
-                        child: ListView.builder(
-                        controller: _blogScrollController,
-                        scrollDirection: Axis.horizontal,
-                        padding: EdgeInsets.only(left: padding.left, right: padding.right, bottom: 4),
-                        clipBehavior: Clip.none,
-                        itemCount: posts.length,
-                        itemBuilder: (context, index) {
-                          final post = posts[index];
-                          return Padding(
-                            padding: EdgeInsets.only(right: _cardGap),
-                            child: AnimatedEntrance(
-                              delay: Duration(milliseconds: 100 + (index * 60)),
-                              child: _LatestPostCard(
-                                post: post,
-                                parishLabel: _parishLabelForPost(post, idToName),
-                                onTap: () {
-                                  widget.onNavigateToNewsPost?.call(post.id);
-                                },
-                                cardWidth: blogCardWidth,
                               ),
                             ),
                           );
                         },
                       ),
                     ),
-                    );
-                  },
-                ),
-              ),
 
-              // ——— Browse by category ———
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: EdgeInsets.fromLTRB(padding.left, _sectionSpacingLarge, padding.right, 0),
-                  child: _SectionHeader(
-                    title: 'Browse by category',
-                    titleStyle: theme.textTheme.titleLarge?.copyWith(
-                      fontWeight: FontWeight.w700,
-                      color: AppTheme.specNavy,
-                    ),
-                  ),
-                ),
-              ),
-              SliverToBoxAdapter(child: SizedBox(height: _sectionTitleBottom)),
-              SliverPadding(
-                padding: EdgeInsets.fromLTRB(padding.left, 0, padding.right, 0),
-                sliver: SliverGrid(
-                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: isTablet ? 4 : 2,
-                    mainAxisSpacing: 16,
-                    crossAxisSpacing: 16,
-                    childAspectRatio: isTablet ? 1.1 : 1.25,
-                  ),
-                  delegate: SliverChildBuilderDelegate(
-                    (context, index) {
-                      final cat = categories[index];
-                      return AnimatedEntrance(
-                        delay: Duration(milliseconds: 120 + (index * 50)),
-                        child: _CategoryCard(
-                          category: cat,
-                          onTap: () {
-                            if (widget.onSelectCategory != null) {
-                              widget.onSelectCategory!(cat);
-                            } else {
-                              Navigator.of(context).push(
-                                MaterialPageRoute<void>(
-                                  builder: (_) => CategoriesScreen(initialCategoryId: cat.id),
-                                ),
-                              );
-                            }
-                          },
+                    // ——— Browse by category ———
+                    SliverToBoxAdapter(
+                      child: Padding(
+                        padding: EdgeInsets.fromLTRB(padding.left, _sectionSpacingLarge, padding.right, 0),
+                        child: _SectionHeader(
+                          title: 'Browse by category',
+                          titleStyle: theme.textTheme.titleLarge?.copyWith(
+                            fontWeight: FontWeight.w700,
+                            color: AppTheme.specNavy,
+                          ),
                         ),
-                      );
-                    },
-                    childCount: categories.length,
-                  ),
+                      ),
+                    ),
+                    SliverToBoxAdapter(child: SizedBox(height: _sectionTitleBottom)),
+                    SliverPadding(
+                      padding: EdgeInsets.fromLTRB(padding.left, 0, padding.right, 0),
+                      sliver: SliverGrid(
+                        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: isTablet ? 4 : 2,
+                          mainAxisSpacing: 16,
+                          crossAxisSpacing: 16,
+                          childAspectRatio: isTablet ? 1.1 : 1.25,
+                        ),
+                        delegate: SliverChildBuilderDelegate((context, index) {
+                          final cat = categories[index];
+                          return AnimatedEntrance(
+                            delay: Duration(milliseconds: 120 + (index * 50)),
+                            child: _CategoryCard(
+                              category: cat,
+                              onTap: () {
+                                if (widget.onSelectCategory != null) {
+                                  widget.onSelectCategory!(cat);
+                                } else {
+                                  Navigator.of(context).push(
+                                    MaterialPageRoute<void>(
+                                      builder: (_) => CategoriesScreen(initialCategoryId: cat.id),
+                                    ),
+                                  );
+                                }
+                              },
+                            ),
+                          );
+                        }, childCount: categories.length),
+                      ),
+                    ),
+                    SliverToBoxAdapter(child: SizedBox(height: _sectionSpacing + 8)),
+                    // Extra bottom padding so content clears nav and safe area (avoids bottom overflow).
+                    SliverToBoxAdapter(child: SizedBox(height: 24 + MediaQuery.paddingOf(context).bottom)),
+                  ],
                 ),
-              ),
-              SliverToBoxAdapter(child: SizedBox(height: _sectionSpacing + 8)),
-              // Extra bottom padding so content clears nav and safe area (avoids bottom overflow).
-              SliverToBoxAdapter(
-                child: SizedBox(
-                  height: 24 + MediaQuery.paddingOf(context).bottom,
-                ),
-              ),
-            ],
-            ),
-          );
-        },
-      ),
-    );
+              );
+            },
+          ),
+        );
       },
     );
   }
@@ -982,11 +951,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
 /// Reusable section title with optional subtitle and gold underline.
 class _SectionHeader extends StatelessWidget {
-  const _SectionHeader({
-    required this.title,
-    this.subtitle,
-    required this.titleStyle,
-  });
+  const _SectionHeader({required this.title, this.subtitle, required this.titleStyle});
 
   final String title;
   final String? subtitle;
@@ -1006,9 +971,7 @@ class _SectionHeader extends StatelessWidget {
           const SizedBox(height: 6),
           Text(
             subtitle!,
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: AppTheme.specNavy.withValues(alpha: 0.65),
-                ),
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppTheme.specNavy.withValues(alpha: 0.65)),
           ),
         ],
         const SizedBox(height: 6),
@@ -1048,10 +1011,7 @@ class _HomeHero extends StatelessWidget {
               gradient: LinearGradient(
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
-                colors: [
-                  AppTheme.specNavy,
-                  AppTheme.specNavy.withValues(alpha: 0.92),
-                ],
+                colors: [AppTheme.specNavy, AppTheme.specNavy.withValues(alpha: 0.92)],
               ),
             ),
           ),
@@ -1065,15 +1025,8 @@ class _HomeHero extends StatelessWidget {
               child: SizedBox(
                 height: bannerHeight * 0.45,
                 child: ColorFiltered(
-                  colorFilter: ColorFilter.mode(
-                    AppTheme.specWhite.withValues(alpha: 0.12),
-                    BlendMode.srcATop,
-                  ),
-                  child: Image.asset(
-                    'assets/images/skyline-1.png',
-                    fit: BoxFit.cover,
-                    width: double.infinity,
-                  ),
+                  colorFilter: ColorFilter.mode(AppTheme.specWhite.withValues(alpha: 0.12), BlendMode.srcATop),
+                  child: Image.asset('assets/images/skyline-1.png', fit: BoxFit.cover, width: double.infinity),
                 ),
               ),
             ),
@@ -1114,10 +1067,7 @@ class _HomeHero extends StatelessWidget {
                     const SizedBox(height: 12),
                     Row(
                       children: [
-                        AppSecondaryButton(
-                          onPressed: onExplore,
-                          child: const Text('Explore'),
-                        ),
+                        AppSecondaryButton(onPressed: onExplore, child: const Text('Explore')),
                         const SizedBox(width: 12),
                         Material(
                           color: AppTheme.specOffWhite,
@@ -1199,13 +1149,7 @@ class _HomeTabletRightColumn extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppTheme.specWhite,
         borderRadius: BorderRadius.circular(_HomeScreenState._cardRadius),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.06),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
-          ),
-        ],
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.06), blurRadius: 12, offset: const Offset(0, 4))],
       ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(_HomeScreenState._cardRadius),
@@ -1227,22 +1171,22 @@ class _HomeTabletRightColumn extends StatelessWidget {
                     ),
                   ),
                   TextButton(
-                        onPressed: onExplore,
-                        style: TextButton.styleFrom(
-                          foregroundColor: AppTheme.specGold,
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                          minimumSize: Size.zero,
-                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Text('See all', style: theme.textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w600)),
-                            const SizedBox(width: 2),
-                            Icon(Icons.arrow_forward_rounded, size: 16, color: AppTheme.specGold),
-                          ],
-                        ),
-                      ),
+                    onPressed: onExplore,
+                    style: TextButton.styleFrom(
+                      foregroundColor: AppTheme.specGold,
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      minimumSize: Size.zero,
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text('See all', style: theme.textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w600)),
+                        const SizedBox(width: 2),
+                        Icon(Icons.arrow_forward_rounded, size: 16, color: AppTheme.specGold),
+                      ],
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -1268,12 +1212,7 @@ class _HomeTabletRightColumn extends StatelessWidget {
 }
 
 class _QuickActions extends StatelessWidget {
-  const _QuickActions({
-    this.isTablet = false,
-    this.onDeals,
-    this.onEvents,
-    this.onChooseForMe,
-  });
+  const _QuickActions({this.isTablet = false, this.onDeals, this.onEvents, this.onChooseForMe});
 
   final bool isTablet;
   final VoidCallback? onDeals;
@@ -1305,11 +1244,7 @@ class _QuickActions extends StatelessWidget {
                     color: enabled ? AppTheme.specGold.withValues(alpha: 0.4) : nav.withValues(alpha: 0.1),
                   ),
                   boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.05),
-                      blurRadius: 12,
-                      offset: const Offset(0, 3),
-                    ),
+                    BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 12, offset: const Offset(0, 3)),
                   ],
                 ),
                 child: Column(
@@ -1328,10 +1263,7 @@ class _QuickActions extends StatelessWidget {
                     const SizedBox(height: 4),
                     Text(
                       description,
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: nav.withValues(alpha: 0.65),
-                        height: 1.3,
-                      ),
+                      style: theme.textTheme.bodySmall?.copyWith(color: nav.withValues(alpha: 0.65), height: 1.3),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -1342,6 +1274,7 @@ class _QuickActions extends StatelessWidget {
           ),
         );
       }
+
       return Row(
         children: [
           actionCard('Deals', 'Save at local spots', Icons.local_offer_rounded, onDeals),
@@ -1370,11 +1303,7 @@ class _QuickActions extends StatelessWidget {
                 color: enabled ? AppTheme.specGold.withValues(alpha: 0.5) : nav.withValues(alpha: 0.12),
               ),
               boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.04),
-                  blurRadius: 10,
-                  offset: const Offset(0, 2),
-                ),
+                BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 10, offset: const Offset(0, 2)),
               ],
             ),
             child: Row(
@@ -1413,11 +1342,7 @@ class _QuickActions extends StatelessWidget {
 
 /// Compact card for the home "Upcoming" events strip. Shows date, title, venue.
 class _UpcomingEventCard extends StatelessWidget {
-  const _UpcomingEventCard({
-    required this.event,
-    required this.businessName,
-    required this.onTap,
-  });
+  const _UpcomingEventCard({required this.event, required this.businessName, required this.onTap});
 
   final MockEvent event;
   final String businessName;
@@ -1462,11 +1387,7 @@ class _UpcomingEventCard extends StatelessWidget {
               borderRadius: BorderRadius.circular(_radius),
               border: Border.all(color: AppTheme.specNavy.withValues(alpha: 0.08)),
               boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.05),
-                  blurRadius: 10,
-                  offset: const Offset(0, 2),
-                ),
+                BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10, offset: const Offset(0, 2)),
               ],
             ),
             child: Column(
@@ -1496,9 +1417,7 @@ class _UpcomingEventCard extends StatelessWidget {
                 const SizedBox(height: 2),
                 Text(
                   businessName,
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: AppTheme.specNavy.withValues(alpha: 0.65),
-                  ),
+                  style: theme.textTheme.bodySmall?.copyWith(color: AppTheme.specNavy.withValues(alpha: 0.65)),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -1516,6 +1435,7 @@ class _PopularCard extends StatelessWidget {
 
   final MockSpot spot;
   final VoidCallback onTap;
+
   /// When set (e.g. horizontal scroll), use this width; otherwise full width for grid.
   final double? cardWidth;
 
@@ -1550,11 +1470,7 @@ class _PopularCard extends StatelessWidget {
             borderRadius: BorderRadius.circular(_radius),
             border: Border.all(color: AppTheme.specNavy.withValues(alpha: 0.06)),
             boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.06),
-                blurRadius: 16,
-                offset: const Offset(0, 4),
-              ),
+              BoxShadow(color: Colors.black.withValues(alpha: 0.06), blurRadius: 16, offset: const Offset(0, 4)),
             ],
           ),
           child: Padding(
@@ -1572,19 +1488,19 @@ class _PopularCard extends StatelessWidget {
                       borderRadius: BorderRadius.circular(14),
                       border: Border.all(color: AppTheme.specNavy.withValues(alpha: 0.06)),
                     ),
-                            child: ClipRRect(
-                              borderRadius: BorderRadius.circular(14),
-                              child: hasImage
-                                  ? CachedNetworkImage(
-                                      imageUrl: logoUrl,
-                                      fit: BoxFit.contain,
-                                      memCacheWidth: 200,
-                                      memCacheHeight: 200,
-                                      placeholder: (_, _) => _placeholderContent(),
-                                      errorWidget: (_, _, _) => _placeholderContent(),
-                                    )
-                                  : _placeholderContent(),
-                            ),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(14),
+                      child: hasImage
+                          ? CachedNetworkImage(
+                              imageUrl: logoUrl,
+                              fit: BoxFit.contain,
+                              memCacheWidth: 200,
+                              memCacheHeight: 200,
+                              placeholder: (_, _) => _placeholderContent(),
+                              errorWidget: (_, _, _) => _placeholderContent(),
+                            )
+                          : _placeholderContent(),
+                    ),
                   ),
                 ),
                 const SizedBox(width: 14),
@@ -1607,9 +1523,7 @@ class _PopularCard extends StatelessWidget {
                         const SizedBox(height: 2),
                         Text(
                           spot.subtitle,
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: AppTheme.specNavy.withValues(alpha: 0.7),
-                          ),
+                          style: theme.textTheme.bodySmall?.copyWith(color: AppTheme.specNavy.withValues(alpha: 0.7)),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
@@ -1681,23 +1595,17 @@ class _PopularCard extends StatelessWidget {
   }
 
   Widget _placeholderContent() {
-    return Center(
-      child: Icon(Icons.store_rounded, size: 44, color: AppTheme.specNavy.withValues(alpha: 0.25)),
-    );
+    return Center(child: Icon(Icons.store_rounded, size: 44, color: AppTheme.specNavy.withValues(alpha: 0.25)));
   }
 }
 
 class _LatestPostCard extends StatelessWidget {
-  const _LatestPostCard({
-    required this.post,
-    required this.parishLabel,
-    required this.onTap,
-    this.cardWidth,
-  });
+  const _LatestPostCard({required this.post, required this.parishLabel, required this.onTap, this.cardWidth});
 
   final BlogPost post;
   final String parishLabel;
   final VoidCallback onTap;
+
   /// When set (e.g. horizontal scroll), use this width; otherwise full width for grid.
   final double? cardWidth;
 
@@ -1739,11 +1647,7 @@ class _LatestPostCard extends StatelessWidget {
             borderRadius: BorderRadius.circular(radius),
             border: Border.all(color: AppTheme.specNavy.withValues(alpha: 0.06)),
             boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.06),
-                blurRadius: 16,
-                offset: const Offset(0, 4),
-              ),
+              BoxShadow(color: Colors.black.withValues(alpha: 0.06), blurRadius: 16, offset: const Offset(0, 4)),
             ],
           ),
           child: Column(
@@ -1756,17 +1660,17 @@ class _LatestPostCard extends StatelessWidget {
                     SizedBox(
                       height: 140,
                       width: double.infinity,
-                          child: hasCover
-                              ? CachedNetworkImage(
-                                  imageUrl: coverUrl,
-                                  fit: BoxFit.cover,
-                                  width: double.infinity,
-                                  memCacheWidth: 400,
-                                  memCacheHeight: 200,
-                                  placeholder: (_, progress) => _placeholderCover(),
-                                  errorWidget: (_, error, stackTrace) => _placeholderCover(),
-                                )
-                              : _placeholderCover(),
+                      child: hasCover
+                          ? CachedNetworkImage(
+                              imageUrl: coverUrl,
+                              fit: BoxFit.cover,
+                              width: double.infinity,
+                              memCacheWidth: 400,
+                              memCacheHeight: 200,
+                              placeholder: (_, progress) => _placeholderCover(),
+                              errorWidget: (_, error, stackTrace) => _placeholderCover(),
+                            )
+                          : _placeholderCover(),
                     ),
                     Positioned(
                       bottom: 0,
@@ -1778,10 +1682,7 @@ class _LatestPostCard extends StatelessWidget {
                           gradient: LinearGradient(
                             begin: Alignment.centerLeft,
                             end: Alignment.centerRight,
-                            colors: [
-                              AppTheme.specGold,
-                              AppTheme.specGold.withValues(alpha: 0.6),
-                            ],
+                            colors: [AppTheme.specGold, AppTheme.specGold.withValues(alpha: 0.6)],
                           ),
                         ),
                       ),
@@ -1872,15 +1773,10 @@ class _LatestPostCard extends StatelessWidget {
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [
-            AppTheme.specNavy.withValues(alpha: 0.12),
-            AppTheme.specGold.withValues(alpha: 0.15),
-          ],
+          colors: [AppTheme.specNavy.withValues(alpha: 0.12), AppTheme.specGold.withValues(alpha: 0.15)],
         ),
       ),
-      child: Center(
-        child: Icon(Icons.article_rounded, size: 48, color: AppTheme.specNavy.withValues(alpha: 0.22)),
-      ),
+      child: Center(child: Icon(Icons.article_rounded, size: 48, color: AppTheme.specNavy.withValues(alpha: 0.22))),
     );
   }
 }
@@ -1906,29 +1802,18 @@ class _CategoryCard extends StatelessWidget {
             color: AppTheme.specWhite,
             borderRadius: BorderRadius.circular(_HomeScreenState._cardRadius),
             boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.06),
-                blurRadius: 12,
-                offset: const Offset(0, 4),
-              ),
+              BoxShadow(color: Colors.black.withValues(alpha: 0.06), blurRadius: 12, offset: const Offset(0, 4)),
             ],
           ),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(
-                getCategoryIconData(category.iconName),
-                size: 40,
-                color: AppTheme.specNavy,
-              ),
+              Icon(getCategoryIconData(category.iconName), size: 40, color: AppTheme.specNavy),
               const SizedBox(height: 14),
               Text(
                 category.name,
                 textAlign: TextAlign.center,
-                style: theme.textTheme.titleSmall?.copyWith(
-                  fontWeight: FontWeight.w700,
-                  color: AppTheme.specNavy,
-                ),
+                style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700, color: AppTheme.specNavy),
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
               ),

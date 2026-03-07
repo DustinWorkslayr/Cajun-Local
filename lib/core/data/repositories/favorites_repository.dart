@@ -4,26 +4,19 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 /// Favorites (backend-cheatsheet §1). RLS: own SELECT/INSERT/DELETE; no UPDATE.
 class FavoritesRepository {
-  FavoritesRepository({AuthRepository? authRepository})
-      : _auth = authRepository ?? AuthRepository();
+  FavoritesRepository({AuthRepository? authRepository}) : _auth = authRepository ?? AuthRepository();
 
   final AuthRepository _auth;
 
-  SupabaseClient? get _client =>
-      SupabaseConfig.isConfigured ? Supabase.instance.client : null;
+  SupabaseClient? get _client => SupabaseConfig.isConfigured ? Supabase.instance.client : null;
 
   /// List business IDs favorited by the current user. Returns [] when not signed in or not configured.
   Future<List<String>> list() async {
     final client = _client;
     final userId = _auth.currentUserId;
     if (client == null || userId == null) return [];
-    final list = await client
-        .from('favorites')
-        .select('business_id')
-        .eq('user_id', userId);
-    return (list as List)
-        .map((e) => (e as Map<String, dynamic>)['business_id'] as String)
-        .toList();
+    final list = await client.from('favorites').select('business_id').eq('user_id', userId);
+    return (list as List).map((e) => (e as Map<String, dynamic>)['business_id'] as String).toList();
   }
 
   /// Add a favorite for the current user. No-op when not signed in or not configured.
@@ -31,10 +24,7 @@ class FavoritesRepository {
     final client = _client;
     final userId = _auth.currentUserId;
     if (client == null || userId == null) return;
-    await client.from('favorites').insert({
-      'user_id': userId,
-      'business_id': businessId,
-    });
+    await client.from('favorites').insert({'user_id': userId, 'business_id': businessId});
   }
 
   /// Remove a favorite for the current user. No-op when not configured.
@@ -42,11 +32,7 @@ class FavoritesRepository {
     final client = _client;
     final userId = _auth.currentUserId;
     if (client == null || userId == null) return;
-    await client
-        .from('favorites')
-        .delete()
-        .eq('user_id', userId)
-        .eq('business_id', businessId);
+    await client.from('favorites').delete().eq('user_id', userId).eq('business_id', businessId);
   }
 
   /// Total number of users who favorited this business. Returns 0 when not configured or RPC missing.
@@ -66,9 +52,7 @@ class FavoritesRepository {
   /// Favorites count per business. Uses get_favorites_count in parallel. Missing/errors yield 0.
   Future<Map<String, int>> getCountsForBusinesses(List<String> businessIds) async {
     if (businessIds.isEmpty) return {};
-    final list = await Future.wait(
-      businessIds.map((id) => getCountForBusiness(id).then((c) => MapEntry(id, c))),
-    );
+    final list = await Future.wait(businessIds.map((id) => getCountForBusiness(id).then((c) => MapEntry(id, c))));
     return Map.fromEntries(list);
   }
 }

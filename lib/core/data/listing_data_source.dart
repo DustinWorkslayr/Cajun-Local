@@ -56,18 +56,18 @@ class ListingDataSource {
     UserPunchCardsRepository? userPunchCardsRepository,
     BusinessEventsRepository? businessEventsRepository,
     AmenitiesRepository? amenitiesRepository,
-  })  : _auth = authRepository ?? AuthRepository(),
-        _business = businessRepository ?? BusinessRepository(),
-        _businessManagers = businessManagersRepository ?? BusinessManagersRepository(),
-        _category = categoryRepository ?? CategoryRepository(),
-        _hours = businessHoursRepository ?? BusinessHoursRepository(),
-        _links = businessLinksRepository ?? BusinessLinksRepository(),
-        _menu = menuRepository ?? MenuRepository(),
-        _deals = dealsRepository ?? DealsRepository(),
-        _punchCards = punchCardProgramsRepository ?? PunchCardProgramsRepository(),
-        _userPunchCards = userPunchCardsRepository ?? UserPunchCardsRepository(),
-        _events = businessEventsRepository ?? BusinessEventsRepository(),
-        _amenities = amenitiesRepository ?? AmenitiesRepository();
+  }) : _auth = authRepository ?? AuthRepository(),
+       _business = businessRepository ?? BusinessRepository(),
+       _businessManagers = businessManagersRepository ?? BusinessManagersRepository(),
+       _category = categoryRepository ?? CategoryRepository(),
+       _hours = businessHoursRepository ?? BusinessHoursRepository(),
+       _links = businessLinksRepository ?? BusinessLinksRepository(),
+       _menu = menuRepository ?? MenuRepository(),
+       _deals = dealsRepository ?? DealsRepository(),
+       _punchCards = punchCardProgramsRepository ?? PunchCardProgramsRepository(),
+       _userPunchCards = userPunchCardsRepository ?? UserPunchCardsRepository(),
+       _events = businessEventsRepository ?? BusinessEventsRepository(),
+       _amenities = amenitiesRepository ?? AmenitiesRepository();
 
   final AuthRepository _auth;
   final BusinessRepository _business;
@@ -88,17 +88,18 @@ class ListingDataSource {
   Future<MockUser> getCurrentUser() async {
     if (!useSupabase) return Future.error(StateError(kNotConfiguredMessage));
     final profile = await _auth.getCurrentProfile();
-    if (profile == null) return Future.value(MockUser(displayName: '', email: null, avatarUrl: null, ownedListingIds: []));
+    if (profile == null)
+      return Future.value(MockUser(displayName: '', email: null, avatarUrl: null, ownedListingIds: []));
     final userId = _auth.currentUserId;
-    final ownedListingIds = userId != null
-        ? await _businessManagers.listBusinessIdsForUser(userId)
-        : <String>[];
-    return Future.value(MockUser(
-      displayName: profile.displayName ?? profile.email ?? 'User',
-      email: profile.email,
-      avatarUrl: profile.avatarUrl,
-      ownedListingIds: ownedListingIds,
-    ));
+    final ownedListingIds = userId != null ? await _businessManagers.listBusinessIdsForUser(userId) : <String>[];
+    return Future.value(
+      MockUser(
+        displayName: profile.displayName ?? profile.email ?? 'User',
+        email: profile.email,
+        avatarUrl: profile.avatarUrl,
+        ownedListingIds: ownedListingIds,
+      ),
+    );
   }
 
   /// Featured spots (first N approved businesses), enriched with category and subcategory names.
@@ -121,16 +122,18 @@ class ListingDataSource {
     for (final b in take) {
       final subIds = await _category.getSubcategoryIdsForBusiness(b.id);
       final firstSubName = subIds.isEmpty ? null : subNameMap[subIds.first];
-      result.add(MockSpot(
-        id: b.id,
-        name: b.name,
-        subtitle: b.tagline ?? b.name,
-        categoryId: b.categoryId,
-        logoUrl: b.logoUrl,
-        categoryName: catMap[b.categoryId],
-        subcategoryName: firstSubName,
-        rating: null,
-      ));
+      result.add(
+        MockSpot(
+          id: b.id,
+          name: b.name,
+          subtitle: b.tagline ?? b.name,
+          categoryId: b.categoryId,
+          logoUrl: b.logoUrl,
+          categoryName: catMap[b.categoryId],
+          subcategoryName: firstSubName,
+          rating: null,
+        ),
+      );
     }
     return result;
   }
@@ -146,14 +149,16 @@ class ListingDataSource {
     for (final c in categories) {
       final subs = await _category.listSubcategories(categoryId: c.id);
       final count = await _business.listApprovedCount(categoryId: c.id);
-      result.add(MockCategory(
-        id: c.id,
-        name: c.name,
-        iconName: _iconName(c.icon),
-        count: count,
-        subcategories: subs.map((s) => MockSubcategory(id: s.id, name: s.name)).toList(),
-        bucket: c.bucket,
-      ));
+      result.add(
+        MockCategory(
+          id: c.id,
+          name: c.name,
+          iconName: _iconName(c.icon),
+          count: count,
+          subcategories: subs.map((s) => MockSubcategory(id: s.id, name: s.name)).toList(),
+          bucket: c.bucket,
+        ),
+      );
     }
     _categoriesCache = _CacheEntry(data: result, expiresAt: DateTime.now().add(_cacheTtl));
     return result;
@@ -189,7 +194,15 @@ class ListingDataSource {
       final hours = await _hours.getForBusiness(b.id);
       final subIds = await _category.getSubcategoryIdsForBusiness(b.id);
       final amenityNames = amenityNamesByBusiness[b.id] ?? [];
-      result.add(await _businessToMockListing(b, hours, subIds.isEmpty ? null : subIds.first, catMap[b.categoryId], amenityNames));
+      result.add(
+        await _businessToMockListing(
+          b,
+          hours,
+          subIds.isEmpty ? null : subIds.first,
+          catMap[b.categoryId],
+          amenityNames,
+        ),
+      );
     }
     return (list: result, hasMore: hasMore);
   }
@@ -219,7 +232,13 @@ class ListingDataSource {
     }
     final amenityNamesMap = await _amenities.getAmenityNamesForBusinesses([b.id]);
     final amenityNames = amenityNamesMap[b.id] ?? [];
-    final listing = await _businessToMockListing(b, hours, subIds.isEmpty ? null : subIds.first, catName ?? b.categoryId, amenityNames);
+    final listing = await _businessToMockListing(
+      b,
+      hours,
+      subIds.isEmpty ? null : subIds.first,
+      catName ?? b.categoryId,
+      amenityNames,
+    );
     _listingCache[id] = _CacheEntry(data: listing, expiresAt: DateTime.now().add(_cacheTtl));
     return listing;
   }
@@ -239,7 +258,13 @@ class ListingDataSource {
     _parishesCache = null;
   }
 
-  Future<MockListing> _businessToMockListing(Business b, List<BusinessHours> hours, String? subcategoryId, String? categoryName, [List<String> amenityNames = const []]) async {
+  Future<MockListing> _businessToMockListing(
+    Business b,
+    List<BusinessHours> hours,
+    String? subcategoryId,
+    String? categoryName, [
+    List<String> amenityNames = const [],
+  ]) async {
     final dayRanges = _formatHours(hours);
     final parishIds = await _getParishIdsForBusiness(b.id, b.parish);
     return MockListing(
@@ -270,7 +295,10 @@ class ListingDataSource {
     if (!useSupabase) throw StateError(kNotConfiguredMessage);
     final extra = await _business.getBusinessParishIds(businessId);
     if (primaryParish == null && extra.isEmpty) return [];
-    final set = <String>{...[primaryParish].whereType<String>(), ...extra};
+    final set = <String>{
+      ...[primaryParish].whereType<String>(),
+      ...extra,
+    };
     return set.toList();
   }
 
@@ -293,7 +321,6 @@ class ListingDataSource {
     return dayOfWeek[0].toUpperCase() + dayOfWeek.substring(1).toLowerCase();
   }
 
-
   /// Filter listings (search, category, subcategory, parish, amenities, dealOnly). Listing with no parish set matches any parish filter.
   /// When filters specify a single category, fetches by category only (no parish at DB) then applies parish/subcategory in memory so Choose for me matches Explore.
   Future<List<MockListing>> filterListings(ListingFilters filters, {bool openNowOnly = false}) async {
@@ -302,10 +329,7 @@ class ListingDataSource {
         ? filters.categoryIds!.single
         : filters.categoryId;
     final List<MockListing> list = singleCategoryId != null
-        ? await _getListingsForCategoryAndParish(
-            categoryId: singleCategoryId,
-            parishIds: {},
-          )
+        ? await _getListingsForCategoryAndParish(categoryId: singleCategoryId, parishIds: {})
         : await getListings();
     Set<String>? amenityIds;
     Set<String>? dealListingIds;
@@ -394,8 +418,7 @@ class ListingDataSource {
       result = result.where((l) => l.rating != null && l.rating! >= filters.minRating!).toList();
     }
     if (filters.maxDistanceMiles != null) {
-      result = result.where((l) =>
-          l.distanceMiles != null && l.distanceMiles! <= filters.maxDistanceMiles!).toList();
+      result = result.where((l) => l.distanceMiles != null && l.distanceMiles! <= filters.maxDistanceMiles!).toList();
     }
     return result;
   }
@@ -407,13 +430,9 @@ class ListingDataSource {
     for (final s in sections) {
       final sectionItems = await _menu.getItemsForSection(s.id);
       for (final i in sectionItems) {
-        items.add(MockMenuItem(
-          listingId: listingId,
-          name: i.name,
-          price: i.price,
-          description: i.description,
-          section: s.name,
-        ));
+        items.add(
+          MockMenuItem(listingId: listingId, name: i.name, price: i.price, description: i.description, section: s.name),
+        );
       }
     }
     return items;
@@ -466,11 +485,14 @@ class ListingDataSource {
     final list = await _events.listApproved();
     final now = DateTime.now();
     final startOfToday = DateTime(now.year, now.month, now.day);
-    final upcoming = list.where((e) {
-      final local = e.eventDate.isUtc ? e.eventDate.toLocal() : e.eventDate;
-      final eventDay = DateTime(local.year, local.month, local.day);
-      return !eventDay.isBefore(startOfToday);
-    }).take(limit).toList();
+    final upcoming = list
+        .where((e) {
+          final local = e.eventDate.isUtc ? e.eventDate.toLocal() : e.eventDate;
+          final eventDay = DateTime(local.year, local.month, local.day);
+          return !eventDay.isBefore(startOfToday);
+        })
+        .take(limit)
+        .toList();
     final result = <(MockEvent, String)>[];
     for (final e in upcoming) {
       final business = await _business.getById(e.businessId);
@@ -532,10 +554,7 @@ class ListingDataSource {
   }
 
   /// Active punch cards filtered by parish and category (via business), like getActiveDealsFiltered.
-  Future<List<MockPunchCard>> getActivePunchCardsFiltered({
-    required Set<String> parishIds,
-    String? categoryId,
-  }) async {
+  Future<List<MockPunchCard>> getActivePunchCardsFiltered({required Set<String> parishIds, String? categoryId}) async {
     if (!useSupabase) return Future.error(StateError(kNotConfiguredMessage));
     final filters = ListingFilters(parishIds: parishIds, categoryId: categoryId);
     final listings = await filterListings(filters);
@@ -551,34 +570,37 @@ class ListingDataSource {
     if (enrollments.isEmpty) return [];
     final programs = await _punchCards.listActive();
     final byId = {for (var p in programs) p.id: p};
-    return enrollments.map((e) {
-      final p = byId[e.programId];
-      if (p == null) return null;
-      return MockPunchCard(
-        id: p.id,
-        listingId: p.businessId,
-        title: p.title ?? 'Punch card',
-        rewardDescription: p.rewardDescription,
-        punchesRequired: p.punchesRequired,
-        punchesEarned: e.currentPunches,
-        isActive: p.isActive != false,
-        isRedeemed: e.isRedeemed,
-        userPunchCardId: e.id,
-      );
-    }).whereType<MockPunchCard>().toList();
+    return enrollments
+        .map((e) {
+          final p = byId[e.programId];
+          if (p == null) return null;
+          return MockPunchCard(
+            id: p.id,
+            listingId: p.businessId,
+            title: p.title ?? 'Punch card',
+            rewardDescription: p.rewardDescription,
+            punchesRequired: p.punchesRequired,
+            punchesEarned: e.currentPunches,
+            isActive: p.isActive != false,
+            isRedeemed: e.isRedeemed,
+            userPunchCardId: e.id,
+          );
+        })
+        .whereType<MockPunchCard>()
+        .toList();
   }
 
   static MockDeal _dealToMock(Deal d) => MockDeal(
-        id: d.id,
-        listingId: d.businessId,
-        title: d.title,
-        description: d.description ?? '',
-        discount: _dealTypeDisplayLabel(d.dealType),
-        code: null,
-        expiry: d.endDate,
-        isActive: d.isActive == true,
-        dealType: d.dealType,
-      );
+    id: d.id,
+    listingId: d.businessId,
+    title: d.title,
+    description: d.description ?? '',
+    discount: _dealTypeDisplayLabel(d.dealType),
+    code: null,
+    expiry: d.endDate,
+    isActive: d.isActive == true,
+    dealType: d.dealType,
+  );
 
   static String _dealTypeDisplayLabel(String type) {
     switch (type) {
@@ -600,16 +622,16 @@ class ListingDataSource {
   }
 
   static MockEvent _eventToMock(BusinessEvent e) => MockEvent(
-        id: e.id,
-        listingId: e.businessId,
-        title: e.title,
-        eventDate: e.eventDate,
-        description: e.description,
-        endDate: e.endDate,
-        location: e.location,
-        imageUrl: e.imageUrl,
-        status: e.status,
-      );
+    id: e.id,
+    listingId: e.businessId,
+    title: e.title,
+    eventDate: e.eventDate,
+    description: e.description,
+    endDate: e.endDate,
+    location: e.location,
+    imageUrl: e.imageUrl,
+    status: e.status,
+  );
 
   static MockPunchCard _punchToMock(PunchCardProgram p, {UserPunchCard? enrollment}) {
     final en = enrollment;

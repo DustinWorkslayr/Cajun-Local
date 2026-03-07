@@ -85,7 +85,8 @@ class _AdminBusinessDetailScreenState extends State<AdminBusinessDetailScreen> {
       targetId: widget.businessId,
     );
     if (status == 'approved' && _business != null) {
-      final userId = await BusinessManagersRepository().getFirstManagerUserId(widget.businessId) ??
+      final userId =
+          await BusinessManagersRepository().getFirstManagerUserId(widget.businessId) ??
           await repo.getCreatedBy(widget.businessId);
       if (userId != null) {
         final profile = await AuthRepository().getProfileForAdmin(userId);
@@ -94,19 +95,13 @@ class _AdminBusinessDetailScreenState extends State<AdminBusinessDetailScreen> {
           await SendEmailService().send(
             to: to,
             template: 'business_approved',
-            variables: {
-              'display_name': profile?.displayName ?? to,
-              'email': to,
-              'business_name': _business!.name,
-            },
+            variables: {'display_name': profile?.displayName ?? to, 'email': to, 'business_name': _business!.name},
           );
         }
       }
     }
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Status set to $status')),
-      );
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Status set to $status')));
       _load();
     }
   }
@@ -130,15 +125,9 @@ class _AdminBusinessDetailScreenState extends State<AdminBusinessDetailScreen> {
     if (_error != null || _business == null) {
       return Scaffold(
         backgroundColor: AppTheme.specOffWhite,
-        appBar: AppBar(
-          backgroundColor: AppTheme.specOffWhite,
-          foregroundColor: AppTheme.specNavy,
-        ),
+        appBar: AppBar(backgroundColor: AppTheme.specOffWhite, foregroundColor: AppTheme.specNavy),
         body: Center(
-          child: Text(
-            _error ?? 'Not found',
-            style: theme.textTheme.bodyLarge?.copyWith(color: AppTheme.specNavy),
-          ),
+          child: Text(_error ?? 'Not found', style: theme.textTheme.bodyLarge?.copyWith(color: AppTheme.specNavy)),
         ),
       );
     }
@@ -154,10 +143,7 @@ class _AdminBusinessDetailScreenState extends State<AdminBusinessDetailScreen> {
           foregroundColor: AppTheme.specNavy,
           title: Text(
             business.name,
-            style: theme.textTheme.titleLarge?.copyWith(
-              fontWeight: FontWeight.w700,
-              color: AppTheme.specNavy,
-            ),
+            style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700, color: AppTheme.specNavy),
           ),
           bottom: TabBar(
             labelColor: AppTheme.specNavy,
@@ -177,11 +163,7 @@ class _AdminBusinessDetailScreenState extends State<AdminBusinessDetailScreen> {
         ),
         body: TabBarView(
           children: [
-            _OverviewTab(
-              business: business,
-              onSaved: _load,
-              onStatusChanged: _updateStatus,
-            ),
+            _OverviewTab(business: business, onSaved: _load, onStatusChanged: _updateStatus),
             _ImagesTab(businessId: widget.businessId, businessName: business.name),
             _MenuTab(businessId: widget.businessId),
             _DealsTab(businessId: widget.businessId, businessName: business.name),
@@ -205,21 +187,13 @@ class _SpecCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final content = padding != null
-        ? Padding(padding: padding!, child: child)
-        : child;
+    final content = padding != null ? Padding(padding: padding!, child: child) : child;
     return Container(
       width: double.infinity,
       decoration: BoxDecoration(
         color: AppTheme.specWhite,
         borderRadius: BorderRadius.circular(_cardRadius),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.06),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
-          ),
-        ],
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.06), blurRadius: 12, offset: const Offset(0, 4))],
       ),
       child: content,
     );
@@ -229,11 +203,7 @@ class _SpecCard extends StatelessWidget {
 // --- Overview tab: edit info + status ---
 
 class _OverviewTab extends StatefulWidget {
-  const _OverviewTab({
-    required this.business,
-    required this.onSaved,
-    required this.onStatusChanged,
-  });
+  const _OverviewTab({required this.business, required this.onSaved, required this.onStatusChanged});
 
   final Business business;
   final VoidCallback onSaved;
@@ -409,9 +379,7 @@ class _OverviewTabState extends State<_OverviewTab> {
     final bytes = file.bytes;
     if (bytes == null || bytes.isEmpty) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Could not read file.')),
-        );
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Could not read file.')));
       }
       return;
     }
@@ -451,9 +419,7 @@ class _OverviewTabState extends State<_OverviewTab> {
     final bytes = file.bytes;
     if (bytes == null || bytes.isEmpty) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Could not read file.')),
-        );
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Could not read file.')));
       }
       return;
     }
@@ -565,13 +531,8 @@ class _OverviewTabState extends State<_OverviewTab> {
         website: _websiteController.text.trim().isEmpty ? null : _websiteController.text.trim(),
         description: _descriptionController.text.trim().isEmpty ? null : _descriptionController.text.trim(),
       );
-      await businessRepo.setBusinessSubcategories(
-        widget.business.id,
-        _selectedSubcategoryIds.toList(),
-      );
-      final serviceOnly = _selectedServiceParishIds
-          .where((id) => id != _selectedPrimaryParishId)
-          .toList();
+      await businessRepo.setBusinessSubcategories(widget.business.id, _selectedSubcategoryIds.toList());
+      final serviceOnly = _selectedServiceParishIds.where((id) => id != _selectedPrimaryParishId).toList();
       await businessRepo.setBusinessParishes(widget.business.id, serviceOnly);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Saved')));
@@ -607,10 +568,7 @@ class _OverviewTabState extends State<_OverviewTab> {
               children: [
                 Text(
                   'Basic info',
-                  style: theme.textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w700,
-                    color: AppTheme.specNavy,
-                  ),
+                  style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700, color: AppTheme.specNavy),
                 ),
                 const SizedBox(height: 16),
                 _LabelledField(label: 'Name', controller: _nameController, border: border, required: true),
@@ -627,10 +585,7 @@ class _OverviewTabState extends State<_OverviewTab> {
               children: [
                 Text(
                   'Category & subcategories',
-                  style: theme.textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w700,
-                    color: AppTheme.specNavy,
-                  ),
+                  style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700, color: AppTheme.specNavy),
                 ),
                 const SizedBox(height: 12),
                 if (_categoriesLoading)
@@ -658,15 +613,15 @@ class _OverviewTabState extends State<_OverviewTab> {
                     const SizedBox(height: 16),
                     Text(
                       'Subcategories (optional)',
-                      style: theme.textTheme.labelLarge?.copyWith(
-                        color: AppTheme.specNavy.withValues(alpha: 0.8),
-                      ),
+                      style: theme.textTheme.labelLarge?.copyWith(color: AppTheme.specNavy.withValues(alpha: 0.8)),
                     ),
                     const SizedBox(height: 8),
                     if (_subcategoriesLoading)
                       const Padding(
                         padding: EdgeInsets.symmetric(vertical: 8),
-                        child: Center(child: SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2))),
+                        child: Center(
+                          child: SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2)),
+                        ),
                       )
                     else if (_subcategories.isEmpty)
                       Padding(
@@ -712,10 +667,7 @@ class _OverviewTabState extends State<_OverviewTab> {
               children: [
                 Text(
                   'Logo (admin)',
-                  style: theme.textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w700,
-                    color: AppTheme.specNavy,
-                  ),
+                  style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700, color: AppTheme.specNavy),
                 ),
                 const SizedBox(height: 12),
                 if (widget.business.logoUrl != null && widget.business.logoUrl!.isNotEmpty) ...[
@@ -793,17 +745,12 @@ class _OverviewTabState extends State<_OverviewTab> {
               children: [
                 Text(
                   'Banner (admin)',
-                  style: theme.textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w700,
-                    color: AppTheme.specNavy,
-                  ),
+                  style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700, color: AppTheme.specNavy),
                 ),
                 const SizedBox(height: 4),
                 Text(
                   'Admin-set listing banner/cover (hero on detail page). Separate from owner-uploaded banner.',
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: AppTheme.specNavy.withValues(alpha: 0.7),
-                  ),
+                  style: theme.textTheme.bodySmall?.copyWith(color: AppTheme.specNavy.withValues(alpha: 0.7)),
                 ),
                 const SizedBox(height: 12),
                 if (widget.business.bannerUrl != null && widget.business.bannerUrl!.isNotEmpty) ...[
@@ -881,19 +828,20 @@ class _OverviewTabState extends State<_OverviewTab> {
               children: [
                 Text(
                   'Location & contact',
-                  style: theme.textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w700,
-                    color: AppTheme.specNavy,
-                  ),
+                  style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700, color: AppTheme.specNavy),
                 ),
                 const SizedBox(height: 16),
                 _LabelledField(label: 'Address', controller: _addressController, border: border),
                 const SizedBox(height: 12),
                 Row(
                   children: [
-                    Expanded(child: _LabelledField(label: 'City', controller: _cityController, border: border)),
+                    Expanded(
+                      child: _LabelledField(label: 'City', controller: _cityController, border: border),
+                    ),
                     const SizedBox(width: 12),
-                    Expanded(child: _LabelledField(label: 'State', controller: _stateController, border: border)),
+                    Expanded(
+                      child: _LabelledField(label: 'State', controller: _stateController, border: border),
+                    ),
                   ],
                 ),
                 const SizedBox(height: 16),
@@ -908,19 +856,21 @@ class _OverviewTabState extends State<_OverviewTab> {
                 if (_parishesLoading)
                   const Padding(
                     padding: EdgeInsets.symmetric(vertical: 8),
-                    child: Center(child: SizedBox(height: 24, width: 24, child: CircularProgressIndicator(strokeWidth: 2))),
+                    child: Center(
+                      child: SizedBox(height: 24, width: 24, child: CircularProgressIndicator(strokeWidth: 2)),
+                    ),
                   )
                 else
                   DropdownButtonFormField<String>(
-                    initialValue: _parishes.any((p) => p.id == _selectedPrimaryParishId) ? _selectedPrimaryParishId : null,
+                    initialValue: _parishes.any((p) => p.id == _selectedPrimaryParishId)
+                        ? _selectedPrimaryParishId
+                        : null,
                     decoration: InputDecoration(
                       border: border,
                       contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
                     ),
                     hint: const Text('Select parish'),
-                    items: _parishes
-                        .map((p) => DropdownMenuItem(value: p.id, child: Text(p.name)))
-                        .toList(),
+                    items: _parishes.map((p) => DropdownMenuItem(value: p.id, child: Text(p.name))).toList(),
                     onChanged: (String? id) => setState(() => _selectedPrimaryParishId = id),
                   ),
                 const SizedBox(height: 16),
@@ -961,9 +911,19 @@ class _OverviewTabState extends State<_OverviewTab> {
                     }).toList(),
                   ),
                 const SizedBox(height: 16),
-                _LabelledField(label: 'Phone', controller: _phoneController, border: border, keyboardType: TextInputType.phone),
+                _LabelledField(
+                  label: 'Phone',
+                  controller: _phoneController,
+                  border: border,
+                  keyboardType: TextInputType.phone,
+                ),
                 const SizedBox(height: 12),
-                _LabelledField(label: 'Website', controller: _websiteController, border: border, keyboardType: TextInputType.url),
+                _LabelledField(
+                  label: 'Website',
+                  controller: _websiteController,
+                  border: border,
+                  keyboardType: TextInputType.url,
+                ),
               ],
             ),
           ),
@@ -975,10 +935,7 @@ class _OverviewTabState extends State<_OverviewTab> {
               children: [
                 Text(
                   'Listing status',
-                  style: theme.textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w700,
-                    color: AppTheme.specNavy,
-                  ),
+                  style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700, color: AppTheme.specNavy),
                 ),
                 const SizedBox(height: 12),
                 DropdownButtonFormField<String>(
@@ -1053,10 +1010,7 @@ class _LabelledField extends StatelessWidget {
       children: [
         Text(
           label,
-          style: theme.textTheme.labelMedium?.copyWith(
-            color: AppTheme.specNavy,
-            fontWeight: FontWeight.w600,
-          ),
+          style: theme.textTheme.labelMedium?.copyWith(color: AppTheme.specNavy, fontWeight: FontWeight.w600),
         ),
         const SizedBox(height: 6),
         TextField(
@@ -1069,9 +1023,7 @@ class _LabelledField extends StatelessWidget {
             hintStyle: TextStyle(color: AppTheme.specNavy.withValues(alpha: 0.4)),
             border: border,
             enabledBorder: border,
-            focusedBorder: border.copyWith(
-              borderSide: BorderSide(color: AppTheme.specGold, width: 1.5),
-            ),
+            focusedBorder: border.copyWith(borderSide: BorderSide(color: AppTheme.specGold, width: 1.5)),
             contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
             isDense: true,
           ),
@@ -1127,9 +1079,7 @@ class _ImagesTabState extends State<_ImagesTab> {
     final bytes = file.bytes;
     if (bytes == null || bytes.isEmpty) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Could not read file.')),
-        );
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Could not read file.')));
       }
       return;
     }
@@ -1153,16 +1103,12 @@ class _ImagesTabState extends State<_ImagesTab> {
       if (mounted) {
         await _load();
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Photo added (approved).')),
-          );
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Photo added (approved).')));
         }
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e')),
-        );
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
       }
     } finally {
       if (mounted) setState(() => _uploadingGallery = false);
@@ -1183,16 +1129,12 @@ class _ImagesTabState extends State<_ImagesTab> {
           _images = reordered;
           _savingOrder = false;
         });
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Order saved.')),
-        );
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Order saved.')));
       }
     } catch (e) {
       if (mounted) {
         setState(() => _savingOrder = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to save order: $e')),
-        );
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to save order: $e')));
       }
     }
   }
@@ -1206,7 +1148,8 @@ class _ImagesTabState extends State<_ImagesTab> {
       targetTable: 'business_images',
       targetId: img.id,
     );
-    final userId = await BusinessManagersRepository().getFirstManagerUserId(widget.businessId) ??
+    final userId =
+        await BusinessManagersRepository().getFirstManagerUserId(widget.businessId) ??
         await BusinessRepository().getCreatedBy(widget.businessId);
     if (userId != null) {
       final profile = await AuthRepository().getProfileForAdmin(userId);
@@ -1215,11 +1158,7 @@ class _ImagesTabState extends State<_ImagesTab> {
         await SendEmailService().send(
           to: to,
           template: 'image_approved',
-          variables: {
-            'display_name': profile?.displayName ?? to,
-            'email': to,
-            'business_name': widget.businessName,
-          },
+          variables: {'display_name': profile?.displayName ?? to, 'email': to, 'business_name': widget.businessName},
         );
       }
     }
@@ -1245,9 +1184,7 @@ class _ImagesTabState extends State<_ImagesTab> {
         children: [
           Text(
             'Add photos and drag to reorder. New photos go at the end.',
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: AppTheme.specNavy.withValues(alpha: 0.7),
-            ),
+            style: theme.textTheme.bodySmall?.copyWith(color: AppTheme.specNavy.withValues(alpha: 0.7)),
           ),
           const SizedBox(height: 12),
           AppOutlinedButton(
@@ -1264,10 +1201,7 @@ class _ImagesTabState extends State<_ImagesTab> {
           const SizedBox(height: 16),
           Text(
             'Gallery (${_images.length})',
-            style: theme.textTheme.titleSmall?.copyWith(
-              color: AppTheme.specNavy,
-              fontWeight: FontWeight.w600,
-            ),
+            style: theme.textTheme.titleSmall?.copyWith(color: AppTheme.specNavy, fontWeight: FontWeight.w600),
           ),
           const SizedBox(height: 8),
           if (_images.isEmpty)
@@ -1299,11 +1233,7 @@ class _ImagesTabState extends State<_ImagesTab> {
                       child: Row(
                         children: [
                           _savingOrder
-                              ? const SizedBox(
-                                  width: 24,
-                                  height: 24,
-                                  child: CircularProgressIndicator(strokeWidth: 2),
-                                )
+                              ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2))
                               : Icon(Icons.drag_handle_rounded, color: AppTheme.specNavy.withValues(alpha: 0.5)),
                           const SizedBox(width: 8),
                           ClipRRect(
@@ -1317,7 +1247,10 @@ class _ImagesTabState extends State<_ImagesTab> {
                                 width: 72,
                                 height: 72,
                                 color: AppTheme.specNavy.withValues(alpha: 0.1),
-                                child: Icon(Icons.broken_image_outlined, color: AppTheme.specNavy.withValues(alpha: 0.5)),
+                                child: Icon(
+                                  Icons.broken_image_outlined,
+                                  color: AppTheme.specNavy.withValues(alpha: 0.5),
+                                ),
                               ),
                             ),
                           ),
@@ -1356,7 +1289,10 @@ class _ImagesTabState extends State<_ImagesTab> {
                           if (img.status != 'approved')
                             TextButton(
                               onPressed: () => _approve(img),
-                              child: Text('Approve', style: TextStyle(color: AppTheme.specGold, fontWeight: FontWeight.w600)),
+                              child: Text(
+                                'Approve',
+                                style: TextStyle(color: AppTheme.specGold, fontWeight: FontWeight.w600),
+                              ),
                             ),
                         ],
                       ),
@@ -1437,10 +1373,7 @@ class _MenuTabState extends State<_MenuTab> {
           title: const Text('New menu section'),
           content: TextField(
             controller: c,
-            decoration: const InputDecoration(
-              labelText: 'Section name',
-              hintText: 'e.g. Appetizers, Drinks',
-            ),
+            decoration: const InputDecoration(labelText: 'Section name', hintText: 'e.g. Appetizers, Drinks'),
             autofocus: true,
             onSubmitted: (v) => Navigator.of(ctx).pop(v.trim().isEmpty ? null : v),
           ),
@@ -1481,10 +1414,7 @@ class _MenuTabState extends State<_MenuTab> {
                 const SizedBox(height: 12),
                 TextField(
                   controller: priceC,
-                  decoration: const InputDecoration(
-                    labelText: 'Price (optional)',
-                    hintText: 'e.g. 14.99',
-                  ),
+                  decoration: const InputDecoration(labelText: 'Price (optional)', hintText: 'e.g. 14.99'),
                   keyboardType: const TextInputType.numberWithOptions(decimal: true),
                   inputFormatters: [
                     FilteringTextInputFormatter.allow(RegExp(r'[\d.]')),
@@ -1510,7 +1440,11 @@ class _MenuTabState extends State<_MenuTab> {
               onPressed: () {
                 final n = nameC.text.trim();
                 if (n.isEmpty) return;
-                Navigator.of(ctx).pop((name: n, price: priceC.text.trim().isEmpty ? null : priceC.text.trim(), description: descC.text.trim().isEmpty ? null : descC.text.trim()));
+                Navigator.of(ctx).pop((
+                  name: n,
+                  price: priceC.text.trim().isEmpty ? null : priceC.text.trim(),
+                  description: descC.text.trim().isEmpty ? null : descC.text.trim(),
+                ));
               },
               expanded: false,
               child: const Text('Add'),
@@ -1630,41 +1564,45 @@ class _MenuTabState extends State<_MenuTab> {
                           ),
                         )
                       else
-                        ...items.map((item) => Padding(
-                              padding: const EdgeInsets.only(bottom: 8),
-                              child: Row(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
+                        ...items.map(
+                          (item) => Padding(
+                            padding: const EdgeInsets.only(bottom: 8),
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        item.name,
+                                        style: theme.textTheme.bodyMedium?.copyWith(
+                                          fontWeight: FontWeight.w600,
+                                          color: AppTheme.specNavy,
+                                        ),
+                                      ),
+                                      if (item.description != null && item.description!.isNotEmpty)
                                         Text(
-                                          item.name,
-                                          style: theme.textTheme.bodyMedium?.copyWith(
-                                            fontWeight: FontWeight.w600,
-                                            color: AppTheme.specNavy,
+                                          item.description!,
+                                          style: theme.textTheme.bodySmall?.copyWith(
+                                            color: AppTheme.specNavy.withValues(alpha: 0.7),
                                           ),
                                         ),
-                                        if (item.description != null && item.description!.isNotEmpty)
-                                          Text(
-                                            item.description!,
-                                            style: theme.textTheme.bodySmall?.copyWith(color: AppTheme.specNavy.withValues(alpha: 0.7)),
-                                          ),
-                                      ],
+                                    ],
+                                  ),
+                                ),
+                                if (item.price != null && item.price!.isNotEmpty)
+                                  Text(
+                                    item.price!,
+                                    style: theme.textTheme.bodyMedium?.copyWith(
+                                      fontWeight: FontWeight.w600,
+                                      color: AppTheme.specGold,
                                     ),
                                   ),
-                                  if (item.price != null && item.price!.isNotEmpty)
-                                    Text(
-                                      item.price!,
-                                      style: theme.textTheme.bodyMedium?.copyWith(
-                                        fontWeight: FontWeight.w600,
-                                        color: AppTheme.specGold,
-                                      ),
-                                    ),
-                                ],
-                              ),
-                            )),
+                              ],
+                            ),
+                          ),
+                        ),
                     ],
                   ),
                 ),
@@ -1709,11 +1647,9 @@ class _DealsTabState extends State<_DealsTab> {
   }
 
   Future<void> _addDeal() async {
-    final added = await Navigator.of(context).push<bool>(
-      MaterialPageRoute<bool>(
-        builder: (_) => AdminAddDealScreen(initialBusinessId: widget.businessId),
-      ),
-    );
+    final added = await Navigator.of(
+      context,
+    ).push<bool>(MaterialPageRoute<bool>(builder: (_) => AdminAddDealScreen(initialBusinessId: widget.businessId)));
     if (added == true) _load();
   }
 
@@ -1731,18 +1667,11 @@ class _DealsTabState extends State<_DealsTab> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          AppPrimaryButton(
-            onPressed: _addDeal,
-            icon: const Icon(Icons.add_rounded),
-            label: const Text('Add deal'),
-          ),
+          AppPrimaryButton(onPressed: _addDeal, icon: const Icon(Icons.add_rounded), label: const Text('Add deal')),
           const SizedBox(height: 16),
           Text(
             'Deals (${_deals.length})',
-            style: theme.textTheme.titleSmall?.copyWith(
-              color: AppTheme.specNavy,
-              fontWeight: FontWeight.w600,
-            ),
+            style: theme.textTheme.titleSmall?.copyWith(color: AppTheme.specNavy, fontWeight: FontWeight.w600),
           ),
           const SizedBox(height: 8),
           if (_deals.isEmpty)
@@ -1756,70 +1685,70 @@ class _DealsTabState extends State<_DealsTab> {
               ),
             )
           else
-            ..._deals.map((deal) => Padding(
-                  padding: const EdgeInsets.only(bottom: 10),
-                  child: _SpecCard(
-                    padding: const EdgeInsets.all(16),
-                    child: InkWell(
-                      onTap: () {
-                        AdminDealDetailSlideOut.show(
-                          context,
-                          dealId: deal.id,
-                          onUpdated: _load,
-                        );
-                      },
-                      borderRadius: BorderRadius.circular(_cardRadius),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              Expanded(
-                                child: Text(
-                                  deal.title,
-                                  style: theme.textTheme.titleSmall?.copyWith(
-                                    fontWeight: FontWeight.w700,
-                                    color: AppTheme.specNavy,
-                                  ),
+            ..._deals.map(
+              (deal) => Padding(
+                padding: const EdgeInsets.only(bottom: 10),
+                child: _SpecCard(
+                  padding: const EdgeInsets.all(16),
+                  child: InkWell(
+                    onTap: () {
+                      AdminDealDetailSlideOut.show(context, dealId: deal.id, onUpdated: _load);
+                    },
+                    borderRadius: BorderRadius.circular(_cardRadius),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                deal.title,
+                                style: theme.textTheme.titleSmall?.copyWith(
+                                  fontWeight: FontWeight.w700,
+                                  color: AppTheme.specNavy,
                                 ),
                               ),
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                decoration: BoxDecoration(
-                                  color: (deal.status == 'approved' ? Colors.green : AppTheme.specGold).withValues(alpha: 0.2),
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                child: Text(
-                                  deal.status,
-                                  style: theme.textTheme.labelSmall?.copyWith(
-                                    color: deal.status == 'approved' ? Colors.green : AppTheme.specNavy,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              Icon(Icons.chevron_right_rounded, color: AppTheme.specNavy.withValues(alpha: 0.5)),
-                            ],
-                          ),
-                          if (deal.description != null && deal.description!.isNotEmpty) ...[
-                            const SizedBox(height: 6),
-                            Text(
-                              deal.description!,
-                              style: theme.textTheme.bodySmall?.copyWith(color: AppTheme.specNavy.withValues(alpha: 0.8)),
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
                             ),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: (deal.status == 'approved' ? Colors.green : AppTheme.specGold).withValues(
+                                  alpha: 0.2,
+                                ),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Text(
+                                deal.status,
+                                style: theme.textTheme.labelSmall?.copyWith(
+                                  color: deal.status == 'approved' ? Colors.green : AppTheme.specNavy,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Icon(Icons.chevron_right_rounded, color: AppTheme.specNavy.withValues(alpha: 0.5)),
                           ],
-                          const SizedBox(height: 4),
+                        ),
+                        if (deal.description != null && deal.description!.isNotEmpty) ...[
+                          const SizedBox(height: 6),
                           Text(
-                            '${deal.dealType} · ${deal.isActive == true ? "Active" : "Inactive"}',
-                            style: theme.textTheme.labelSmall?.copyWith(color: AppTheme.specNavy.withValues(alpha: 0.6)),
+                            deal.description!,
+                            style: theme.textTheme.bodySmall?.copyWith(color: AppTheme.specNavy.withValues(alpha: 0.8)),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
                           ),
                         ],
-                      ),
+                        const SizedBox(height: 4),
+                        Text(
+                          '${deal.dealType} · ${deal.isActive == true ? "Active" : "Inactive"}',
+                          style: theme.textTheme.labelSmall?.copyWith(color: AppTheme.specNavy.withValues(alpha: 0.6)),
+                        ),
+                      ],
                     ),
                   ),
-                )),
+                ),
+              ),
+            ),
         ],
       ),
     );
@@ -1829,10 +1758,7 @@ class _DealsTabState extends State<_DealsTab> {
 // --- Events tab (admin): list events, add event, view detail with RSVP analytics ---
 
 class _AdminEventsTab extends StatefulWidget {
-  const _AdminEventsTab({
-    required this.businessId,
-    required this.businessName,
-  });
+  const _AdminEventsTab({required this.businessId, required this.businessName});
 
   final String businessId;
   final String businessName;
@@ -1862,11 +1788,9 @@ class _AdminEventsTabState extends State<_AdminEventsTab> {
   }
 
   Future<void> _addEvent() async {
-    await Navigator.of(context).push(
-      MaterialPageRoute<void>(
-        builder: (_) => CreateEventScreen(listingId: widget.businessId),
-      ),
-    );
+    await Navigator.of(
+      context,
+    ).push(MaterialPageRoute<void>(builder: (_) => CreateEventScreen(listingId: widget.businessId)));
     if (mounted) _load();
   }
 
@@ -1895,10 +1819,7 @@ class _AdminEventsTabState extends State<_AdminEventsTab> {
           const SizedBox(height: 16),
           Text(
             'Events (${_events.length})',
-            style: theme.textTheme.titleSmall?.copyWith(
-              color: nav,
-              fontWeight: FontWeight.w600,
-            ),
+            style: theme.textTheme.titleSmall?.copyWith(color: nav, fontWeight: FontWeight.w600),
           ),
           const SizedBox(height: 8),
           if (_events.isEmpty)
@@ -1907,9 +1828,7 @@ class _AdminEventsTabState extends State<_AdminEventsTab> {
               child: Center(
                 child: Text(
                   'No events yet. Add an event above.',
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    color: nav.withValues(alpha: 0.7),
-                  ),
+                  style: theme.textTheme.bodyMedium?.copyWith(color: nav.withValues(alpha: 0.7)),
                 ),
               ),
             )
@@ -1921,14 +1840,13 @@ class _AdminEventsTabState extends State<_AdminEventsTab> {
                   padding: const EdgeInsets.all(14),
                   child: InkWell(
                     onTap: () {
-                      Navigator.of(context).push(
-                        MaterialPageRoute<void>(
-                          builder: (_) => EventDetailScreen(
-                            eventId: e.id,
-                            listingId: widget.businessId,
-                          ),
-                        ),
-                      ).then((_) => _load());
+                      Navigator.of(context)
+                          .push(
+                            MaterialPageRoute<void>(
+                              builder: (_) => EventDetailScreen(eventId: e.id, listingId: widget.businessId),
+                            ),
+                          )
+                          .then((_) => _load());
                     },
                     borderRadius: BorderRadius.circular(_cardRadius),
                     child: Row(
@@ -1941,16 +1859,11 @@ class _AdminEventsTabState extends State<_AdminEventsTab> {
                             children: [
                               Text(
                                 e.title,
-                                style: theme.textTheme.bodyLarge?.copyWith(
-                                  fontWeight: FontWeight.w600,
-                                  color: nav,
-                                ),
+                                style: theme.textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w600, color: nav),
                               ),
                               Text(
                                 '${_dateStr(e.eventDate)}${e.location != null && e.location!.isNotEmpty ? ' · ${e.location}' : ''}',
-                                style: theme.textTheme.bodySmall?.copyWith(
-                                  color: nav.withValues(alpha: 0.7),
-                                ),
+                                style: theme.textTheme.bodySmall?.copyWith(color: nav.withValues(alpha: 0.7)),
                               ),
                             ],
                           ),
@@ -1965,10 +1878,7 @@ class _AdminEventsTabState extends State<_AdminEventsTab> {
                           ),
                           child: Text(
                             e.status,
-                            style: theme.textTheme.labelSmall?.copyWith(
-                              fontWeight: FontWeight.w600,
-                              color: nav,
-                            ),
+                            style: theme.textTheme.labelSmall?.copyWith(fontWeight: FontWeight.w600, color: nav),
                           ),
                         ),
                         const SizedBox(width: 8),
@@ -2033,19 +1943,13 @@ class _AmenitiesTabState extends State<_AmenitiesTab> {
         children: [
           Text(
             'Amenities',
-            style: theme.textTheme.headlineSmall?.copyWith(
-              fontWeight: FontWeight.w700,
-              color: AppTheme.specNavy,
-            ),
+            style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w700, color: AppTheme.specNavy),
           ),
           const SizedBox(height: 6),
           Text(
             'Global amenities plus amenities for this business\'s category (${_bucket ?? 'category'}). '
             'Limit: 4 for free tier, 8 for active paid subscription.',
-            style: theme.textTheme.bodyMedium?.copyWith(
-              color: AppTheme.specNavy.withValues(alpha: 0.8),
-              height: 1.4,
-            ),
+            style: theme.textTheme.bodyMedium?.copyWith(color: AppTheme.specNavy.withValues(alpha: 0.8), height: 1.4),
           ),
           const SizedBox(height: 24),
           _SpecCard(
@@ -2055,17 +1959,10 @@ class _AmenitiesTabState extends State<_AmenitiesTab> {
               children: [
                 Text(
                   'Select amenities',
-                  style: theme.textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w700,
-                    color: AppTheme.specNavy,
-                  ),
+                  style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700, color: AppTheme.specNavy),
                 ),
                 const SizedBox(height: 16),
-                BusinessAmenitiesEditor(
-                  businessId: widget.businessId,
-                  categoryBucket: _bucket,
-                  onSaved: () {},
-                ),
+                BusinessAmenitiesEditor(businessId: widget.businessId, categoryBucket: _bucket, onSaved: () {}),
               ],
             ),
           ),
@@ -2091,17 +1988,12 @@ class _HoursAndLinksTab extends StatelessWidget {
         children: [
           Text(
             'Hours & links',
-            style: theme.textTheme.headlineSmall?.copyWith(
-              fontWeight: FontWeight.w700,
-              color: AppTheme.specNavy,
-            ),
+            style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w700, color: AppTheme.specNavy),
           ),
           const SizedBox(height: 6),
           Text(
             'Edit business hours and social/website links. Same as owner view.',
-            style: theme.textTheme.bodyMedium?.copyWith(
-              color: AppTheme.specNavy.withValues(alpha: 0.8),
-            ),
+            style: theme.textTheme.bodyMedium?.copyWith(color: AppTheme.specNavy.withValues(alpha: 0.8)),
           ),
           const SizedBox(height: 24),
           _SpecCard(
@@ -2111,10 +2003,7 @@ class _HoursAndLinksTab extends StatelessWidget {
               children: [
                 Text(
                   'Hours',
-                  style: theme.textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w700,
-                    color: AppTheme.specNavy,
-                  ),
+                  style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700, color: AppTheme.specNavy),
                 ),
                 const SizedBox(height: 16),
                 BusinessHoursEditor(businessId: businessId),
@@ -2129,10 +2018,7 @@ class _HoursAndLinksTab extends StatelessWidget {
               children: [
                 Text(
                   'Social & links',
-                  style: theme.textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w700,
-                    color: AppTheme.specNavy,
-                  ),
+                  style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700, color: AppTheme.specNavy),
                 ),
                 const SizedBox(height: 16),
                 BusinessLinksEditor(businessId: businessId),
@@ -2182,10 +2068,7 @@ class _SubscriptionTabState extends State<_SubscriptionTab> {
 
   Future<void> _load() async {
     setState(() => _loading = true);
-    final results = await Future.wait([
-      _subRepo.getByBusinessId(widget.businessId),
-      _plansRepo.list(),
-    ]);
+    final results = await Future.wait([_subRepo.getByBusinessId(widget.businessId), _plansRepo.list()]);
     final current = results[0] as BusinessSubscriptionWithPlan?;
     final plans = (results[1] as List<BusinessPlan>).where((p) => p.isActive).toList();
     if (mounted) {
@@ -2206,9 +2089,9 @@ class _SubscriptionTabState extends State<_SubscriptionTab> {
       trialDays = int.tryParse(_trialDaysController.text.trim());
       if (trialDays == null || trialDays < 1) {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Enter a valid number of trial days (e.g. 7, 14, 30).')),
-          );
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(const SnackBar(content: Text('Enter a valid number of trial days (e.g. 7, 14, 30).')));
         }
         return;
       }
@@ -2217,9 +2100,9 @@ class _SubscriptionTabState extends State<_SubscriptionTab> {
     try {
       await _subRepo.assignPlanWithoutCheckout(widget.businessId, planId, trialDays: trialDays);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(withTrial ? 'Free trial started.' : 'Plan assigned.')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(withTrial ? 'Free trial started.' : 'Plan assigned.')));
         widget.onUpdated();
         _load();
       }
@@ -2237,15 +2120,10 @@ class _SubscriptionTabState extends State<_SubscriptionTab> {
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Remove subscription'),
-        content: const Text(
-          'This will remove the business\'s paid plan. They will have no active subscription.',
-        ),
+        content: const Text('This will remove the business\'s paid plan. They will have no active subscription.'),
         actions: [
           TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Cancel')),
-          AppDangerButton(
-            onPressed: () => Navigator.of(ctx).pop(true),
-            child: const Text('Remove'),
-          ),
+          AppDangerButton(onPressed: () => Navigator.of(ctx).pop(true), child: const Text('Remove')),
         ],
       ),
     );
@@ -2272,15 +2150,10 @@ class _SubscriptionTabState extends State<_SubscriptionTab> {
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Delete business?'),
-        content: const Text(
-          'Permanently delete this business and all its data? This cannot be undone.',
-        ),
+        content: const Text('Permanently delete this business and all its data? This cannot be undone.'),
         actions: [
           TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Cancel')),
-          AppDangerButton(
-            onPressed: () => Navigator.of(ctx).pop(true),
-            child: const Text('Delete'),
-          ),
+          AppDangerButton(onPressed: () => Navigator.of(ctx).pop(true), child: const Text('Delete')),
         ],
       ),
     );
@@ -2331,17 +2204,11 @@ class _SubscriptionTabState extends State<_SubscriptionTab> {
               children: [
                 Text(
                   'Current subscription',
-                  style: theme.textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w700,
-                    color: AppTheme.specNavy,
-                  ),
+                  style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700, color: AppTheme.specNavy),
                 ),
                 const SizedBox(height: 12),
                 if (_current == null)
-                  Text(
-                    'No plan — Free tier',
-                    style: theme.textTheme.bodyLarge?.copyWith(color: AppTheme.specNavy),
-                  )
+                  Text('No plan — Free tier', style: theme.textTheme.bodyLarge?.copyWith(color: AppTheme.specNavy))
                 else ...[
                   Row(
                     children: [
@@ -2385,8 +2252,7 @@ class _SubscriptionTabState extends State<_SubscriptionTab> {
                     ],
                   ),
                   const SizedBox(height: 8),
-                  if (_current!.subscription.status == 'trialing' &&
-                      _current!.subscription.currentPeriodEnd != null)
+                  if (_current!.subscription.status == 'trialing' && _current!.subscription.currentPeriodEnd != null)
                     Text(
                       'Trial ends ${_formatDate(_current!.subscription.currentPeriodEnd)}',
                       style: theme.textTheme.bodyMedium?.copyWith(color: AppTheme.specNavy),
@@ -2409,10 +2275,7 @@ class _SubscriptionTabState extends State<_SubscriptionTab> {
               children: [
                 Text(
                   'Assign plan (no checkout)',
-                  style: theme.textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w700,
-                    color: AppTheme.specNavy,
-                  ),
+                  style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700, color: AppTheme.specNavy),
                 ),
                 if (_plans.isEmpty)
                   Padding(
@@ -2425,10 +2288,7 @@ class _SubscriptionTabState extends State<_SubscriptionTab> {
                 const SizedBox(height: 16),
                 Text(
                   'Plan',
-                  style: theme.textTheme.labelMedium?.copyWith(
-                    color: AppTheme.specNavy,
-                    fontWeight: FontWeight.w600,
-                  ),
+                  style: theme.textTheme.labelMedium?.copyWith(color: AppTheme.specNavy, fontWeight: FontWeight.w600),
                 ),
                 const SizedBox(height: 6),
                 DropdownButtonFormField<String>(
@@ -2439,18 +2299,18 @@ class _SubscriptionTabState extends State<_SubscriptionTab> {
                   decoration: InputDecoration(
                     border: border,
                     enabledBorder: border,
-                    focusedBorder: border.copyWith(
-                      borderSide: BorderSide(color: AppTheme.specGold, width: 1.5),
-                    ),
+                    focusedBorder: border.copyWith(borderSide: BorderSide(color: AppTheme.specGold, width: 1.5)),
                     contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                     isDense: true,
                   ),
                   dropdownColor: AppTheme.specWhite,
                   items: _plans
-                      .map((p) => DropdownMenuItem(
-                            value: p.id,
-                            child: Text('${p.name} (${p.tier})', style: TextStyle(color: AppTheme.specNavy)),
-                          ))
+                      .map(
+                        (p) => DropdownMenuItem(
+                          value: p.id,
+                          child: Text('${p.name} (${p.tier})', style: TextStyle(color: AppTheme.specNavy)),
+                        ),
+                      )
                       .toList(),
                   onChanged: (id) => setState(() => _selectedPlanId = id),
                 ),
@@ -2475,10 +2335,7 @@ class _SubscriptionTabState extends State<_SubscriptionTab> {
                 const SizedBox(height: 20),
                 Text(
                   'Free trial',
-                  style: theme.textTheme.titleSmall?.copyWith(
-                    fontWeight: FontWeight.w600,
-                    color: AppTheme.specNavy,
-                  ),
+                  style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600, color: AppTheme.specNavy),
                 ),
                 const SizedBox(height: 8),
                 Row(
@@ -2494,9 +2351,7 @@ class _SubscriptionTabState extends State<_SubscriptionTab> {
                           labelText: 'Days',
                           border: border,
                           enabledBorder: border,
-                          focusedBorder: border.copyWith(
-                            borderSide: BorderSide(color: AppTheme.specGold, width: 1.5),
-                          ),
+                          focusedBorder: border.copyWith(borderSide: BorderSide(color: AppTheme.specGold, width: 1.5)),
                           contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                           isDense: true,
                         ),
@@ -2525,10 +2380,7 @@ class _SubscriptionTabState extends State<_SubscriptionTab> {
                 const SizedBox(height: 16),
                 Text(
                   'Danger zone',
-                  style: theme.textTheme.titleSmall?.copyWith(
-                    fontWeight: FontWeight.w700,
-                    color: AppTheme.specRed,
-                  ),
+                  style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700, color: AppTheme.specRed),
                 ),
                 const SizedBox(height: 8),
                 AppDangerOutlinedButton(

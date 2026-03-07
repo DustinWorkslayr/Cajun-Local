@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:my_app/app/main_shell.dart';
 import 'package:my_app/core/auth/auth_repository.dart';
@@ -7,6 +8,8 @@ import 'package:my_app/core/data/repositories/favorites_repository.dart';
 import 'package:my_app/core/data/repositories/user_plans_repository.dart';
 import 'package:my_app/core/data/repositories/user_subscriptions_repository.dart';
 import 'package:my_app/core/favorites/favorites_scope.dart';
+import 'package:my_app/core/network/dio_client.dart';
+import 'package:my_app/core/network/interceptors/auth_interceptor.dart';
 import 'package:my_app/core/revenuecat/revenuecat_service.dart';
 import 'package:my_app/core/subscription/user_tier_service.dart';
 import 'package:my_app/core/supabase/supabase_config.dart';
@@ -28,11 +31,13 @@ class CajunLocalApp extends StatefulWidget {
 
 class _CajunLocalAppState extends State<CajunLocalApp> {
   final ValueNotifier<Set<String>> _favoriteIds = ValueNotifier<Set<String>>({});
-  final _dataSource = ListingDataSource();
-  final _authRepository = AuthRepository();
-  final _favoritesRepository = FavoritesRepository();
-  final _subscriptionsRepository = UserSubscriptionsRepository();
-  final _plansRepository = UserPlansRepository();
+  late final ListingDataSource _dataSource;
+  late final FavoritesRepository _favoritesRepository;
+  late final UserSubscriptionsRepository _subscriptionsRepository;
+  late final UserPlansRepository _plansRepository;
+  late final AuthRepository _authRepository;
+  late final Dio _dio;
+  late final DioClient _dioClient;
   late final UserTierService _userTierService = UserTierService(
     authRepository: _authRepository,
     subscriptionsRepository: _subscriptionsRepository,
@@ -45,6 +50,15 @@ class _CajunLocalAppState extends State<CajunLocalApp> {
   @override
   void initState() {
     super.initState();
+    _authRepository = AuthRepository();
+
+    _dio = Dio();
+    _dioClient = DioClient(dio: _dio);
+    _dio.interceptors.add(AuthInterceptor(authRepository: _authRepository, dio: _dio));
+    _dataSource = ListingDataSource();
+    _favoritesRepository = FavoritesRepository();
+    _subscriptionsRepository = UserSubscriptionsRepository();
+    _plansRepository = UserPlansRepository();
     _userTierService.refresh();
     _loadFavoritesWhenSignedIn();
     _authRepository.authStateChanges.listen((AuthState state) {
@@ -78,6 +92,7 @@ class _CajunLocalAppState extends State<CajunLocalApp> {
   Widget build(BuildContext context) {
     return AppDataScope(
       dataSource: _dataSource,
+      dioClient: _dioClient,
       authRepository: _authRepository,
       favoritesRepository: _favoritesRepository,
       userTierService: _userTierService,
@@ -85,17 +100,17 @@ class _CajunLocalAppState extends State<CajunLocalApp> {
       child: FavoritesScope(
         favoriteIds: _favoriteIds,
         child: MaterialApp(
-        title: 'Cajun Local',
-        debugShowCheckedModeBanner: false,
-        theme: AppTheme.light,
-        darkTheme: AppTheme.dark,
-        themeMode: ThemeMode.system,
-        builder: (context, child) {
-          final size = MediaQuery.sizeOf(context);
-          return UnconstrainedBox(
-            child: SizedBox(width: size.width, height: size.height, child: child),
-          );
-        },
+          title: 'Cajun Local',
+          debugShowCheckedModeBanner: false,
+          theme: AppTheme.light,
+          darkTheme: AppTheme.dark,
+          themeMode: ThemeMode.system,
+          builder: (context, child) {
+            final size = MediaQuery.sizeOf(context);
+            return UnconstrainedBox(
+              child: SizedBox(width: size.width, height: size.height, child: child),
+            );
+          },
           home: Builder(
             builder: (context) {
               final auth = AppDataScope.of(context).authRepository;

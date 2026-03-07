@@ -1,3 +1,5 @@
+import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:my_app/app/app.dart';
 import 'package:my_app/core/revenuecat/revenuecat_service.dart';
@@ -10,14 +12,14 @@ void main() async {
     await Supabase.initialize(
       url: SupabaseConfig.url,
       anonKey: SupabaseConfig.anonKey,
-      authOptions: const FlutterAuthClientOptions(
-        detectSessionInUri: true,
-      ),
+      authOptions: const FlutterAuthClientOptions(detectSessionInUri: true),
     );
   }
   // Initialize RevenueCat (no-op on web; requires iOS/Android for IAP).
-  final revenueCatService = await RevenueCatService.configure();
-  runApp(SizedBox.expand(
-    child: CajunLocalApp(revenueCatService: revenueCatService),
-  ));
+  RevenueCatService? revenueCatService;
+
+  if (!kIsWeb && (Platform.isAndroid || Platform.isIOS)) {
+    revenueCatService = await RevenueCatService.configure();
+  }
+  runApp(SizedBox.expand(child: CajunLocalApp(revenueCatService: revenueCatService)));
 }
