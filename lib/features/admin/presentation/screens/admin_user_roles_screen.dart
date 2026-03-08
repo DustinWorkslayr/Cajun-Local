@@ -30,10 +30,7 @@ class AdminUserRolesScreen extends StatefulWidget {
 class _AdminUserRolesScreenState extends State<AdminUserRolesScreen> {
   int _refreshKey = 0;
 
-  static String _displayLabel(
-    UserRole ur,
-    Map<String, Profile> profileByUserId,
-  ) {
+  static String _displayLabel(UserRole ur, Map<String, Profile> profileByUserId) {
     final p = profileByUserId[ur.userId];
     if (p != null && (p.displayName != null && p.displayName!.isNotEmpty)) {
       return p.displayName!;
@@ -51,26 +48,19 @@ class _AdminUserRolesScreenState extends State<AdminUserRolesScreen> {
       key: ValueKey(_refreshKey),
       future: rolesRepo.listForAdmin(),
       builder: (context, rolesSnapshot) {
-        if (rolesSnapshot.connectionState == ConnectionState.waiting &&
-            !rolesSnapshot.hasData) {
+        if (rolesSnapshot.connectionState == ConnectionState.waiting && !rolesSnapshot.hasData) {
           return const Center(child: CircularProgressIndicator());
         }
         final roles = rolesSnapshot.data ?? [];
         if (roles.isEmpty) {
           return Center(
-            child: Text(
-              'No users.',
-              style: theme.textTheme.bodyLarge?.copyWith(
-                color: colorScheme.onSurfaceVariant,
-              ),
-            ),
+            child: Text('No users.', style: theme.textTheme.bodyLarge?.copyWith(color: colorScheme.onSurfaceVariant)),
           );
         }
         return FutureBuilder<List<Profile>>(
           future: authRepo.listProfilesForAdmin(),
           builder: (context, profilesSnapshot) {
-            if (profilesSnapshot.connectionState == ConnectionState.waiting &&
-                !profilesSnapshot.hasData) {
+            if (profilesSnapshot.connectionState == ConnectionState.waiting && !profilesSnapshot.hasData) {
               return const Center(child: CircularProgressIndicator());
             }
             final profiles = profilesSnapshot.data ?? [];
@@ -88,22 +78,14 @@ class _AdminUserRolesScreenState extends State<AdminUserRolesScreen> {
                   padding: const EdgeInsets.only(bottom: 10),
                   child: AdminListCard(
                     title: label,
-                    subtitle: email.isNotEmpty
-                        ? email
-                        : 'User ID: ${ur.userId}',
+                    subtitle: email.isNotEmpty ? email : 'User ID: ${ur.userId}',
                     badges: [AdminBadgeData(ur.role)],
                     leading: CircleAvatar(
                       radius: 24,
                       backgroundColor: AppTheme.specGold.withValues(alpha: 0.2),
-                      backgroundImage: avatarUrl != null && avatarUrl.isNotEmpty
-                          ? NetworkImage(avatarUrl)
-                          : null,
+                      backgroundImage: avatarUrl != null && avatarUrl.isNotEmpty ? NetworkImage(avatarUrl) : null,
                       child: avatarUrl == null || avatarUrl.isEmpty
-                          ? Icon(
-                              Icons.person_rounded,
-                              color: AppTheme.specNavy,
-                              size: 26,
-                            )
+                          ? Icon(Icons.person_rounded, color: AppTheme.specNavy, size: 26)
                           : null,
                     ),
                     onTap: () => _showUserSheet(
@@ -144,9 +126,7 @@ class _AdminUserRolesScreenState extends State<AdminUserRolesScreen> {
         onSaved: () {
           setState(() => _refreshKey++);
           Navigator.of(context).pop();
-          ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(const SnackBar(content: Text('Saved')));
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Saved')));
         },
       ),
     );
@@ -259,15 +239,13 @@ class _UserEditPanelContentState extends State<_UserEditPanelContent> {
         ),
       );
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Notification preferences saved')),
-        );
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Notification preferences saved')));
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to save: $e'), backgroundColor: Colors.red),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Failed to save: $e'), backgroundColor: Colors.red));
       }
     }
   }
@@ -285,15 +263,8 @@ class _UserEditPanelContentState extends State<_UserEditPanelContent> {
       final bytes = result.files.single.bytes!;
       final name = result.files.single.name;
       final ext = name.contains('.') ? name.split('.').last : 'jpg';
-      final url = await AppStorageService().uploadAvatar(
-        userId: widget.userId,
-        bytes: bytes,
-        extension: ext,
-      );
-      await AuthRepository().updateProfileForAdmin(
-        widget.userId,
-        avatarUrl: url,
-      );
+      final url = await AppStorageService().uploadAvatar(userId: widget.userId, bytes: bytes, extension: ext);
+      await AuthRepository().updateProfileForAdmin(widget.userId, avatarUrl: url);
       if (mounted) {
         setState(() {
           _avatarUrl = url;
@@ -303,9 +274,7 @@ class _UserEditPanelContentState extends State<_UserEditPanelContent> {
     } catch (e) {
       if (mounted) {
         setState(() => _uploadingAvatar = false);
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Upload failed: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Upload failed: $e')));
       }
     }
   }
@@ -321,25 +290,15 @@ class _UserEditPanelContentState extends State<_UserEditPanelContent> {
       } else {
         await repo.setPlanForUser(widget.userId, planId);
         if (mounted) {
-          setState(
-            () => _subscription = UserSubscription(
-              id: '',
-              userId: widget.userId,
-              planId: planId,
-            ),
-          );
+          setState(() => _subscription = UserSubscription(id: '', userId: widget.userId, planId: planId));
         }
       }
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('Plan updated')));
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Plan updated')));
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Failed: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed: $e')));
       }
     }
   }
@@ -349,18 +308,10 @@ class _UserEditPanelContentState extends State<_UserEditPanelContent> {
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Downgrade user'),
-        content: const Text(
-          'Set role to User and remove subscription. Continue?',
-        ),
+        content: const Text('Set role to User and remove subscription. Continue?'),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Downgrade'),
-          ),
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Downgrade')),
         ],
       ),
     );
@@ -373,15 +324,11 @@ class _UserEditPanelContentState extends State<_UserEditPanelContent> {
           _role = 'user';
           _subscription = null;
         });
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('User downgraded')));
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('User downgraded')));
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Failed: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed: $e')));
       }
     }
   }
@@ -396,14 +343,8 @@ class _UserEditPanelContentState extends State<_UserEditPanelContent> {
           'For full account deletion use Supabase Dashboard > Authentication > Users. Continue?',
         ),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Cancel'),
-          ),
-          AppDangerButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Remove'),
-          ),
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          AppDangerButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Remove')),
         ],
       ),
     );
@@ -412,19 +353,13 @@ class _UserEditPanelContentState extends State<_UserEditPanelContent> {
       await AuthRepository().removeUserFromApp(widget.userId);
       if (mounted) {
         widget.onSaved();
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text(
-              'User removed. Use Dashboard for full auth deletion.',
-            ),
-          ),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('User removed. Use Dashboard for full auth deletion.')));
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Failed: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed: $e')));
       }
     }
   }
@@ -445,17 +380,12 @@ class _UserEditPanelContentState extends State<_UserEditPanelContent> {
     final rolesRepo = UserRolesRepository();
     try {
       final name = _nameController.text.trim();
-      await authRepo.updateProfileForAdmin(
-        widget.userId,
-        displayName: name.isEmpty ? null : name,
-      );
+      await authRepo.updateProfileForAdmin(widget.userId, displayName: name.isEmpty ? null : name);
       await rolesRepo.setRole(widget.userId, _role);
       if (mounted) widget.onSaved();
     } catch (e) {
       if (mounted) {
-        final msg = e is ArgumentError ||
-                e.toString().contains('uuid') ||
-                e.toString().contains('22P02')
+        final msg = e is ArgumentError || e.toString().contains('uuid') || e.toString().contains('22P02')
             ? 'This user\'s ID is not a valid UUID. Fix or remove the row in Supabase Dashboard (Table Editor > user_roles).'
             : e.toString();
         setState(() => _savingError = msg);
@@ -468,15 +398,11 @@ class _UserEditPanelContentState extends State<_UserEditPanelContent> {
     try {
       await repo.insert(businessId, widget.userId);
       if (mounted) {
-        setState(
-          () => _managedBusinessIds = [..._managedBusinessIds, businessId],
-        );
+        setState(() => _managedBusinessIds = [..._managedBusinessIds, businessId]);
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Failed: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed: $e')));
       }
     }
   }
@@ -486,17 +412,11 @@ class _UserEditPanelContentState extends State<_UserEditPanelContent> {
     try {
       await repo.delete(businessId, widget.userId);
       if (mounted) {
-        setState(
-          () => _managedBusinessIds = _managedBusinessIds
-              .where((id) => id != businessId)
-              .toList(),
-        );
+        setState(() => _managedBusinessIds = _managedBusinessIds.where((id) => id != businessId).toList());
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Failed: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed: $e')));
       }
     }
   }
@@ -520,9 +440,7 @@ class _UserEditPanelContentState extends State<_UserEditPanelContent> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
-    final availableBusinesses = _allBusinesses
-        .where((b) => !_managedBusinessIds.contains(b.id))
-        .toList();
+    final availableBusinesses = _allBusinesses.where((b) => !_managedBusinessIds.contains(b.id)).toList();
     final planValue = () {
       final planId = _subscription?.planId ?? '';
       if (planId.isEmpty) return '';
@@ -538,15 +456,9 @@ class _UserEditPanelContentState extends State<_UserEditPanelContent> {
             CircleAvatar(
               radius: 32,
               backgroundColor: AppTheme.specNavy.withValues(alpha: 0.08),
-              backgroundImage: _avatarUrl != null && _avatarUrl!.isNotEmpty
-                  ? NetworkImage(_avatarUrl!)
-                  : null,
+              backgroundImage: _avatarUrl != null && _avatarUrl!.isNotEmpty ? NetworkImage(_avatarUrl!) : null,
               child: _avatarUrl == null || _avatarUrl!.isEmpty
-                  ? Icon(
-                      Icons.person_rounded,
-                      size: 32,
-                      color: AppTheme.specNavy,
-                    )
+                  ? Icon(Icons.person_rounded, size: 32, color: AppTheme.specNavy)
                   : null,
             ),
             const SizedBox(width: 16),
@@ -554,27 +466,16 @@ class _UserEditPanelContentState extends State<_UserEditPanelContent> {
               child: AppOutlinedButton(
                 onPressed: _uploadingAvatar ? null : _pickAndUploadAvatar,
                 icon: _uploadingAvatar
-                    ? const SizedBox(
-                        width: 18,
-                        height: 18,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
+                    ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
                     : const Icon(Icons.upload_rounded, size: 18),
-                label: Text(
-                  _uploadingAvatar ? 'Uploading...' : 'Upload avatar',
-                ),
+                label: Text(_uploadingAvatar ? 'Uploading...' : 'Upload avatar'),
               ),
             ),
           ],
         ),
         if (widget.initialEmail.isNotEmpty) ...[
           AdminDetailLabel('Email'),
-          Text(
-            widget.initialEmail,
-            style: theme.textTheme.bodyMedium?.copyWith(
-              color: colorScheme.onSurfaceVariant,
-            ),
-          ),
+          Text(widget.initialEmail, style: theme.textTheme.bodyMedium?.copyWith(color: colorScheme.onSurfaceVariant)),
         ],
         AdminDetailLabel('Display name'),
         TextField(
@@ -587,12 +488,7 @@ class _UserEditPanelContentState extends State<_UserEditPanelContent> {
           initialValue: _role,
           decoration: _inputDecoration.copyWith(labelText: 'Role'),
           items: const [
-            DropdownMenuItem(value: 'super_admin', child: Text('Super admin')),
             DropdownMenuItem(value: 'admin', child: Text('Admin')),
-            DropdownMenuItem(
-              value: 'business_owner',
-              child: Text('Business owner'),
-            ),
             DropdownMenuItem(value: 'user', child: Text('User')),
           ],
           onChanged: (v) {
@@ -601,18 +497,11 @@ class _UserEditPanelContentState extends State<_UserEditPanelContent> {
         ),
         AdminDetailLabel('User plan'),
         DropdownButtonFormField<String>(
-          initialValue: (planValue == '' || _userPlans.any((p) => p.id == planValue))
-              ? planValue
-              : '',
+          initialValue: (planValue == '' || _userPlans.any((p) => p.id == planValue)) ? planValue : '',
           decoration: _inputDecoration.copyWith(labelText: 'Assign plan'),
           items: [
             const DropdownMenuItem(value: '', child: Text('None')),
-            ..._userPlans.map(
-              (p) => DropdownMenuItem(
-                value: p.id,
-                child: Text('${p.name} (${p.tier})'),
-              ),
-            ),
+            ..._userPlans.map((p) => DropdownMenuItem(value: p.id, child: Text('${p.name} (${p.tier})'))),
           ],
           onChanged: (v) => _assignPlan(v),
         ),
@@ -620,9 +509,7 @@ class _UserEditPanelContentState extends State<_UserEditPanelContent> {
         if (_loading) ...[
           const Padding(
             padding: EdgeInsets.all(16),
-            child: Center(
-              child: CircularProgressIndicator(color: AppTheme.specNavy),
-            ),
+            child: Center(child: CircularProgressIndicator(color: AppTheme.specNavy)),
           ),
         ] else ...[
           ..._managedBusinessIds.map((id) {
@@ -633,19 +520,10 @@ class _UserEditPanelContentState extends State<_UserEditPanelContent> {
               child: Row(
                 children: [
                   Expanded(
-                    child: Text(
-                      name,
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        color: AppTheme.specNavy,
-                      ),
-                    ),
+                    child: Text(name, style: theme.textTheme.bodyMedium?.copyWith(color: AppTheme.specNavy)),
                   ),
                   IconButton(
-                    icon: Icon(
-                      Icons.remove_circle_outline,
-                      color: AppTheme.specRed,
-                      size: 22,
-                    ),
+                    icon: Icon(Icons.remove_circle_outline, color: AppTheme.specRed, size: 22),
                     onPressed: () => _removeManagement(id),
                     tooltip: 'Remove management',
                   ),
@@ -656,9 +534,7 @@ class _UserEditPanelContentState extends State<_UserEditPanelContent> {
           if (availableBusinesses.isEmpty) ...[
             Text(
               'No other businesses to assign.',
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: colorScheme.onSurfaceVariant,
-              ),
+              style: theme.textTheme.bodySmall?.copyWith(color: colorScheme.onSurfaceVariant),
             ),
           ] else ...[
             _AssignBusinessDropDown(
@@ -673,46 +549,31 @@ class _UserEditPanelContentState extends State<_UserEditPanelContent> {
         SwitchListTile(
           value: _notifDeals,
           onChanged: (v) => setState(() => _notifDeals = v),
-          title: Text(
-            'Deals',
-            style: theme.textTheme.bodyMedium?.copyWith(color: AppTheme.specNavy),
-          ),
+          title: Text('Deals', style: theme.textTheme.bodyMedium?.copyWith(color: AppTheme.specNavy)),
           activeThumbColor: AppTheme.specNavy,
         ),
         SwitchListTile(
           value: _notifListings,
           onChanged: (v) => setState(() => _notifListings = v),
-          title: Text(
-            'Listings',
-            style: theme.textTheme.bodyMedium?.copyWith(color: AppTheme.specNavy),
-          ),
+          title: Text('Listings', style: theme.textTheme.bodyMedium?.copyWith(color: AppTheme.specNavy)),
           activeThumbColor: AppTheme.specNavy,
         ),
         SwitchListTile(
           value: _notifReminders,
           onChanged: (v) => setState(() => _notifReminders = v),
-          title: Text(
-            'Reminders',
-            style: theme.textTheme.bodyMedium?.copyWith(color: AppTheme.specNavy),
-          ),
+          title: Text('Reminders', style: theme.textTheme.bodyMedium?.copyWith(color: AppTheme.specNavy)),
           activeThumbColor: AppTheme.specNavy,
         ),
         SwitchListTile(
           value: _notifNews,
           onChanged: (v) => setState(() => _notifNews = v),
-          title: Text(
-            'News',
-            style: theme.textTheme.bodyMedium?.copyWith(color: AppTheme.specNavy),
-          ),
+          title: Text('News', style: theme.textTheme.bodyMedium?.copyWith(color: AppTheme.specNavy)),
           activeThumbColor: AppTheme.specNavy,
         ),
         SwitchListTile(
           value: _notifEvents,
           onChanged: (v) => setState(() => _notifEvents = v),
-          title: Text(
-            'Events at saved places',
-            style: theme.textTheme.bodyMedium?.copyWith(color: AppTheme.specNavy),
-          ),
+          title: Text('Events at saved places', style: theme.textTheme.bodyMedium?.copyWith(color: AppTheme.specNavy)),
           activeThumbColor: AppTheme.specNavy,
         ),
         Padding(
@@ -724,43 +585,27 @@ class _UserEditPanelContentState extends State<_UserEditPanelContent> {
         ),
         if (_savingError != null) ...[
           const SizedBox(height: 12),
-          Text(
-            _savingError!,
-            style: TextStyle(color: colorScheme.error, fontSize: 13),
-          ),
+          Text(_savingError!, style: TextStyle(color: colorScheme.error, fontSize: 13)),
         ],
         const SizedBox(height: 24),
-        AppSecondaryButton(
-          onPressed: _saveNameAndRole,
-          child: const Text('Save name & role'),
-        ),
+        AppSecondaryButton(onPressed: _saveNameAndRole, child: const Text('Save name & role')),
         const SizedBox(height: 12),
-        AppOutlinedButton(
-          onPressed: _downgradeUser,
-          child: const Text('Downgrade to User (remove plan)'),
-        ),
+        AppOutlinedButton(onPressed: _downgradeUser, child: const Text('Downgrade to User (remove plan)')),
         const SizedBox(height: 8),
-        AppDangerOutlinedButton(
-          onPressed: _deleteUser,
-          child: const Text('Remove user from app'),
-        ),
+        AppDangerOutlinedButton(onPressed: _deleteUser, child: const Text('Remove user from app')),
       ],
     );
   }
 }
 
 class _AssignBusinessDropDown extends StatefulWidget {
-  const _AssignBusinessDropDown({
-    required this.businesses,
-    required this.onAssign,
-  });
+  const _AssignBusinessDropDown({required this.businesses, required this.onAssign});
 
   final List<Business> businesses;
   final Future<void> Function(String businessId) onAssign;
 
   @override
-  State<_AssignBusinessDropDown> createState() =>
-      _AssignBusinessDropDownState();
+  State<_AssignBusinessDropDown> createState() => _AssignBusinessDropDownState();
 }
 
 class _AssignBusinessDropDownState extends State<_AssignBusinessDropDown> {
@@ -771,8 +616,7 @@ class _AssignBusinessDropDownState extends State<_AssignBusinessDropDown> {
   void didUpdateWidget(covariant _AssignBusinessDropDown oldWidget) {
     super.didUpdateWidget(oldWidget);
     final list = widget.businesses;
-    if (list.isNotEmpty &&
-        (_selectedId == null || !list.any((b) => b.id == _selectedId))) {
+    if (list.isNotEmpty && (_selectedId == null || !list.any((b) => b.id == _selectedId))) {
       _selectedId = list.first.id;
     }
   }
@@ -781,9 +625,7 @@ class _AssignBusinessDropDownState extends State<_AssignBusinessDropDown> {
   Widget build(BuildContext context) {
     final list = widget.businesses;
     if (list.isEmpty) return const SizedBox.shrink();
-    final value = list.any((b) => b.id == _selectedId)
-        ? _selectedId!
-        : list.first.id;
+    final value = list.any((b) => b.id == _selectedId) ? _selectedId! : list.first.id;
     return Row(
       children: [
         Expanded(
@@ -793,17 +635,10 @@ class _AssignBusinessDropDownState extends State<_AssignBusinessDropDown> {
               labelText: 'Assign to business',
               filled: true,
               fillColor: AppTheme.specOffWhite,
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-              contentPadding: const EdgeInsets.symmetric(
-                horizontal: 12,
-                vertical: 8,
-              ),
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             ),
-            items: list
-                .map((b) => DropdownMenuItem(value: b.id, child: Text(b.name)))
-                .toList(),
+            items: list.map((b) => DropdownMenuItem(value: b.id, child: Text(b.name))).toList(),
             onChanged: (v) => setState(() => _selectedId = v),
           ),
         ),
@@ -820,11 +655,7 @@ class _AssignBusinessDropDownState extends State<_AssignBusinessDropDown> {
                   }
                 },
           child: _adding
-              ? const SizedBox(
-                  width: 20,
-                  height: 20,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                )
+              ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
               : const Text('Add'),
         ),
       ],

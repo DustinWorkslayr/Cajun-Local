@@ -6,7 +6,6 @@ import 'package:my_app/core/data/repositories/audit_log_repository.dart';
 import 'package:my_app/core/data/repositories/business_claims_repository.dart';
 import 'package:my_app/core/data/repositories/business_managers_repository.dart';
 import 'package:my_app/core/data/repositories/business_repository.dart';
-import 'package:my_app/core/data/repositories/user_roles_repository.dart';
 import 'package:my_app/core/data/services/send_email_service.dart';
 
 class AdminClaimDetailScreen extends StatefulWidget {
@@ -68,11 +67,10 @@ class _AdminClaimDetailScreenState extends State<AdminClaimDetailScreen> {
     if (status == 'approved' && _claim != null) {
       try {
         await BusinessManagersRepository().insert(_claim!.businessId, _claim!.userId);
-        await UserRolesRepository().setRole(_claim!.userId, 'business_owner');
       } catch (_) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Claim approved but grant access failed. Add manager and role manually.')),
+            const SnackBar(content: Text('Claim approved but grant access failed. Add manager manually.')),
           );
         }
       }
@@ -85,26 +83,23 @@ class _AdminClaimDetailScreenState extends State<AdminClaimDetailScreen> {
         await SendEmailService().send(
           to: to,
           template: 'claim_approved',
-          variables: {
-            'display_name': displayName,
-            'email': to,
-            'business_name': businessName,
-          },
+          variables: {'display_name': displayName, 'email': to, 'business_name': businessName},
         );
       } else if (status == 'rejected') {
         await SendEmailService().send(
           to: to,
           template: 'claim_rejected',
-          variables: {
-            'display_name': displayName,
-            'business_name': businessName,
-          },
+          variables: {'display_name': displayName, 'business_name': businessName},
         );
       }
     }
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(status == 'approved' ? 'Claim approved; user granted manager access.' : 'Status set to $status')),
+        SnackBar(
+          content: Text(
+            status == 'approved' ? 'Claim approved; user granted manager access.' : 'Status set to $status',
+          ),
+        ),
       );
       _load();
     }
@@ -119,54 +114,51 @@ class _AdminClaimDetailScreenState extends State<AdminClaimDetailScreen> {
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : _error != null
-              ? Center(child: Text(_error!, style: theme.textTheme.bodyLarge))
-              : SingleChildScrollView(
-                  padding: const EdgeInsets.all(24),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      _DetailRow(label: 'Status', value: _claim!.status),
-                      _DetailRow(
-                        label: 'Business',
-                        value: _businessName ?? _claim!.businessId,
-                      ),
-                      _DetailRow(
-                        label: 'User',
-                        value: _profile != null
-                            ? (_profile!.displayName ?? _profile!.email ?? _claim!.userId)
-                            : _claim!.userId,
-                      ),
-                      if (_claim!.claimDetails != null) _DetailRow(label: 'Details', value: _claim!.claimDetails!),
-                      const SizedBox(height: 24),
-                      if (_claim!.status == 'pending') ...[
-                        Row(
-                          children: [
-                            Expanded(
-                              child: FilledButton.icon(
-                                onPressed: () => _updateStatus('approved'),
-                                icon: const Icon(Icons.check_rounded, size: 20),
-                                label: const Text('Approve'),
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: OutlinedButton.icon(
-                                onPressed: () => _updateStatus('rejected'),
-                                icon: const Icon(Icons.close_rounded, size: 20),
-                                label: const Text('Reject'),
-                              ),
-                            ),
-                          ],
+          ? Center(child: Text(_error!, style: theme.textTheme.bodyLarge))
+          : SingleChildScrollView(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  _DetailRow(label: 'Status', value: _claim!.status),
+                  _DetailRow(label: 'Business', value: _businessName ?? _claim!.businessId),
+                  _DetailRow(
+                    label: 'User',
+                    value: _profile != null
+                        ? (_profile!.displayName ?? _profile!.email ?? _claim!.userId)
+                        : _claim!.userId,
+                  ),
+                  if (_claim!.claimDetails != null) _DetailRow(label: 'Details', value: _claim!.claimDetails!),
+                  const SizedBox(height: 24),
+                  if (_claim!.status == 'pending') ...[
+                    Row(
+                      children: [
+                        Expanded(
+                          child: FilledButton.icon(
+                            onPressed: () => _updateStatus('approved'),
+                            icon: const Icon(Icons.check_rounded, size: 20),
+                            label: const Text('Approve'),
+                          ),
                         ),
-                        const SizedBox(height: 16),
-                        Text(
-                          'Approve will also add the user to business_managers and grant the business_owner role.',
-                          style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: OutlinedButton.icon(
+                            onPressed: () => _updateStatus('rejected'),
+                            icon: const Icon(Icons.close_rounded, size: 20),
+                            label: const Text('Reject'),
+                          ),
                         ),
                       ],
-                    ],
-                  ),
-                ),
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      'Approve will add the user to business_managers.',
+                      style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                    ),
+                  ],
+                ],
+              ),
+            ),
     );
   }
 }

@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "791192605612",
+    "project_id": "cajun-local",
+    "storage_bucket": "cajun-local.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:791192605612:android:acc56f1579f1706925a009",
+        "android_client_info": {
+          "package_name": "com.example.my_app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCFYmeuDAB8wKRgN2bevk48rWMY1KWrOUU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

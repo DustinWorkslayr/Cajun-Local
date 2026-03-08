@@ -7,7 +7,6 @@ import 'package:my_app/core/data/models/profile.dart';
 import 'package:my_app/core/data/repositories/business_claims_repository.dart';
 import 'package:my_app/core/data/repositories/business_managers_repository.dart';
 import 'package:my_app/core/data/repositories/business_repository.dart';
-import 'package:my_app/core/data/repositories/user_roles_repository.dart';
 import 'package:my_app/core/data/services/send_email_service.dart';
 import 'package:my_app/core/theme/app_layout.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -17,11 +16,7 @@ import 'package:my_app/shared/widgets/app_buttons.dart';
 
 /// Admin claims: search, pagination, user-friendly cards (no UUIDs). Panel: business name, approve/reject.
 class AdminClaimsScreen extends StatefulWidget {
-  const AdminClaimsScreen({
-    super.key,
-    this.status,
-    this.embeddedInShell = false,
-  });
+  const AdminClaimsScreen({super.key, this.status, this.embeddedInShell = false});
 
   final String? status;
   final bool embeddedInShell;
@@ -61,10 +56,7 @@ class _AdminClaimsScreenState extends State<AdminClaimsScreen> {
     });
     final repo = BusinessClaimsRepository();
     final businessRepo = BusinessRepository();
-    final results = await Future.wait([
-      repo.listForAdmin(status: widget.status),
-      businessRepo.listForAdmin(),
-    ]);
+    final results = await Future.wait([repo.listForAdmin(status: widget.status), businessRepo.listForAdmin()]);
     final list = results[0] as List<BusinessClaim>;
     final businesses = results[1] as List<Business>;
     final nameById = {for (final b in businesses) b.id: b.name};
@@ -93,11 +85,7 @@ class _AdminClaimsScreenState extends State<AdminClaimsScreen> {
     AdminDetailPanel.show(
       context: context,
       title: businessName,
-      child: _ClaimPanelContent(
-        claim: c,
-        businessName: businessName,
-        onStatusUpdated: _load,
-      ),
+      child: _ClaimPanelContent(claim: c, businessName: businessName, onStatusUpdated: _load),
     );
   }
 
@@ -136,9 +124,7 @@ class _AdminClaimsScreenState extends State<AdminClaimsScreen> {
                   const SizedBox(height: 4),
                   Text(
                     total == 0 ? 'No claims' : '$total claim${total == 1 ? '' : 's'}',
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      color: AppTheme.specNavy.withValues(alpha: 0.7),
-                    ),
+                    style: theme.textTheme.bodyMedium?.copyWith(color: AppTheme.specNavy.withValues(alpha: 0.7)),
                   ),
                   const SizedBox(height: 16),
                   AdminSearchBar(
@@ -150,9 +136,7 @@ class _AdminClaimsScreenState extends State<AdminClaimsScreen> {
                     const SizedBox(height: 8),
                     Text(
                       'Filter: ${widget.status}',
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: theme.colorScheme.onSurfaceVariant,
-                      ),
+                      style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
                     ),
                   ],
                 ],
@@ -160,7 +144,9 @@ class _AdminClaimsScreenState extends State<AdminClaimsScreen> {
             ),
           ),
           if (_loading)
-            const Expanded(child: Center(child: CircularProgressIndicator(color: AppTheme.specNavy)))
+            const Expanded(
+              child: Center(child: CircularProgressIndicator(color: AppTheme.specNavy)),
+            )
           else if (_error != null)
             Expanded(
               child: Center(
@@ -173,7 +159,11 @@ class _AdminClaimsScreenState extends State<AdminClaimsScreen> {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(Icons.handshake_outlined, size: 64, color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.5)),
+                    Icon(
+                      Icons.handshake_outlined,
+                      size: 64,
+                      color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.5),
+                    ),
                     const SizedBox(height: 16),
                     Text(
                       _query.isEmpty ? 'No claims yet.' : 'No matches for "$_query".',
@@ -251,11 +241,7 @@ class _AdminClaimsScreenState extends State<AdminClaimsScreen> {
 }
 
 class _ClaimPanelContent extends StatefulWidget {
-  const _ClaimPanelContent({
-    required this.claim,
-    required this.businessName,
-    required this.onStatusUpdated,
-  });
+  const _ClaimPanelContent({required this.claim, required this.businessName, required this.onStatusUpdated});
 
   final BusinessClaim claim;
   final String businessName;
@@ -304,7 +290,6 @@ class _ClaimPanelContentState extends State<_ClaimPanelContent> {
       if (status == 'approved') {
         try {
           await BusinessManagersRepository().insert(widget.claim.businessId, widget.claim.userId);
-          await UserRolesRepository().setRole(widget.claim.userId, 'business_owner');
         } catch (_) {
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
@@ -322,11 +307,7 @@ class _ClaimPanelContentState extends State<_ClaimPanelContent> {
             await SendEmailService().send(
               to: to,
               template: 'claim_approved',
-              variables: {
-                'display_name': displayName,
-                'email': to,
-                'business_name': businessName,
-              },
+              variables: {'display_name': displayName, 'email': to, 'business_name': businessName},
             );
           } catch (_) {}
         } else if (status == 'rejected') {
@@ -334,17 +315,16 @@ class _ClaimPanelContentState extends State<_ClaimPanelContent> {
             await SendEmailService().send(
               to: to,
               template: 'claim_rejected',
-              variables: {
-                'display_name': displayName,
-                'business_name': businessName,
-              },
+              variables: {'display_name': displayName, 'business_name': businessName},
             );
           } catch (_) {}
         }
       }
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(status == 'approved' ? 'Claim approved; user granted manager access.' : 'Claim rejected.')),
+          SnackBar(
+            content: Text(status == 'approved' ? 'Claim approved; user granted manager access.' : 'Claim rejected.'),
+          ),
         );
         widget.onStatusUpdated();
         Navigator.of(context).pop();
@@ -373,29 +353,26 @@ class _ClaimPanelContentState extends State<_ClaimPanelContent> {
         // Claimant (user-facing only: name, email)
         Text(
           'Claimant',
-          style: theme.textTheme.labelLarge?.copyWith(
-            fontWeight: FontWeight.w600,
-            color: sub,
-          ),
+          style: theme.textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w600, color: sub),
         ),
         const SizedBox(height: 4),
         if (_loadingClaimant)
-          const SizedBox(height: 24, child: Center(child: CircularProgressIndicator(strokeWidth: 2, color: AppTheme.specNavy)))
+          const SizedBox(
+            height: 24,
+            child: Center(child: CircularProgressIndicator(strokeWidth: 2, color: AppTheme.specNavy)),
+          )
         else
           Text(
             _claimantProfile != null
                 ? (_claimantProfile!.displayName?.isNotEmpty == true
-                    ? _claimantProfile!.displayName!
-                    : _claimantProfile!.email ?? 'Unknown')
+                      ? _claimantProfile!.displayName!
+                      : _claimantProfile!.email ?? 'Unknown')
                 : 'Loading…',
             style: theme.textTheme.bodyLarge?.copyWith(color: nav, fontWeight: FontWeight.w600),
           ),
         if (_claimantProfile?.email != null && _claimantProfile!.email!.isNotEmpty) ...[
           const SizedBox(height: 2),
-          Text(
-            _claimantProfile!.email!,
-            style: theme.textTheme.bodyMedium?.copyWith(color: sub),
-          ),
+          Text(_claimantProfile!.email!, style: theme.textTheme.bodyMedium?.copyWith(color: sub)),
         ],
         const SizedBox(height: 16),
         // Status
@@ -412,8 +389,8 @@ class _ClaimPanelContentState extends State<_ClaimPanelContent> {
                 color: c.status == 'pending'
                     ? AppTheme.specRed.withValues(alpha: 0.12)
                     : c.status == 'approved'
-                        ? AppTheme.specGold.withValues(alpha: 0.2)
-                        : nav.withValues(alpha: 0.1),
+                    ? AppTheme.specGold.withValues(alpha: 0.2)
+                    : nav.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Text(
@@ -437,10 +414,7 @@ class _ClaimPanelContentState extends State<_ClaimPanelContent> {
         // Proof / document details (uploaded proof from business owner)
         Text(
           'Proof submitted',
-          style: theme.textTheme.labelLarge?.copyWith(
-            fontWeight: FontWeight.w600,
-            color: sub,
-          ),
+          style: theme.textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w600, color: sub),
         ),
         const SizedBox(height: 6),
         if (c.claimDetails != null && c.claimDetails!.isNotEmpty)
@@ -458,10 +432,7 @@ class _ClaimPanelContentState extends State<_ClaimPanelContent> {
             ),
           )
         else
-          Text(
-            'No proof details provided.',
-            style: theme.textTheme.bodyMedium?.copyWith(color: sub),
-          ),
+          Text('No proof details provided.', style: theme.textTheme.bodyMedium?.copyWith(color: sub)),
         if (c.status == 'pending') ...[
           const SizedBox(height: 28),
           Row(
@@ -471,7 +442,11 @@ class _ClaimPanelContentState extends State<_ClaimPanelContent> {
                   onPressed: _updating ? null : () => _updateStatus('approved'),
                   expanded: true,
                   icon: _updating
-                      ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                        )
                       : const Icon(Icons.check_rounded, size: 20),
                   label: const Text('Approve'),
                 ),
@@ -489,7 +464,7 @@ class _ClaimPanelContentState extends State<_ClaimPanelContent> {
           ),
           const SizedBox(height: 12),
           Text(
-            'Approve will add the user as manager and grant business owner role.',
+            'Approve will add the user as a business manager.',
             style: theme.textTheme.bodySmall?.copyWith(color: sub),
           ),
         ],
