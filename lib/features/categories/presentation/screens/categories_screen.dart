@@ -139,7 +139,7 @@ class _CategoriesScreenState extends State<CategoriesScreen> with TickerProvider
   void didChangeDependencies() {
     super.didChangeDependencies();
     final ds = AppDataScope.of(context).dataSource;
-    if (_fullListCache != null && !_loadingAuxiliaryFilters && ds.useSupabase) {
+    if (_fullListCache != null && !_loadingAuxiliaryFilters && ds.useBackend) {
       _maybeLoadAuxiliaryFilters(ds);
     }
     _filterPanelDataFuture ??= Future.wait([
@@ -151,7 +151,7 @@ class _CategoriesScreenState extends State<CategoriesScreen> with TickerProvider
         final totalCount = categories.fold<int>(0, (s, c) => s + c.count);
         return (totalCount, categories, parishes);
       });
-    if (_initialLoadFuture == null && ds.useSupabase) {
+    if (_initialLoadFuture == null && ds.useBackend) {
       _initialLoadFuture = _performInitialLoad(ds);
     }
     _approvedBannersFuture ??= CategoryBannersRepository().listApproved();
@@ -234,7 +234,7 @@ class _CategoriesScreenState extends State<CategoriesScreen> with TickerProvider
 
   /// Load first page; tiers and sponsored IDs. "Load more" appends via [_loadMoreListings].
   Future<void> _performInitialLoad(ListingDataSource dataSource) async {
-    if (!dataSource.useSupabase) return;
+    if (!dataSource.useBackend) return;
     final page = await dataSource.getListingsPage(
       limit: _kExplorePageSize,
       offset: 0,
@@ -254,10 +254,10 @@ class _CategoriesScreenState extends State<CategoriesScreen> with TickerProvider
       return;
     }
     final ids = list.map((l) => l.id).toList();
-    final tierMap = dataSource.useSupabase
+    final tierMap = dataSource.useBackend
         ? await BusinessSubscriptionsRepository().getActivePlanTiersForBusinesses(ids)
         : <String, String>{};
-    final sponsoredIds = dataSource.useSupabase
+    final sponsoredIds = dataSource.useBackend
         ? await BusinessAdsRepository().getActiveSponsoredBusinessIdsForExplore()
         : <String>{};
     if (!mounted) return;
@@ -285,7 +285,7 @@ class _CategoriesScreenState extends State<CategoriesScreen> with TickerProvider
     final newList = page.list.where((l) => !existingIds.contains(l.id)).toList();
     final ids = newList.map((l) => l.id).toList();
     Map<String, String> newTiers = {};
-    if (ids.isNotEmpty && dataSource.useSupabase) {
+    if (ids.isNotEmpty && dataSource.useBackend) {
       newTiers = await BusinessSubscriptionsRepository().getActivePlanTiersForBusinesses(ids);
     }
     if (!mounted) return;
@@ -318,7 +318,7 @@ class _CategoriesScreenState extends State<CategoriesScreen> with TickerProvider
 
   /// Ensure deal listing IDs are loaded when user first applies deal-only filter.
   Future<void> _ensureDealListingIds(ListingDataSource dataSource) async {
-    if (_dealListingIds != null || !dataSource.useSupabase) return;
+    if (_dealListingIds != null || !dataSource.useBackend) return;
     final deals = await dataSource.getActiveDeals();
     if (!mounted) return;
     setState(() {
@@ -347,7 +347,7 @@ class _CategoriesScreenState extends State<CategoriesScreen> with TickerProvider
       a.length == b.length && a.every((x) => b.contains(x));
 
   void _maybeLoadAuxiliaryFilters(ListingDataSource dataSource) {
-    if (!dataSource.useSupabase || _loadingAuxiliaryFilters || _fullListCache == null) return;
+    if (!dataSource.useBackend || _loadingAuxiliaryFilters || _fullListCache == null) return;
     if (_filters.dealOnly && _dealListingIds == null) {
       setState(() => _loadingAuxiliaryFilters = true);
       _ensureDealListingIds(dataSource);
@@ -535,7 +535,7 @@ class _CategoriesScreenState extends State<CategoriesScreen> with TickerProvider
             ),
           );
     }
-    final countsFuture = dataSource.useSupabase && displayList.isNotEmpty
+    final countsFuture = dataSource.useBackend && displayList.isNotEmpty
         ? AppDataScope.of(context).favoritesRepository.getCountsForBusinesses(displayList.map((l) => l.id).toList())
         : Future<Map<String, int>>.value({});
     return FutureBuilder<Map<String, int>>(
@@ -1983,7 +1983,7 @@ class _FavoriteHeartButtonState extends State<_FavoriteHeartButton>
               onTap: () async {
                 _controller.forward().then((_) => _controller.reverse());
                 final scope = AppDataScope.of(context);
-                if (!scope.dataSource.useSupabase) return;
+                if (!scope.dataSource.useBackend) return;
                 final next = Set<String>.from(ids);
                 if (next.contains(widget.listingId)) {
                   next.remove(widget.listingId);

@@ -1,25 +1,23 @@
 import 'package:flutter/material.dart';
-import 'package:my_app/core/data/app_data_scope.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:my_app/core/data/models/deal.dart';
 import 'package:my_app/core/data/models/profile.dart';
 import 'package:my_app/core/data/models/user_deal.dart';
 import 'package:my_app/core/data/repositories/deals_repository.dart';
 import 'package:my_app/core/data/repositories/user_deals_repository.dart';
+import 'package:my_app/core/data/repositories/profiles_repository.dart';
 
 /// Admin: list all claimed deals (user_deals) and "Mark as used" for redemption.
-class AdminClaimedDealsScreen extends StatefulWidget {
-  const AdminClaimedDealsScreen({
-    super.key,
-    this.embeddedInShell = false,
-  });
+class AdminClaimedDealsScreen extends ConsumerStatefulWidget {
+  const AdminClaimedDealsScreen({super.key, this.embeddedInShell = false});
 
   final bool embeddedInShell;
 
   @override
-  State<AdminClaimedDealsScreen> createState() => _AdminClaimedDealsScreenState();
+  ConsumerState<AdminClaimedDealsScreen> createState() => _AdminClaimedDealsScreenState();
 }
 
-class _AdminClaimedDealsScreenState extends State<AdminClaimedDealsScreen> {
+class _AdminClaimedDealsScreenState extends ConsumerState<AdminClaimedDealsScreen> {
   List<UserDeal>? _userDeals;
   Map<String, Deal> _dealById = {};
   Map<String, Profile> _profileByUserId = {};
@@ -38,8 +36,8 @@ class _AdminClaimedDealsScreenState extends State<AdminClaimedDealsScreen> {
       _loading = true;
     });
     try {
-      final auth = AppDataScope.of(context).authRepository;
-      final userDealsRepo = UserDealsRepository(authRepository: auth);
+      final auth = ref.read(profilesRepositoryProvider);
+      final userDealsRepo = UserDealsRepository();
       final dealsRepo = DealsRepository();
 
       final list = await userDealsRepo.listForAdmin();
@@ -74,16 +72,13 @@ class _AdminClaimedDealsScreenState extends State<AdminClaimedDealsScreen> {
 
   Future<void> _markAsUsed(UserDeal ud) async {
     if (ud.usedAt != null) return;
-    final auth = AppDataScope.of(context).authRepository;
-    final repo = UserDealsRepository(authRepository: auth);
+    final repo = UserDealsRepository();
     try {
       await repo.setUsedAt(ud.userId, ud.dealId);
       if (mounted) await _load();
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed: $e')),
-        );
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed: $e')));
       }
     }
   }
@@ -111,16 +106,11 @@ class _AdminClaimedDealsScreenState extends State<AdminClaimedDealsScreen> {
             children: [
               Text(
                 _error!,
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  color: colorScheme.error,
-                ),
+                style: theme.textTheme.bodyMedium?.copyWith(color: colorScheme.error),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 16),
-              FilledButton(
-                onPressed: _load,
-                child: const Text('Retry'),
-              ),
+              FilledButton(onPressed: _load, child: const Text('Retry')),
             ],
           ),
         ),
@@ -132,9 +122,7 @@ class _AdminClaimedDealsScreenState extends State<AdminClaimedDealsScreen> {
       return Center(
         child: Text(
           'No claimed deals.',
-          style: theme.textTheme.bodyLarge?.copyWith(
-            color: colorScheme.onSurfaceVariant,
-          ),
+          style: theme.textTheme.bodyLarge?.copyWith(color: colorScheme.onSurfaceVariant),
         ),
       );
     }
@@ -164,20 +152,14 @@ class _AdminClaimedDealsScreenState extends State<AdminClaimedDealsScreen> {
                       Expanded(
                         child: Text(
                           dealTitle,
-                          style: theme.textTheme.titleSmall?.copyWith(
-                            fontWeight: FontWeight.w600,
-                          ),
+                          style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600),
                         ),
                       ),
                       if (used)
                         Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 4,
-                          ),
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                           decoration: BoxDecoration(
-                            color: colorScheme.tertiaryContainer
-                                .withValues(alpha: 0.6),
+                            color: colorScheme.tertiaryContainer.withValues(alpha: 0.6),
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: Text(
@@ -189,24 +171,17 @@ class _AdminClaimedDealsScreenState extends State<AdminClaimedDealsScreen> {
                           ),
                         )
                       else
-                        FilledButton.tonal(
-                          onPressed: () => _markAsUsed(ud),
-                          child: const Text('Mark as used'),
-                        ),
+                        FilledButton.tonal(onPressed: () => _markAsUsed(ud), child: const Text('Mark as used')),
                     ],
                   ),
                   const SizedBox(height: 6),
                   Text(
                     'User: $userName',
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: colorScheme.onSurfaceVariant,
-                    ),
+                    style: theme.textTheme.bodySmall?.copyWith(color: colorScheme.onSurfaceVariant),
                   ),
                   Text(
                     'Claimed ${_formatDate(ud.claimedAt)}',
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: colorScheme.onSurfaceVariant,
-                    ),
+                    style: theme.textTheme.bodySmall?.copyWith(color: colorScheme.onSurfaceVariant),
                   ),
                 ],
               ),
@@ -223,12 +198,7 @@ class _AdminClaimedDealsScreenState extends State<AdminClaimedDealsScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Claimed deals'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh_rounded),
-            onPressed: _loading ? null : _load,
-          ),
-        ],
+        actions: [IconButton(icon: const Icon(Icons.refresh_rounded), onPressed: _loading ? null : _load)],
       ),
       body: _buildBody(context),
     );

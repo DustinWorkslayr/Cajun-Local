@@ -1,21 +1,20 @@
 import 'package:flutter/material.dart';
-import 'package:my_app/core/data/app_data_scope.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:my_app/core/auth/providers/auth_provider.dart';
 import 'package:my_app/core/theme/theme.dart';
 import 'package:my_app/shared/widgets/app_buttons.dart';
 import 'package:my_app/shared/widgets/app_logo.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
 /// Screen to request a password reset email. User enters email and we call
-/// [AuthRepository.resetPasswordForEmail]. Success shows a message; user can go back to sign in.
-class ForgotPasswordRequestScreen extends StatefulWidget {
+/// [AuthNotifier.recoverPassword]. Success shows a message; user can go back to sign in.
+class ForgotPasswordRequestScreen extends ConsumerStatefulWidget {
   const ForgotPasswordRequestScreen({super.key});
 
   @override
-  State<ForgotPasswordRequestScreen> createState() =>
-      _ForgotPasswordRequestScreenState();
+  ConsumerState<ForgotPasswordRequestScreen> createState() => _ForgotPasswordRequestScreenState();
 }
 
-class _ForgotPasswordRequestScreenState extends State<ForgotPasswordRequestScreen> {
+class _ForgotPasswordRequestScreenState extends ConsumerState<ForgotPasswordRequestScreen> {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
 
@@ -36,30 +35,14 @@ class _ForgotPasswordRequestScreenState extends State<ForgotPasswordRequestScree
       _loading = true;
     });
 
-    final auth = AppDataScope.of(context).authRepository;
-    if (!auth.isConfigured) {
-      setState(() {
-        _errorMessage = 'Sign-in is not configured.';
-        _loading = false;
-      });
-      return;
-    }
-
     final email = _emailController.text.trim();
     try {
-      await auth.resetPasswordForEmail(email);
+      await ref.read(authNotifierProvider.notifier).recoverPassword(email);
       if (mounted) {
         setState(() {
           _sent = true;
           _loading = false;
           _errorMessage = null;
-        });
-      }
-    } on AuthException catch (e) {
-      if (mounted) {
-        setState(() {
-          _errorMessage = e.message;
-          _loading = false;
         });
       }
     } catch (e) {
@@ -79,8 +62,7 @@ class _ForgotPasswordRequestScreenState extends State<ForgotPasswordRequestScree
     final primary = colorScheme.primary;
     final secondary = colorScheme.secondary;
 
-    final isTablet =
-        MediaQuery.sizeOf(context).width >= AppTheme.breakpointTablet;
+    final isTablet = MediaQuery.sizeOf(context).width >= AppTheme.breakpointTablet;
     final mediaHeight = MediaQuery.sizeOf(context).height;
     final skylineHeight = isTablet ? mediaHeight * 0.08 : mediaHeight * 0.14;
 
@@ -94,17 +76,14 @@ class _ForgotPasswordRequestScreenState extends State<ForgotPasswordRequestScree
                 child: SafeArea(
                   bottom: false,
                   child: Padding(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 28, vertical: 40),
+                    padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 40),
                     child: Form(
                       key: _formKey,
                       child: LayoutBuilder(
                         builder: (context, formConstraints) {
                           return SingleChildScrollView(
                             child: ConstrainedBox(
-                              constraints: BoxConstraints(
-                                minHeight: formConstraints.maxHeight,
-                              ),
+                              constraints: BoxConstraints(minHeight: formConstraints.maxHeight),
                               child: IntrinsicHeight(
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -119,19 +98,15 @@ class _ForgotPasswordRequestScreenState extends State<ForgotPasswordRequestScree
                                         height: 3,
                                         decoration: BoxDecoration(
                                           color: AppTheme.accentGold,
-                                          borderRadius:
-                                              BorderRadius.circular(2),
+                                          borderRadius: BorderRadius.circular(2),
                                         ),
                                       ),
                                     ),
                                     const SizedBox(height: 20),
                                     Center(
                                       child: Text(
-                                        _sent
-                                            ? 'Check your email'
-                                            : 'Reset your password',
-                                        style: theme.textTheme.titleMedium
-                                            ?.copyWith(
+                                        _sent ? 'Check your email' : 'Reset your password',
+                                        style: theme.textTheme.titleMedium?.copyWith(
                                           color: secondary,
                                           fontWeight: FontWeight.w600,
                                         ),
@@ -140,36 +115,27 @@ class _ForgotPasswordRequestScreenState extends State<ForgotPasswordRequestScree
                                     const SizedBox(height: 32),
                                     Center(
                                       child: ConstrainedBox(
-                                        constraints: BoxConstraints(
-                                          maxWidth: isTablet
-                                              ? 420
-                                              : double.infinity,
-                                        ),
+                                        constraints: BoxConstraints(maxWidth: isTablet ? 420 : double.infinity),
                                         child: Container(
                                           padding: const EdgeInsets.all(28),
                                           decoration: BoxDecoration(
                                             color: Colors.white,
-                                            borderRadius:
-                                                BorderRadius.circular(20),
+                                            borderRadius: BorderRadius.circular(20),
                                             border: Border.all(
-                                              color: colorScheme.outlineVariant
-                                                  .withValues(alpha: 0.8),
+                                              color: colorScheme.outlineVariant.withValues(alpha: 0.8),
                                               width: 1,
                                             ),
                                             boxShadow: [
                                               BoxShadow(
-                                                color: secondary
-                                                    .withValues(alpha: 0.06),
+                                                color: secondary.withValues(alpha: 0.06),
                                                 blurRadius: 20,
                                                 offset: const Offset(0, 6),
                                               ),
                                             ],
                                           ),
                                           child: _sent
-                                              ? _buildSuccessContent(theme,
-                                                  colorScheme, primary)
-                                              : _buildFormContent(theme,
-                                                  colorScheme, primary),
+                                              ? _buildSuccessContent(theme, colorScheme, primary)
+                                              : _buildFormContent(theme, colorScheme, primary),
                                         ),
                                       ),
                                     ),
@@ -177,21 +143,11 @@ class _ForgotPasswordRequestScreenState extends State<ForgotPasswordRequestScree
                                     if (Navigator.of(context).canPop())
                                       Center(
                                         child: TextButton.icon(
-                                          onPressed: _loading
-                                              ? null
-                                              : () =>
-                                                  Navigator.of(context).pop(),
-                                          icon: Icon(
-                                            Icons.arrow_back_rounded,
-                                            size: 20,
-                                            color: secondary,
-                                          ),
+                                          onPressed: _loading ? null : () => Navigator.of(context).pop(),
+                                          icon: Icon(Icons.arrow_back_rounded, size: 20, color: secondary),
                                           label: Text(
                                             'Back to sign in',
-                                            style: TextStyle(
-                                              color: secondary,
-                                              fontWeight: FontWeight.w500,
-                                            ),
+                                            style: TextStyle(color: secondary, fontWeight: FontWeight.w500),
                                           ),
                                         ),
                                       ),
@@ -209,11 +165,7 @@ class _ForgotPasswordRequestScreenState extends State<ForgotPasswordRequestScree
               SizedBox(
                 height: skylineHeight,
                 width: double.infinity,
-                child: Image.asset(
-                  'assets/images/skyline-2.png',
-                  fit: BoxFit.cover,
-                  alignment: Alignment.bottomCenter,
-                ),
+                child: Image.asset('assets/images/skyline-2.png', fit: BoxFit.cover, alignment: Alignment.bottomCenter),
               ),
             ],
           );
@@ -222,16 +174,13 @@ class _ForgotPasswordRequestScreenState extends State<ForgotPasswordRequestScree
     );
   }
 
-  Widget _buildFormContent(
-      ThemeData theme, ColorScheme colorScheme, Color primary) {
+  Widget _buildFormContent(ThemeData theme, ColorScheme colorScheme, Color primary) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Text(
           'Enter the email for your account and we\'ll send you a link to reset your password.',
-          style: theme.textTheme.bodyMedium?.copyWith(
-            color: colorScheme.onSurfaceVariant,
-          ),
+          style: theme.textTheme.bodyMedium?.copyWith(color: colorScheme.onSurfaceVariant),
         ),
         const SizedBox(height: 20),
         TextFormField(
@@ -258,15 +207,10 @@ class _ForgotPasswordRequestScreenState extends State<ForgotPasswordRequestScree
           const SizedBox(height: 20),
           Container(
             padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: colorScheme.errorContainer,
-              borderRadius: BorderRadius.circular(12),
-            ),
+            decoration: BoxDecoration(color: colorScheme.errorContainer, borderRadius: BorderRadius.circular(12)),
             child: Text(
               _errorMessage!,
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: colorScheme.onErrorContainer,
-              ),
+              style: theme.textTheme.bodySmall?.copyWith(color: colorScheme.onErrorContainer),
             ),
           ),
         ],
@@ -282,36 +226,23 @@ class _ForgotPasswordRequestScreenState extends State<ForgotPasswordRequestScree
               ? SizedBox(
                   height: 22,
                   width: 22,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    color: colorScheme.onPrimary,
-                  ),
+                  child: CircularProgressIndicator(strokeWidth: 2, color: colorScheme.onPrimary),
                 )
-              : const Text(
-                  'Send reset link',
-                  style: TextStyle(
-                    fontWeight: FontWeight.w600,
-                    fontSize: 16,
-                  ),
-                ),
+              : const Text('Send reset link', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16)),
         ),
       ],
     );
   }
 
-  Widget _buildSuccessContent(
-      ThemeData theme, ColorScheme colorScheme, Color primary) {
+  Widget _buildSuccessContent(ThemeData theme, ColorScheme colorScheme, Color primary) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Icon(Icons.mark_email_read_outlined,
-            size: 48, color: primary.withValues(alpha: 0.8)),
+        Icon(Icons.mark_email_read_outlined, size: 48, color: primary.withValues(alpha: 0.8)),
         const SizedBox(height: 16),
         Text(
           'If an account exists for ${_emailController.text.trim()}, you\'ll receive an email with a link to set a new password. Open the link on this device to continue.',
-          style: theme.textTheme.bodyMedium?.copyWith(
-            color: colorScheme.onSurfaceVariant,
-          ),
+          style: theme.textTheme.bodyMedium?.copyWith(color: colorScheme.onSurfaceVariant),
         ),
       ],
     );

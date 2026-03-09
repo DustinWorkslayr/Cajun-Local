@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:my_app/core/auth/auth_repository.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:my_app/core/data/repositories/profiles_repository.dart';
 import 'package:my_app/core/data/models/business_ad.dart';
 import 'package:my_app/core/data/models/payment_history_entry.dart';
 import 'package:my_app/core/data/models/user_plan.dart';
@@ -15,30 +16,26 @@ import 'package:my_app/features/admin/presentation/widgets/admin_shared.dart';
 import 'package:my_app/shared/widgets/app_buttons.dart';
 
 /// Admin: view payment history (read-only). Optional filters. Shows business or user name; tap to view detail.
-class AdminPaymentHistoryScreen extends StatefulWidget {
+class AdminPaymentHistoryScreen extends ConsumerStatefulWidget {
   const AdminPaymentHistoryScreen({super.key, this.embeddedInShell = false});
 
   final bool embeddedInShell;
 
   @override
-  State<AdminPaymentHistoryScreen> createState() =>
-      _AdminPaymentHistoryScreenState();
+  ConsumerState<AdminPaymentHistoryScreen> createState() => _AdminPaymentHistoryScreenState();
 }
 
-class _AdminPaymentHistoryScreenState extends State<AdminPaymentHistoryScreen> {
+class _AdminPaymentHistoryScreenState extends ConsumerState<AdminPaymentHistoryScreen> {
   String? _typeFilter;
 
-  Future<({
-    List<PaymentHistoryEntry> list,
-    Map<String, String> businessNames,
-    Map<String, String> userNames,
-  })> _loadPaymentsWithNames() async {
+  Future<({List<PaymentHistoryEntry> list, Map<String, String> businessNames, Map<String, String> userNames})>
+  _loadPaymentsWithNames() async {
     final repo = PaymentHistoryRepository();
     final list = await repo.list(paymentType: _typeFilter);
     final businessIds = list.map((e) => e.businessId).whereType<String>().toSet();
     final userIds = list.map((e) => e.userId).whereType<String>().toSet();
     final businessRepo = BusinessRepository();
-    final authRepo = AuthRepository();
+    final profilesRepo = ref.read(profilesRepositoryProvider);
     final businessNames = <String, String>{};
     final userNames = <String, String>{};
     for (final id in businessIds) {
@@ -46,21 +43,17 @@ class _AdminPaymentHistoryScreenState extends State<AdminPaymentHistoryScreen> {
       if (b != null) businessNames[id] = b.name;
     }
     for (final id in userIds) {
-      final p = await authRepo.getProfileForAdmin(id);
+      final p = await profilesRepo.getProfile(id);
       if (p != null) {
-        userNames[id] = p.displayName?.trim().isNotEmpty == true
+        userNames[id] = (p.displayName != null && p.displayName!.trim().isNotEmpty)
             ? p.displayName!
-            : (p.email ?? id.substring(0, 8));
+            : (p.email ?? 'Unknown user');
       }
     }
     return (list: list, businessNames: businessNames, userNames: userNames);
   }
 
-  String _displayName(
-    PaymentHistoryEntry e,
-    Map<String, String> businessNames,
-    Map<String, String> userNames,
-  ) {
+  String _displayName(PaymentHistoryEntry e, Map<String, String> businessNames, Map<String, String> userNames) {
     if (e.businessId != null && businessNames[e.businessId] != null) {
       return businessNames[e.businessId]!;
     }
@@ -84,10 +77,7 @@ class _AdminPaymentHistoryScreenState extends State<AdminPaymentHistoryScreen> {
         surfaceTintColor: Colors.transparent,
         title: Text(
           'Payment history',
-          style: theme.textTheme.titleLarge?.copyWith(
-            fontWeight: FontWeight.w700,
-            color: AppTheme.specNavy,
-          ),
+          style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700, color: AppTheme.specNavy),
         ),
         iconTheme: const IconThemeData(color: AppTheme.specNavy),
         bottom: PreferredSize(
@@ -103,32 +93,27 @@ class _AdminPaymentHistoryScreenState extends State<AdminPaymentHistoryScreen> {
                   onSelected: (_) => setState(() => _typeFilter = null),
                   selectedColor: AppTheme.specGold.withValues(alpha: 0.4),
                 ),
-                ...types.map((t) => Padding(
-                      padding: const EdgeInsets.only(left: 6),
-                      child: FilterChip(
-                        label: Text(PaymentHistoryEntry.paymentTypeLabel(t)),
-                        selected: _typeFilter == t,
-                        onSelected: (_) => setState(() => _typeFilter = t),
-                        selectedColor: AppTheme.specGold.withValues(alpha: 0.4),
-                      ),
-                    )),
+                ...types.map(
+                  (t) => Padding(
+                    padding: const EdgeInsets.only(left: 6),
+                    child: FilterChip(
+                      label: Text(PaymentHistoryEntry.paymentTypeLabel(t)),
+                      selected: _typeFilter == t,
+                      onSelected: (_) => setState(() => _typeFilter = t),
+                      selectedColor: AppTheme.specGold.withValues(alpha: 0.4),
+                    ),
+                  ),
+                ),
               ],
             ),
           ),
         ),
       ),
-      body: FutureBuilder<({
-        List<PaymentHistoryEntry> list,
-        Map<String, String> businessNames,
-        Map<String, String> userNames,
-      })>(
+      body: FutureBuilder<({List<PaymentHistoryEntry> list, Map<String, String> businessNames, Map<String, String> userNames})>(
         future: _loadPaymentsWithNames(),
         builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting &&
-              !snapshot.hasData) {
-            return const Center(
-              child: CircularProgressIndicator(color: AppTheme.specNavy),
-            );
+          if (snapshot.connectionState == ConnectionState.waiting && !snapshot.hasData) {
+            return const Center(child: CircularProgressIndicator(color: AppTheme.specNavy));
           }
           final data = snapshot.data;
           if (data == null || data.list.isEmpty) {
@@ -136,9 +121,7 @@ class _AdminPaymentHistoryScreenState extends State<AdminPaymentHistoryScreen> {
             return Center(
               child: Text(
                 'No payments${typeFilter != null ? ' of type ${PaymentHistoryEntry.paymentTypeLabel(typeFilter)}' : ''}.',
-                style: theme.textTheme.bodyLarge?.copyWith(
-                  color: AppTheme.specNavy.withValues(alpha: 0.8),
-                ),
+                style: theme.textTheme.bodyLarge?.copyWith(color: AppTheme.specNavy.withValues(alpha: 0.8)),
               ),
             );
           }
@@ -158,15 +141,18 @@ class _AdminPaymentHistoryScreenState extends State<AdminPaymentHistoryScreen> {
                 padding: const EdgeInsets.only(bottom: 10),
                 child: AdminListCard(
                   title: displayName,
-                  subtitle: '\$${e.amount.toStringAsFixed(2)} ${e.currency.toUpperCase()} · '
+                  subtitle:
+                      '\$${e.amount.toStringAsFixed(2)} ${e.currency.toUpperCase()} · '
                       '${PaymentHistoryEntry.paymentTypeLabel(e.paymentType)} · $dateStr',
                   badges: [
-                    AdminBadgeData(e.status,
-                        color: e.status == 'succeeded'
-                            ? null
-                            : e.status == 'failed'
-                                ? AppTheme.specRed
-                                : null),
+                    AdminBadgeData(
+                      e.status,
+                      color: e.status == 'succeeded'
+                          ? null
+                          : e.status == 'failed'
+                          ? AppTheme.specRed
+                          : null,
+                    ),
                   ],
                   leading: Container(
                     width: 48,
@@ -175,14 +161,9 @@ class _AdminPaymentHistoryScreenState extends State<AdminPaymentHistoryScreen> {
                       color: AppTheme.specGold.withValues(alpha: 0.2),
                       borderRadius: BorderRadius.circular(10),
                     ),
-                    child: const Icon(Icons.receipt_long_rounded,
-                        color: AppTheme.specNavy, size: 26),
+                    child: const Icon(Icons.receipt_long_rounded, color: AppTheme.specNavy, size: 26),
                   ),
-                  trailing: const Icon(
-                    Icons.chevron_right_rounded,
-                    color: AppTheme.specNavy,
-                    size: 24,
-                  ),
+                  trailing: const Icon(Icons.chevron_right_rounded, color: AppTheme.specNavy, size: 24),
                   onTap: () => _PaymentDetailSlideOut.show(
                     context,
                     entry: e,
@@ -201,33 +182,24 @@ class _AdminPaymentHistoryScreenState extends State<AdminPaymentHistoryScreen> {
 
 /// Slide-out: payment detail with intuitive theme and resolved relational data.
 class _PaymentDetailSlideOut extends StatefulWidget {
-  const _PaymentDetailSlideOut({
-    required this.entry,
-    required this.onClose,
-    this.businessName,
-    this.userName,
-  });
+  const _PaymentDetailSlideOut({required this.entry, required this.onClose, this.businessName, this.userName});
 
   final PaymentHistoryEntry entry;
   final VoidCallback onClose;
   final String? businessName;
   final String? userName;
 
-  static void show(
-    BuildContext context, {
-    required PaymentHistoryEntry entry,
-    String? businessName,
-    String? userName,
-  }) {
+  static void show(BuildContext context, {required PaymentHistoryEntry entry, String? businessName, String? userName}) {
     showGeneralDialog<void>(
       context: context,
       barrierColor: Colors.black54,
       barrierDismissible: true,
       transitionBuilder: (ctx, a1, a2, child) {
         return SlideTransition(
-          position: Tween<Offset>(begin: const Offset(1, 0), end: Offset.zero).animate(
-            CurvedAnimation(parent: a1, curve: Curves.easeOutCubic),
-          ),
+          position: Tween<Offset>(
+            begin: const Offset(1, 0),
+            end: Offset.zero,
+          ).animate(CurvedAnimation(parent: a1, curve: Curves.easeOutCubic)),
           child: child,
         );
       },
@@ -317,7 +289,9 @@ class _PaymentDetailSlideOutState extends State<_PaymentDetailSlideOut> {
       return '${PaymentHistoryEntry.paymentTypeLabel(e.paymentType)} · ${_userPlan!.name}';
     }
     if (e.paymentType == 'advertisement' && _relatedAd != null) {
-      final headline = _relatedAd!.headline?.trim().isNotEmpty == true ? _relatedAd!.headline! : 'Ad';
+      final headline = (_relatedAd!.headline != null && _relatedAd!.headline!.trim().isNotEmpty)
+          ? _relatedAd!.headline!
+          : 'Untitled sponsored ad';
       return '${PaymentHistoryEntry.paymentTypeLabel(e.paymentType)} · $headline';
     }
     return PaymentHistoryEntry.paymentTypeLabel(e.paymentType);
@@ -329,15 +303,13 @@ class _PaymentDetailSlideOutState extends State<_PaymentDetailSlideOut> {
     final nav = AppTheme.specNavy;
     final sub = nav.withValues(alpha: 0.75);
     final e = widget.entry;
-    final dateStr =
-        (e.createdAt?.toIso8601String())?.substring(0, 10) ?? '—';
-    final timeStr =
-        (e.createdAt?.toIso8601String())?.substring(11, 19);
+    final dateStr = (e.createdAt?.toIso8601String())?.substring(0, 10) ?? '—';
+    final timeStr = (e.createdAt?.toIso8601String())?.substring(11, 19);
     final statusColor = e.status == 'succeeded'
         ? Colors.green.shade300
         : e.status == 'failed'
-            ? Colors.red.shade300
-            : AppTheme.specWhite.withValues(alpha: 0.9);
+        ? Colors.red.shade300
+        : AppTheme.specWhite.withValues(alpha: 0.9);
 
     return Column(
       children: [
@@ -348,17 +320,10 @@ class _PaymentDetailSlideOutState extends State<_PaymentDetailSlideOut> {
               Expanded(
                 child: Text(
                   'Payment receipt',
-                  style: theme.textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.w700,
-                    color: nav,
-                  ),
+                  style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700, color: nav),
                 ),
               ),
-              IconButton(
-                onPressed: widget.onClose,
-                icon: const Icon(Icons.close_rounded),
-                color: nav,
-              ),
+              IconButton(onPressed: widget.onClose, icon: const Icon(Icons.close_rounded), color: nav),
             ],
           ),
         ),
@@ -370,172 +335,213 @@ class _PaymentDetailSlideOutState extends State<_PaymentDetailSlideOut> {
               children: [
                 Container(
                   decoration: BoxDecoration(
-                color: AppTheme.specWhite,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: nav.withValues(alpha: 0.15)),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.06),
-                    blurRadius: 12,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
+                    color: AppTheme.specWhite,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: nav.withValues(alpha: 0.15)),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.06),
+                        blurRadius: 12,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
                   ),
                   clipBehavior: Clip.antiAlias,
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                  // Invoice-style header
-                  Container(
-                    padding: const EdgeInsets.fromLTRB(24, 24, 24, 20),
-                    decoration: BoxDecoration(
-                      color: AppTheme.specNavy,
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'PAYMENT RECEIPT',
-                          style: theme.textTheme.titleLarge?.copyWith(
-                            fontWeight: FontWeight.w800,
-                            letterSpacing: 1.2,
-                            color: AppTheme.specWhite,
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-                        _invoiceRow(theme, 'Payment ID', e.id.isNotEmpty ? e.id : '—', isHeader: true),
-                        const SizedBox(height: 6),
-                        _invoiceRow(theme, 'Date', dateStr, isHeader: true),
-                        if (timeStr != null) ...[
-                          const SizedBox(height: 2),
-                          _invoiceRow(theme, 'Time', timeStr, isHeader: true),
-                        ],
-                        const SizedBox(height: 4),
-                        _invoiceRow(theme, 'Status', e.status.toUpperCase(), isHeader: true, valueColor: statusColor),
-                      ],
-                    ),
-                  ),
-                  // From / To
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(24, 20, 24, 16),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text('FROM', style: theme.textTheme.labelSmall?.copyWith(color: sub, letterSpacing: 0.8)),
-                              const SizedBox(height: 4),
-                              Text('Cajun Local', style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700, color: nav)),
-                              const SizedBox(height: 2),
-                              Text('Payment', style: theme.textTheme.bodySmall?.copyWith(color: sub)),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(width: 24),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text('TO', style: theme.textTheme.labelSmall?.copyWith(color: sub, letterSpacing: 0.8)),
-                              const SizedBox(height: 4),
-                              Text(_customerName(), style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600, color: nav)),
-                              if (e.businessId != null || e.userId != null) ...[
-                                const SizedBox(height: 2),
-                                Text(
-                                  e.businessId != null ? 'Business' : 'User',
-                                  style: theme.textTheme.bodySmall?.copyWith(color: sub),
-                                ),
-                              ],
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const Divider(height: 1),
-                  // Line item table header
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                    color: nav.withValues(alpha: 0.06),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          flex: 3,
-                          child: Text('DESCRIPTION', style: theme.textTheme.labelSmall?.copyWith(fontWeight: FontWeight.w700, color: sub, letterSpacing: 0.5)),
-                        ),
-                        Expanded(
-                          child: Text('AMOUNT', style: theme.textTheme.labelSmall?.copyWith(fontWeight: FontWeight.w700, color: sub, letterSpacing: 0.5)),
-                        ),
-                      ],
-                    ),
-                  ),
-                  // Line item
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Expanded(
-                          flex: 3,
-                          child: Text(
-                            _relatedLoaded ? _lineItemDescription() : PaymentHistoryEntry.paymentTypeLabel(e.paymentType),
-                            style: theme.textTheme.bodyLarge?.copyWith(color: nav),
-                          ),
-                        ),
-                        Expanded(
-                          child: Text(
-                            '\$${e.amount.toStringAsFixed(2)} ${e.currency.toUpperCase()}',
-                            style: theme.textTheme.titleMedium?.copyWith(
-                              fontWeight: FontWeight.w700,
-                              color: nav,
+                      // Invoice-style header
+                      Container(
+                        padding: const EdgeInsets.fromLTRB(24, 24, 24, 20),
+                        decoration: BoxDecoration(color: AppTheme.specNavy),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'PAYMENT RECEIPT',
+                              style: theme.textTheme.titleLarge?.copyWith(
+                                fontWeight: FontWeight.w800,
+                                letterSpacing: 1.2,
+                                color: AppTheme.specWhite,
+                              ),
                             ),
-                            textAlign: TextAlign.end,
-                          ),
+                            const SizedBox(height: 16),
+                            _invoiceRow(theme, 'Payment ID', e.id.isNotEmpty ? e.id : '—', isHeader: true),
+                            const SizedBox(height: 6),
+                            _invoiceRow(theme, 'Date', dateStr, isHeader: true),
+                            if (timeStr != null) ...[
+                              const SizedBox(height: 2),
+                              _invoiceRow(theme, 'Time', timeStr, isHeader: true),
+                            ],
+                            const SizedBox(height: 4),
+                            _invoiceRow(
+                              theme,
+                              'Status',
+                              e.status.toUpperCase(),
+                              isHeader: true,
+                              valueColor: statusColor,
+                            ),
+                          ],
                         ),
-                      ],
-                    ),
-                  ),
-                  const Divider(height: 1),
-                  // Total
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(24, 16, 24, 20),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text('TOTAL', style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700, color: nav)),
-                        Text(
-                          '\$${e.amount.toStringAsFixed(2)} ${e.currency.toUpperCase()}',
-                          style: theme.textTheme.headlineSmall?.copyWith(
-                            fontWeight: FontWeight.w800,
-                            color: AppTheme.specGold,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  // Payment reference
-                  if (e.stripePaymentIntentId != null && e.stripePaymentIntentId!.isNotEmpty) ...[
-                    const Divider(height: 1),
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(24, 12, 24, 16),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text('PAYMENT REFERENCE', style: theme.textTheme.labelSmall?.copyWith(color: sub, letterSpacing: 0.5)),
-                          const SizedBox(height: 4),
-                          SelectableText(
-                            e.stripePaymentIntentId!,
-                            style: theme.textTheme.bodySmall?.copyWith(color: nav, fontFamily: 'monospace'),
-                          ),
-                        ],
                       ),
-                    ),
+                      // From / To
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(24, 20, 24, 16),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'FROM',
+                                    style: theme.textTheme.labelSmall?.copyWith(color: sub, letterSpacing: 0.8),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    'Cajun Local',
+                                    style: theme.textTheme.titleSmall?.copyWith(
+                                      fontWeight: FontWeight.w700,
+                                      color: nav,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Text('Payment', style: theme.textTheme.bodySmall?.copyWith(color: sub)),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(width: 24),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'TO',
+                                    style: theme.textTheme.labelSmall?.copyWith(color: sub, letterSpacing: 0.8),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    _customerName(),
+                                    style: theme.textTheme.titleSmall?.copyWith(
+                                      fontWeight: FontWeight.w600,
+                                      color: nav,
+                                    ),
+                                  ),
+                                  if (e.businessId != null || e.userId != null) ...[
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      e.businessId != null ? 'Business' : 'User',
+                                      style: theme.textTheme.bodySmall?.copyWith(color: sub),
+                                    ),
+                                  ],
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const Divider(height: 1),
+                      // Line item table header
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                        color: nav.withValues(alpha: 0.06),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              flex: 3,
+                              child: Text(
+                                'DESCRIPTION',
+                                style: theme.textTheme.labelSmall?.copyWith(
+                                  fontWeight: FontWeight.w700,
+                                  color: sub,
+                                  letterSpacing: 0.5,
+                                ),
+                              ),
+                            ),
+                            Expanded(
+                              child: Text(
+                                'AMOUNT',
+                                style: theme.textTheme.labelSmall?.copyWith(
+                                  fontWeight: FontWeight.w700,
+                                  color: sub,
+                                  letterSpacing: 0.5,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      // Line item
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Expanded(
+                              flex: 3,
+                              child: Text(
+                                _relatedLoaded
+                                    ? _lineItemDescription()
+                                    : PaymentHistoryEntry.paymentTypeLabel(e.paymentType),
+                                style: theme.textTheme.bodyLarge?.copyWith(color: nav),
+                              ),
+                            ),
+                            Expanded(
+                              child: Text(
+                                '\$${e.amount.toStringAsFixed(2)} ${e.currency.toUpperCase()}',
+                                style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700, color: nav),
+                                textAlign: TextAlign.end,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const Divider(height: 1),
+                      // Total
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(24, 16, 24, 20),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              'TOTAL',
+                              style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700, color: nav),
+                            ),
+                            Text(
+                              '\$${e.amount.toStringAsFixed(2)} ${e.currency.toUpperCase()}',
+                              style: theme.textTheme.headlineSmall?.copyWith(
+                                fontWeight: FontWeight.w800,
+                                color: AppTheme.specGold,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      // Payment reference
+                      if (e.stripePaymentIntentId != null && e.stripePaymentIntentId!.isNotEmpty) ...[
+                        const Divider(height: 1),
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(24, 12, 24, 16),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'PAYMENT REFERENCE',
+                                style: theme.textTheme.labelSmall?.copyWith(color: sub, letterSpacing: 0.5),
+                              ),
+                              const SizedBox(height: 4),
+                              SelectableText(
+                                e.stripePaymentIntentId!,
+                                style: theme.textTheme.bodySmall?.copyWith(color: nav, fontFamily: 'monospace'),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                     ],
-                  ],
+                  ),
                 ),
-              ),
                 // Related / actions below the invoice card
                 if (_relatedLoaded) ...[
                   const SizedBox(height: 20),
@@ -547,8 +553,7 @@ class _PaymentDetailSlideOutState extends State<_PaymentDetailSlideOut> {
                     businessPlanName: _businessPlanName,
                     userPlan: _userPlan,
                   ),
-                ]
-                else ...[
+                ] else ...[
                   const SizedBox(height: 20),
                   const Center(
                     child: Padding(
@@ -579,7 +584,15 @@ class _PaymentDetailSlideOutState extends State<_PaymentDetailSlideOut> {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        SizedBox(width: 100, child: Text(label, style: theme.textTheme.bodySmall?.copyWith(color: isHeader ? AppTheme.specWhite.withValues(alpha: 0.8) : sub))),
+        SizedBox(
+          width: 100,
+          child: Text(
+            label,
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: isHeader ? AppTheme.specWhite.withValues(alpha: 0.8) : sub,
+            ),
+          ),
+        ),
         Expanded(child: Text(value, style: valueStyle)),
       ],
     );
@@ -625,9 +638,7 @@ class _RelatedSection extends StatelessWidget {
                 final navigator = Navigator.of(context);
                 navigator.pop();
                 navigator.push(
-                  MaterialPageRoute<void>(
-                    builder: (_) => AdminBusinessDetailScreen(businessId: entry.businessId!),
-                  ),
+                  MaterialPageRoute<void>(builder: (_) => AdminBusinessDetailScreen(businessId: entry.businessId!)),
                 );
               },
               icon: const Icon(Icons.business_rounded, size: 18),
@@ -642,8 +653,10 @@ class _RelatedSection extends StatelessWidget {
           : (userName ?? entry.userId ?? 'User subscription');
     } else if (entry.paymentType == 'advertisement') {
       description = relatedAd != null
-          ? (relatedAd!.headline?.isNotEmpty == true ? relatedAd!.headline! : 'Ad')
-          : (entry.referenceId != null ? 'Ad (ref: ${entry.referenceId!.substring(0, 8)}…)' : 'Advertisement');
+          ? ((relatedAd!.headline != null && relatedAd!.headline!.trim().isNotEmpty)
+                ? 'Ad: ${relatedAd!.headline!}'
+                : 'Untitled sponsored ad')
+          : 'Advertisement';
       if (relatedAd != null) {
         actions.add(
           Padding(
@@ -652,12 +665,7 @@ class _RelatedSection extends StatelessWidget {
               onPressed: () {
                 final navigator = Navigator.of(context);
                 navigator.pop();
-                AdminAdDetailSlideOut.show(
-                  navigator.context,
-                  ad: relatedAd!,
-                  onClose: () {},
-                  onUpdated: () {},
-                );
+                AdminAdDetailSlideOut.show(navigator.context, ad: relatedAd!, onClose: () {}, onUpdated: () {});
               },
               icon: const Icon(Icons.campaign_rounded, size: 18),
               label: const Text('View ad'),
@@ -666,7 +674,9 @@ class _RelatedSection extends StatelessWidget {
         );
       }
     } else {
-      description = entry.referenceId != null ? entry.referenceId! : PaymentHistoryEntry.paymentTypeLabel(entry.paymentType);
+      description = entry.referenceId != null
+          ? entry.referenceId!
+          : PaymentHistoryEntry.paymentTypeLabel(entry.paymentType);
     }
 
     return Container(
@@ -682,17 +692,11 @@ class _RelatedSection extends StatelessWidget {
         children: [
           Text(
             description,
-            style: theme.textTheme.bodyLarge?.copyWith(
-              fontWeight: FontWeight.w600,
-              color: nav,
-            ),
+            style: theme.textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w600, color: nav),
           ),
           if (entry.referenceId != null && entry.referenceId!.isNotEmpty) ...[
             const SizedBox(height: 4),
-            Text(
-              'Reference: ${entry.referenceId!}',
-              style: theme.textTheme.labelSmall?.copyWith(color: sub),
-            ),
+            Text('Reference: ${entry.referenceId!}', style: theme.textTheme.labelSmall?.copyWith(color: sub)),
           ],
           ...actions,
         ],

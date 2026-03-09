@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:my_app/core/data/app_data_scope.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:my_app/core/auth/providers/auth_provider.dart';
 import 'package:my_app/core/data/models/business.dart';
 import 'package:my_app/core/data/models/business_event.dart';
 import 'package:my_app/core/data/models/business_image.dart';
@@ -36,22 +37,17 @@ class _BusinessPending {
 
 /// Admin: one business-centric screen for all pending approvals (images + deals + events).
 /// Slide-out per business with Approve / Reject / Request info; bulk approval.
-class AdminPendingApprovalsScreen extends StatefulWidget {
-  const AdminPendingApprovalsScreen({
-    super.key,
-    this.status,
-    this.embeddedInShell = false,
-  });
+class AdminPendingApprovalsScreen extends ConsumerStatefulWidget {
+  const AdminPendingApprovalsScreen({super.key, this.status, this.embeddedInShell = false});
 
   final String? status;
   final bool embeddedInShell;
 
   @override
-  State<AdminPendingApprovalsScreen> createState() =>
-      _AdminPendingApprovalsScreenState();
+  ConsumerState<AdminPendingApprovalsScreen> createState() => _AdminPendingApprovalsScreenState();
 }
 
-class _AdminPendingApprovalsScreenState extends State<AdminPendingApprovalsScreen> {
+class _AdminPendingApprovalsScreenState extends ConsumerState<AdminPendingApprovalsScreen> {
   List<_BusinessPending>? _businesses;
   bool _loading = true;
   String? _error;
@@ -82,41 +78,53 @@ class _AdminPendingApprovalsScreenState extends State<AdminPendingApprovalsScree
 
       final byBusiness = <String, _BusinessPending>{};
       void addImage(BusinessImage img) {
-        byBusiness.putIfAbsent(
-          img.businessId,
-          () => _BusinessPending(
-            businessId: img.businessId,
-            businessName: nameById[img.businessId] ?? img.businessId,
-            images: [],
-            deals: [],
-            events: [],
-          ),
-        ).images.add(img);
+        byBusiness
+            .putIfAbsent(
+              img.businessId,
+              () => _BusinessPending(
+                businessId: img.businessId,
+                businessName: nameById[img.businessId] ?? img.businessId,
+                images: [],
+                deals: [],
+                events: [],
+              ),
+            )
+            .images
+            .add(img);
       }
+
       void addDeal(Deal d) {
-        byBusiness.putIfAbsent(
-          d.businessId,
-          () => _BusinessPending(
-            businessId: d.businessId,
-            businessName: nameById[d.businessId] ?? d.businessId,
-            images: [],
-            deals: [],
-            events: [],
-          ),
-        ).deals.add(d);
+        byBusiness
+            .putIfAbsent(
+              d.businessId,
+              () => _BusinessPending(
+                businessId: d.businessId,
+                businessName: nameById[d.businessId] ?? d.businessId,
+                images: [],
+                deals: [],
+                events: [],
+              ),
+            )
+            .deals
+            .add(d);
       }
+
       void addEvent(BusinessEvent e) {
-        byBusiness.putIfAbsent(
-          e.businessId,
-          () => _BusinessPending(
-            businessId: e.businessId,
-            businessName: nameById[e.businessId] ?? e.businessId,
-            images: [],
-            deals: [],
-            events: [],
-          ),
-        ).events.add(e);
+        byBusiness
+            .putIfAbsent(
+              e.businessId,
+              () => _BusinessPending(
+                businessId: e.businessId,
+                businessName: nameById[e.businessId] ?? e.businessId,
+                images: [],
+                deals: [],
+                events: [],
+              ),
+            )
+            .events
+            .add(e);
       }
+
       for (final img in pendingImages) {
         addImage(img);
       }
@@ -155,7 +163,7 @@ class _AdminPendingApprovalsScreenState extends State<AdminPendingApprovalsScree
   Future<void> _bulkApproveAll() async {
     final list = _businesses ?? [];
     if (list.isEmpty) return;
-    final uid = AppDataScope.of(context).authRepository.currentUserId;
+    final uid = ref.read(authNotifierProvider).valueOrNull?.id;
     if (uid == null) return;
     setState(() => _approving = true);
     final imagesRepo = BusinessImagesRepository();
@@ -165,10 +173,7 @@ class _AdminPendingApprovalsScreenState extends State<AdminPendingApprovalsScree
     try {
       for (final b in list) {
         if (b.images.isNotEmpty) {
-          await imagesRepo.approveMany(
-            b.images.map((i) => i.id).toList(),
-            approvedBy: uid,
-          );
+          await imagesRepo.approveMany(b.images.map((i) => i.id).toList(), approvedBy: uid);
           auditRepo.insert(
             action: 'images_bulk_approved',
             userId: uid,
@@ -178,34 +183,22 @@ class _AdminPendingApprovalsScreenState extends State<AdminPendingApprovalsScree
         }
         for (final d in b.deals) {
           await dealsRepo.updateStatus(d.id, 'approved', approvedBy: uid);
-          auditRepo.insert(
-            action: 'deal_approved',
-            userId: uid,
-            targetTable: 'deals',
-            targetId: d.id,
-          );
+          auditRepo.insert(action: 'deal_approved', userId: uid, targetTable: 'deals', targetId: d.id);
         }
         for (final e in b.events) {
           await eventsRepo.updateStatus(e.id, 'approved', approvedBy: uid);
-          auditRepo.insert(
-            action: 'event_approved',
-            userId: uid,
-            targetTable: 'business_events',
-            targetId: e.id,
-          );
+          auditRepo.insert(action: 'event_approved', userId: uid, targetTable: 'business_events', targetId: e.id);
         }
       }
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Approved $_totalPending pending item${_totalPending == 1 ? '' : 's'}')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Approved $_totalPending pending item${_totalPending == 1 ? '' : 's'}')));
         _load();
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed: $e'), backgroundColor: Colors.red),
-        );
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed: $e'), backgroundColor: Colors.red));
       }
     } finally {
       if (mounted) setState(() => _approving = false);
@@ -221,7 +214,7 @@ class _AdminPendingApprovalsScreenState extends State<AdminPendingApprovalsScree
         business: business,
         onClose: () => Navigator.of(ctx).pop(),
         onApproveAll: () async {
-          final uid = AppDataScope.of(context).authRepository.currentUserId;
+          final uid = ref.read(authNotifierProvider).valueOrNull?.id;
           if (uid == null) return;
           final imagesRepo = BusinessImagesRepository();
           final dealsRepo = DealsRepository();
@@ -229,10 +222,7 @@ class _AdminPendingApprovalsScreenState extends State<AdminPendingApprovalsScree
           final auditRepo = AuditLogRepository();
           try {
             if (business.images.isNotEmpty) {
-              await imagesRepo.approveMany(
-                business.images.map((i) => i.id).toList(),
-                approvedBy: uid,
-              );
+              await imagesRepo.approveMany(business.images.map((i) => i.id).toList(), approvedBy: uid);
               auditRepo.insert(
                 action: 'images_bulk_approved',
                 userId: uid,
@@ -243,34 +233,22 @@ class _AdminPendingApprovalsScreenState extends State<AdminPendingApprovalsScree
             }
             for (final d in business.deals) {
               await dealsRepo.updateStatus(d.id, 'approved', approvedBy: uid);
-              auditRepo.insert(
-                action: 'deal_approved',
-                userId: uid,
-                targetTable: 'deals',
-                targetId: d.id,
-              );
+              auditRepo.insert(action: 'deal_approved', userId: uid, targetTable: 'deals', targetId: d.id);
             }
             for (final e in business.events) {
               await eventsRepo.updateStatus(e.id, 'approved', approvedBy: uid);
-              auditRepo.insert(
-                action: 'event_approved',
-                userId: uid,
-                targetTable: 'business_events',
-                targetId: e.id,
-              );
+              auditRepo.insert(action: 'event_approved', userId: uid, targetTable: 'business_events', targetId: e.id);
             }
             if (ctx.mounted) {
-              ScaffoldMessenger.of(ctx).showSnackBar(
-                const SnackBar(content: Text('All approved for this business')),
-              );
+              ScaffoldMessenger.of(ctx).showSnackBar(const SnackBar(content: Text('All approved for this business')));
               Navigator.of(ctx).pop();
               _load();
             }
           } catch (e) {
             if (ctx.mounted) {
-              ScaffoldMessenger.of(ctx).showSnackBar(
-                SnackBar(content: Text('Failed: $e'), backgroundColor: Colors.red),
-              );
+              ScaffoldMessenger.of(
+                ctx,
+              ).showSnackBar(SnackBar(content: Text('Failed: $e'), backgroundColor: Colors.red));
             }
           }
         },
@@ -300,22 +278,14 @@ class _AdminPendingApprovalsScreenState extends State<AdminPendingApprovalsScree
         backgroundColor: AppTheme.specOffWhite,
         foregroundColor: AppTheme.specNavy,
         actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh_rounded),
-            tooltip: 'Refresh',
-            onPressed: _loading ? null : _load,
-          ),
+          IconButton(icon: const Icon(Icons.refresh_rounded), tooltip: 'Refresh', onPressed: _loading ? null : _load),
         ],
       ),
       body: _buildBody(context, theme, padding),
     );
   }
 
-  Widget _buildBody(
-    BuildContext context,
-    ThemeData theme,
-    EdgeInsets padding,
-  ) {
+  Widget _buildBody(BuildContext context, ThemeData theme, EdgeInsets padding) {
     if (_loading && _businesses == null) {
       return const Center(child: CircularProgressIndicator(color: AppTheme.specNavy));
     }
@@ -364,9 +334,7 @@ class _AdminPendingApprovalsScreenState extends State<AdminPendingApprovalsScree
                     list.isEmpty
                         ? 'No pending items'
                         : '$total pending in ${list.length} business${list.length == 1 ? '' : 'es'}. Open a business to approve individually or in bulk.',
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      color: AppTheme.specNavy.withValues(alpha: 0.75),
-                    ),
+                    style: theme.textTheme.bodyMedium?.copyWith(color: AppTheme.specNavy.withValues(alpha: 0.75)),
                   ),
                   if (total > 0) ...[
                     const SizedBox(height: 16),
@@ -392,74 +360,59 @@ class _AdminPendingApprovalsScreenState extends State<AdminPendingApprovalsScree
             ),
           ),
           if (list.isEmpty)
-            const SliverFillRemaining(
-              hasScrollBody: false,
-              child: Center(child: Text('No pending approvals')),
-            )
+            const SliverFillRemaining(hasScrollBody: false, child: Center(child: Text('No pending approvals')))
           else
             SliverList(
-              delegate: SliverChildBuilderDelegate(
-                (context, index) {
-                  final business = list[index];
-                  final scaffoldContext = this.context;
-                  return _BusinessPendingCard(
-                    business: business,
-                    approving: _approving,
-                    onOpen: () => _openSlideOut(business),
-                    onApproveAll: () async {
-                      final state = this;
-                      setState(() => _approving = true);
-                      try {
-                        final uid = AppDataScope.of(scaffoldContext).authRepository.currentUserId;
-                        if (uid == null) return;
-                        final imagesRepo = BusinessImagesRepository();
-                        final dealsRepo = DealsRepository();
-                        final eventsRepo = BusinessEventsRepository();
-                        final auditRepo = AuditLogRepository();
-                        if (business.images.isNotEmpty) {
-                          await imagesRepo.approveMany(
-                            business.images.map((i) => i.id).toList(),
-                            approvedBy: uid,
-                          );
-                          auditRepo.insert(
-                            action: 'images_bulk_approved',
-                            userId: uid,
-                            targetTable: 'business_images',
-                            details: business.images.map((i) => i.id).join(','),
-                          );
-                        }
-                        for (final d in business.deals) {
-                          await dealsRepo.updateStatus(d.id, 'approved', approvedBy: uid);
-                          auditRepo.insert(
-                            action: 'deal_approved',
-                            userId: uid,
-                            targetTable: 'deals',
-                            targetId: d.id,
-                          );
-                        }
-                        for (final e in business.events) {
-                          await eventsRepo.updateStatus(e.id, 'approved', approvedBy: uid);
-                          auditRepo.insert(
-                            action: 'event_approved',
-                            userId: uid,
-                            targetTable: 'business_events',
-                            targetId: e.id,
-                          );
-                        }
-                        if (state.mounted) {
-                          ScaffoldMessenger.maybeOf(state.context)?.showSnackBar(
-                            SnackBar(content: Text('Approved ${business.totalCount} for ${business.businessName}')),
-                          );
-                          _load();
-                        }
-                      } finally {
-                        if (state.mounted) setState(() => _approving = false);
+              delegate: SliverChildBuilderDelegate((context, index) {
+                final business = list[index];
+                return _BusinessPendingCard(
+                  business: business,
+                  approving: _approving,
+                  onOpen: () => _openSlideOut(business),
+                  onApproveAll: () async {
+                    final state = this;
+                    setState(() => _approving = true);
+                    try {
+                      final uid = ref.read(authNotifierProvider).valueOrNull?.id;
+                      if (uid == null) return;
+                      final imagesRepo = BusinessImagesRepository();
+                      final dealsRepo = DealsRepository();
+                      final eventsRepo = BusinessEventsRepository();
+                      final auditRepo = AuditLogRepository();
+                      if (business.images.isNotEmpty) {
+                        await imagesRepo.approveMany(business.images.map((i) => i.id).toList(), approvedBy: uid);
+                        auditRepo.insert(
+                          action: 'images_bulk_approved',
+                          userId: uid,
+                          targetTable: 'business_images',
+                          details: business.images.map((i) => i.id).join(','),
+                        );
                       }
-                    },
-                  );
-                },
-                childCount: list.length,
-              ),
+                      for (final d in business.deals) {
+                        await dealsRepo.updateStatus(d.id, 'approved', approvedBy: uid);
+                        auditRepo.insert(action: 'deal_approved', userId: uid, targetTable: 'deals', targetId: d.id);
+                      }
+                      for (final e in business.events) {
+                        await eventsRepo.updateStatus(e.id, 'approved', approvedBy: uid);
+                        auditRepo.insert(
+                          action: 'event_approved',
+                          userId: uid,
+                          targetTable: 'business_events',
+                          targetId: e.id,
+                        );
+                      }
+                      if (state.mounted) {
+                        ScaffoldMessenger.maybeOf(state.context)?.showSnackBar(
+                          SnackBar(content: Text('Approved ${business.totalCount} for ${business.businessName}')),
+                        );
+                        _load();
+                      }
+                    } finally {
+                      if (state.mounted) setState(() => _approving = false);
+                    }
+                  },
+                );
+              }, childCount: list.length),
             ),
           const SliverToBoxAdapter(child: SizedBox(height: 24)),
         ],
@@ -486,9 +439,11 @@ class _BusinessPendingCard extends StatelessWidget {
     final theme = Theme.of(context);
     final padding = AppLayout.horizontalPadding(context);
     final parts = <String>[];
-    if (business.images.isNotEmpty) parts.add('${business.images.length} image${business.images.length == 1 ? '' : 's'}');
+    if (business.images.isNotEmpty)
+      parts.add('${business.images.length} image${business.images.length == 1 ? '' : 's'}');
     if (business.deals.isNotEmpty) parts.add('${business.deals.length} deal${business.deals.length == 1 ? '' : 's'}');
-    if (business.events.isNotEmpty) parts.add('${business.events.length} event${business.events.length == 1 ? '' : 's'}');
+    if (business.events.isNotEmpty)
+      parts.add('${business.events.length} event${business.events.length == 1 ? '' : 's'}');
     final subtitle = parts.join(', ');
 
     return Padding(
@@ -521,9 +476,7 @@ class _BusinessPendingCard extends StatelessWidget {
                         const SizedBox(height: 2),
                         Text(
                           subtitle,
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: AppTheme.specNavy.withValues(alpha: 0.7),
-                          ),
+                          style: theme.textTheme.bodySmall?.copyWith(color: AppTheme.specNavy.withValues(alpha: 0.7)),
                         ),
                       ],
                     ),
@@ -537,11 +490,7 @@ class _BusinessPendingCard extends StatelessWidget {
                   AppSecondaryButton(
                     onPressed: approving ? null : onApproveAll,
                     icon: approving
-                        ? const SizedBox(
-                            width: 18,
-                            height: 18,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
+                        ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
                         : const Icon(Icons.check_circle_rounded, size: 20),
                     label: Text('Approve all (${business.totalCount})'),
                   ),
@@ -555,7 +504,7 @@ class _BusinessPendingCard extends StatelessWidget {
   }
 }
 
-class _PendingSlideOut extends StatefulWidget {
+class _PendingSlideOut extends ConsumerStatefulWidget {
   const _PendingSlideOut({
     required this.business,
     required this.onClose,
@@ -569,17 +518,13 @@ class _PendingSlideOut extends StatefulWidget {
   final VoidCallback onRefresh;
 
   @override
-  State<_PendingSlideOut> createState() => _PendingSlideOutState();
+  ConsumerState<_PendingSlideOut> createState() => _PendingSlideOutState();
 }
 
-class _PendingSlideOutState extends State<_PendingSlideOut> {
+class _PendingSlideOutState extends ConsumerState<_PendingSlideOut> {
   bool _approving = false;
 
-  Future<void> _requestInfo({
-    required String targetTable,
-    required String targetId,
-    required String label,
-  }) async {
+  Future<void> _requestInfo({required String targetTable, required String targetId, required String label}) async {
     final controller = TextEditingController();
     final submitted = await showDialog<bool>(
       context: context,
@@ -589,10 +534,7 @@ class _PendingSlideOutState extends State<_PendingSlideOut> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text(
-              'Message for business owner about "$label":',
-              style: Theme.of(ctx).textTheme.bodyMedium,
-            ),
+            Text('Message for business owner about "$label":', style: Theme.of(ctx).textTheme.bodyMedium),
             const SizedBox(height: 12),
             TextField(
               controller: controller,
@@ -605,20 +547,14 @@ class _PendingSlideOutState extends State<_PendingSlideOut> {
           ],
         ),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(ctx).pop(true),
-            child: const Text('Send request'),
-          ),
+          TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Cancel')),
+          FilledButton(onPressed: () => Navigator.of(ctx).pop(true), child: const Text('Send request')),
         ],
       ),
     );
     if (submitted == true && controller.text.trim().isNotEmpty) {
       if (!mounted) return;
-      final userId = AppDataScope.of(context).authRepository.currentUserId;
+      final userId = ref.read(authNotifierProvider).valueOrNull?.id;
       await AuditLogRepository().insert(
         action: 'approval_request_info',
         userId: userId,
@@ -627,34 +563,25 @@ class _PendingSlideOutState extends State<_PendingSlideOut> {
         details: controller.text.trim(),
       );
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Request sent')),
-        );
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Request sent')));
       }
     }
   }
 
   Future<void> _approveImage(String id) async {
-    final uid = AppDataScope.of(context).authRepository.currentUserId;
+    final uid = ref.read(authNotifierProvider).valueOrNull?.id;
     if (uid == null) return;
     setState(() => _approving = true);
     try {
       await BusinessImagesRepository().approveMany([id], approvedBy: uid);
-      AuditLogRepository().insert(
-        action: 'image_approved',
-        userId: uid,
-        targetTable: 'business_images',
-        targetId: id,
-      );
+      AuditLogRepository().insert(action: 'image_approved', userId: uid, targetTable: 'business_images', targetId: id);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Image approved')));
         widget.onRefresh();
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed: $e'), backgroundColor: Colors.red),
-        );
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed: $e'), backgroundColor: Colors.red));
       }
     } finally {
       if (mounted) setState(() => _approving = false);
@@ -662,26 +589,19 @@ class _PendingSlideOutState extends State<_PendingSlideOut> {
   }
 
   Future<void> _rejectImage(String id) async {
-    final uid = AppDataScope.of(context).authRepository.currentUserId;
+    final uid = ref.read(authNotifierProvider).valueOrNull?.id;
     if (uid == null) return;
     setState(() => _approving = true);
     try {
       await BusinessImagesRepository().updateStatus(id, 'rejected', approvedBy: uid);
-      AuditLogRepository().insert(
-        action: 'image_rejected',
-        userId: uid,
-        targetTable: 'business_images',
-        targetId: id,
-      );
+      AuditLogRepository().insert(action: 'image_rejected', userId: uid, targetTable: 'business_images', targetId: id);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Image rejected')));
         widget.onRefresh();
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed: $e'), backgroundColor: Colors.red),
-        );
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed: $e'), backgroundColor: Colors.red));
       }
     } finally {
       if (mounted) setState(() => _approving = false);
@@ -689,17 +609,12 @@ class _PendingSlideOutState extends State<_PendingSlideOut> {
   }
 
   Future<void> _approveDeal(String id) async {
-    final uid = AppDataScope.of(context).authRepository.currentUserId;
+    final uid = ref.read(authNotifierProvider).valueOrNull?.id;
     if (uid == null) return;
     setState(() => _approving = true);
     try {
       await DealsRepository().updateStatus(id, 'approved', approvedBy: uid);
-      AuditLogRepository().insert(
-        action: 'deal_approved',
-        userId: uid,
-        targetTable: 'deals',
-        targetId: id,
-      );
+      AuditLogRepository().insert(action: 'deal_approved', userId: uid, targetTable: 'deals', targetId: id);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Deal approved')));
         widget.onRefresh();
@@ -710,17 +625,12 @@ class _PendingSlideOutState extends State<_PendingSlideOut> {
   }
 
   Future<void> _rejectDeal(String id) async {
-    final uid = AppDataScope.of(context).authRepository.currentUserId;
+    final uid = ref.read(authNotifierProvider).valueOrNull?.id;
     if (uid == null) return;
     setState(() => _approving = true);
     try {
       await DealsRepository().updateStatus(id, 'rejected', approvedBy: uid);
-      AuditLogRepository().insert(
-        action: 'deal_rejected',
-        userId: uid,
-        targetTable: 'deals',
-        targetId: id,
-      );
+      AuditLogRepository().insert(action: 'deal_rejected', userId: uid, targetTable: 'deals', targetId: id);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Deal rejected')));
         widget.onRefresh();
@@ -731,17 +641,12 @@ class _PendingSlideOutState extends State<_PendingSlideOut> {
   }
 
   Future<void> _approveEvent(String id) async {
-    final uid = AppDataScope.of(context).authRepository.currentUserId;
+    final uid = ref.read(authNotifierProvider).valueOrNull?.id;
     if (uid == null) return;
     setState(() => _approving = true);
     try {
       await BusinessEventsRepository().updateStatus(id, 'approved', approvedBy: uid);
-      AuditLogRepository().insert(
-        action: 'event_approved',
-        userId: uid,
-        targetTable: 'business_events',
-        targetId: id,
-      );
+      AuditLogRepository().insert(action: 'event_approved', userId: uid, targetTable: 'business_events', targetId: id);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Event approved')));
         widget.onRefresh();
@@ -752,17 +657,12 @@ class _PendingSlideOutState extends State<_PendingSlideOut> {
   }
 
   Future<void> _rejectEvent(String id) async {
-    final uid = AppDataScope.of(context).authRepository.currentUserId;
+    final uid = ref.read(authNotifierProvider).valueOrNull?.id;
     if (uid == null) return;
     setState(() => _approving = true);
     try {
       await BusinessEventsRepository().updateStatus(id, 'rejected', approvedBy: uid);
-      AuditLogRepository().insert(
-        action: 'event_rejected',
-        userId: uid,
-        targetTable: 'business_events',
-        targetId: id,
-      );
+      AuditLogRepository().insert(action: 'event_rejected', userId: uid, targetTable: 'business_events', targetId: id);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Event rejected')));
         widget.onRefresh();
@@ -811,16 +711,11 @@ class _PendingSlideOutState extends State<_PendingSlideOut> {
                         ),
                       ),
                     ),
-                    IconButton(
-                      icon: const Icon(Icons.close_rounded),
-                      onPressed: widget.onClose,
-                    ),
+                    IconButton(icon: const Icon(Icons.close_rounded), onPressed: widget.onClose),
                     TextButton(
                       onPressed: () {
                         Navigator.of(context).push(
-                          MaterialPageRoute<void>(
-                            builder: (_) => AdminBusinessDetailScreen(businessId: b.businessId),
-                          ),
+                          MaterialPageRoute<void>(builder: (_) => AdminBusinessDetailScreen(businessId: b.businessId)),
                         );
                       },
                       child: const Text('Business'),
@@ -829,11 +724,7 @@ class _PendingSlideOutState extends State<_PendingSlideOut> {
                       onPressed: _approving ? null : widget.onApproveAll,
                       expanded: false,
                       icon: _approving
-                          ? const SizedBox(
-                              width: 18,
-                              height: 18,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            )
+                          ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
                           : const Icon(Icons.check_circle_rounded, size: 20),
                       label: const Text('Approve all'),
                     ),
@@ -854,31 +745,28 @@ class _PendingSlideOutState extends State<_PendingSlideOut> {
                         ),
                       ),
                       const SizedBox(height: 8),
-                      ...b.images.map((img) => _ItemRow(
-                            label: 'Image',
-                            onView: () {
-                              Navigator.of(context).push(
-                                MaterialPageRoute<void>(
-                                  builder: (_) => AdminImageDetailScreen(imageId: img.id),
-                                ),
-                              ).then((_) => widget.onRefresh());
-                            },
-                            approve: () => _approveImage(img.id),
-                            reject: () => _rejectImage(img.id),
-                            requestInfo: () => _requestInfo(
-                              targetTable: 'business_images',
-                              targetId: img.id,
-                              label: 'Image',
-                            ),
-                            approving: _approving,
-                            thumbnail: Image.network(
-                              img.url,
-                              fit: BoxFit.cover,
-                              width: 48,
-                              height: 48,
-                              errorBuilder: (_, _, _) => const Icon(Icons.image_rounded, size: 48),
-                            ),
-                          )),
+                      ...b.images.map(
+                        (img) => _ItemRow(
+                          label: 'Image',
+                          onView: () {
+                            Navigator.of(context)
+                                .push(MaterialPageRoute<void>(builder: (_) => AdminImageDetailScreen(imageId: img.id)))
+                                .then((_) => widget.onRefresh());
+                          },
+                          approve: () => _approveImage(img.id),
+                          reject: () => _rejectImage(img.id),
+                          requestInfo: () =>
+                              _requestInfo(targetTable: 'business_images', targetId: img.id, label: 'Image'),
+                          approving: _approving,
+                          thumbnail: Image.network(
+                            img.url,
+                            fit: BoxFit.cover,
+                            width: 48,
+                            height: 48,
+                            errorBuilder: (_, _, _) => const Icon(Icons.image_rounded, size: 48),
+                          ),
+                        ),
+                      ),
                       const SizedBox(height: 20),
                     ],
                     if (b.deals.isNotEmpty) ...[
@@ -890,19 +778,17 @@ class _PendingSlideOutState extends State<_PendingSlideOut> {
                         ),
                       ),
                       const SizedBox(height: 8),
-                      ...b.deals.map((d) => _ItemRow(
-                            label: d.title,
-                            onView: null,
-                            approve: () => _approveDeal(d.id),
-                            reject: () => _rejectDeal(d.id),
-                            requestInfo: () => _requestInfo(
-                              targetTable: 'deals',
-                              targetId: d.id,
-                              label: d.title,
-                            ),
-                            approving: _approving,
-                            thumbnail: null,
-                          )),
+                      ...b.deals.map(
+                        (d) => _ItemRow(
+                          label: d.title,
+                          onView: null,
+                          approve: () => _approveDeal(d.id),
+                          reject: () => _rejectDeal(d.id),
+                          requestInfo: () => _requestInfo(targetTable: 'deals', targetId: d.id, label: d.title),
+                          approving: _approving,
+                          thumbnail: null,
+                        ),
+                      ),
                       const SizedBox(height: 20),
                     ],
                     if (b.events.isNotEmpty) ...[
@@ -914,19 +800,18 @@ class _PendingSlideOutState extends State<_PendingSlideOut> {
                         ),
                       ),
                       const SizedBox(height: 8),
-                      ...b.events.map((e) => _ItemRow(
-                            label: '${e.title} (${e.eventDate.day}/${e.eventDate.month}/${e.eventDate.year})',
-                            onView: null,
-                            approve: () => _approveEvent(e.id),
-                            reject: () => _rejectEvent(e.id),
-                            requestInfo: () => _requestInfo(
-                              targetTable: 'business_events',
-                              targetId: e.id,
-                              label: e.title,
-                            ),
-                            approving: _approving,
-                            thumbnail: null,
-                          )),
+                      ...b.events.map(
+                        (e) => _ItemRow(
+                          label: '${e.title} (${e.eventDate.day}/${e.eventDate.month}/${e.eventDate.year})',
+                          onView: null,
+                          approve: () => _approveEvent(e.id),
+                          reject: () => _rejectEvent(e.id),
+                          requestInfo: () =>
+                              _requestInfo(targetTable: 'business_events', targetId: e.id, label: e.title),
+                          approving: _approving,
+                          thumbnail: null,
+                        ),
+                      ),
                     ],
                   ],
                 ),
@@ -970,44 +855,24 @@ class _ItemRow extends StatelessWidget {
             if (thumbnail != null) ...[
               ClipRRect(
                 borderRadius: BorderRadius.circular(8),
-                child: SizedBox(
-                  width: 48,
-                  height: 48,
-                  child: thumbnail,
-                ),
+                child: SizedBox(width: 48, height: 48, child: thumbnail),
               ),
               const SizedBox(width: 12),
             ],
             Expanded(
               child: Text(
                 label,
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  color: AppTheme.specNavy,
-                  fontWeight: FontWeight.w500,
-                ),
+                style: theme.textTheme.bodyMedium?.copyWith(color: AppTheme.specNavy, fontWeight: FontWeight.w500),
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
               ),
             ),
-            if (onView != null)
-              TextButton(
-                onPressed: onView,
-                child: const Text('View'),
-              ),
-            AppDangerOutlinedButton(
-              onPressed: approving ? null : reject,
-              child: const Text('Reject'),
-            ),
+            if (onView != null) TextButton(onPressed: onView, child: const Text('View')),
+            AppDangerOutlinedButton(onPressed: approving ? null : reject, child: const Text('Reject')),
             const SizedBox(width: 6),
-            TextButton(
-              onPressed: approving ? null : requestInfo,
-              child: const Text('Request info'),
-            ),
+            TextButton(onPressed: approving ? null : requestInfo, child: const Text('Request info')),
             const SizedBox(width: 6),
-            AppSecondaryButton(
-              onPressed: approving ? null : approve,
-              child: const Text('Approve'),
-            ),
+            AppSecondaryButton(onPressed: approving ? null : approve, child: const Text('Approve')),
           ],
         ),
       ),

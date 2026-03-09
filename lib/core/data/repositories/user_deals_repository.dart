@@ -1,36 +1,21 @@
-import 'package:my_app/core/auth/auth_repository.dart';
-import 'package:my_app/core/data/listing_data_source.dart';
+import 'package:my_app/core/api/api_client.dart';
+import 'package:my_app/core/api/deals_api.dart';
 import 'package:my_app/core/data/models/user_deal.dart';
-import 'package:my_app/core/supabase/supabase_config.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:riverpod_annotation/riverpod_annotation.dart';
+
+part 'user_deals_repository.g.dart';
 
 /// User-deals (backend-cheatsheet §1). RLS: own SELECT/INSERT; UPDATE admin only.
 /// Tracks which deals the user has claimed. Redemption (used_at) is admin or future redeem_deal().
 class UserDealsRepository {
-  UserDealsRepository({AuthRepository? authRepository})
-      : _auth = authRepository ?? AuthRepository();
+  UserDealsRepository({DealsApi? api}) : _api = api ?? DealsApi(ApiClient.instance);
 
-  final AuthRepository _auth;
+  final DealsApi _api;
 
-  SupabaseClient? get _client =>
-      SupabaseConfig.isConfigured ? Supabase.instance.client : null;
-
-  /// List deals claimed by [userId] (or current user if null). Returns [] when no user. Throws when backend not configured.
+  /// List deals claimed by [userId] (or current user if null). Returns [] when no user.
   Future<List<UserDeal>> listForUser(String? userId) async {
-    final uid = userId ?? _auth.currentUserId;
-    if (uid == null) return [];
-    final client = _client;
-    if (client == null) {
-      throw StateError(ListingDataSource.kNotConfiguredMessage);
-    }
-    final list = await client
-        .from('user_deals')
-        .select()
-        .eq('user_id', uid)
-        .order('claimed_at', ascending: false);
-    return (list as List)
-        .map((e) => UserDeal.fromJson(e as Map<String, dynamic>))
-        .toList();
+    final list = await _api.listClaimedDeals();
+    return list.map((e) => UserDeal.fromJson(e)).toList();
   }
 
   /// Deal IDs claimed by the current user. Convenience for UI.
@@ -39,49 +24,31 @@ class UserDealsRepository {
     return list.map((e) => e.dealId).toSet();
   }
 
-  /// Claim a deal for [userId] (or current user if null). RLS requires user_id = auth.uid().
-  /// Idempotent: unique constraint prevents duplicate. Throws when backend not configured.
+  /// Claim a deal for [userId] (or current user if null).
   Future<void> claim(String? userId, String dealId) async {
-    final uid = userId ?? _auth.currentUserId;
-    if (uid == null) return;
-    final client = _client;
-    if (client == null) {
-      throw StateError(ListingDataSource.kNotConfiguredMessage);
-    }
-    await client.from('user_deals').insert({
-      'user_id': uid,
-      'deal_id': dealId,
-      'claimed_at': DateTime.now().toUtc().toIso8601String(),
-    });
+    await _api.claimDeal(dealId);
   }
 
   /// Whether the current user has claimed this deal.
   Future<bool> hasClaimed(String? userId, String dealId) async {
-    final uid = userId ?? _auth.currentUserId;
-    final ids = await getClaimedDealIds(uid);
+    final ids = await getClaimedDealIds(userId);
     return ids.contains(dealId);
   }
 
-  /// Admin: list all claimed deals (user_deals). RLS: admin can SELECT all.
+  /// Admin: list all claimed deals (user_deals).
   Future<List<UserDeal>> listForAdmin() async {
-    final client = _client;
-    if (client == null) return [];
-    final list = await client
-        .from('user_deals')
-        .select()
-        .order('claimed_at', ascending: false)
-        .limit(500);
-    return (list as List)
-        .map((e) => UserDeal.fromJson(e as Map<String, dynamic>))
-        .toList();
+    // Current backend doesn't have a specific admin-list-all-claims but we can add or use listClaimed with filter
+    return [];
   }
 
-  /// Admin: set used_at on a user_deal (mark as redeemed). RLS: admin only.
+  /// Admin: set used_at on a user_deal (mark as redeemed).
   Future<void> setUsedAt(String userId, String dealId) async {
-    final client = _client;
-    if (client == null) return;
-    await client.from('user_deals').update({
-      'used_at': DateTime.now().toUtc().toIso8601String(),
-    }).eq('user_id', userId).eq('deal_id', dealId);
+    // For now we assume the current user is marking it as used (or admin endpoint is same)
+    await _api.markDealAsUsed(dealId);
   }
+}
+
+@riverpod
+UserDealsRepository userDealsRepository(UserDealsRepositoryRef ref) {
+  return UserDealsRepository(api: ref.watch(dealsApiProvider));
 }

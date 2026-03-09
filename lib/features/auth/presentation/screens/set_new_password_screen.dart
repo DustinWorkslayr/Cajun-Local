@@ -1,25 +1,23 @@
 import 'package:flutter/material.dart';
-import 'package:my_app/core/data/app_data_scope.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:my_app/core/auth/providers/auth_provider.dart';
 import 'package:my_app/core/theme/theme.dart';
 import 'package:my_app/shared/widgets/app_buttons.dart';
 import 'package:my_app/shared/widgets/app_logo.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
 /// Shown when the user has opened the password reset link (recovery session).
 /// They enter a new password; on success we clear recovery and they're signed in.
-class SetNewPasswordScreen extends StatefulWidget {
-  const SetNewPasswordScreen({
-    super.key,
-    required this.onPasswordUpdated,
-  });
+class SetNewPasswordScreen extends ConsumerStatefulWidget {
+  const SetNewPasswordScreen({super.key, this.token, required this.onPasswordUpdated});
 
+  final String? token;
   final VoidCallback onPasswordUpdated;
 
   @override
-  State<SetNewPasswordScreen> createState() => _SetNewPasswordScreenState();
+  ConsumerState<SetNewPasswordScreen> createState() => _SetNewPasswordScreenState();
 }
 
-class _SetNewPasswordScreenState extends State<SetNewPasswordScreen> {
+class _SetNewPasswordScreenState extends ConsumerState<SetNewPasswordScreen> {
   final _formKey = GlobalKey<FormState>();
   final _passwordController = TextEditingController();
   final _confirmController = TextEditingController();
@@ -37,37 +35,26 @@ class _SetNewPasswordScreenState extends State<SetNewPasswordScreen> {
   }
 
   Future<void> _submit() async {
-    setState(() {
-      _errorMessage = null;
-      _loading = true;
-    });
+    final password = _passwordController.text;
+    final token = widget.token;
 
-    final auth = AppDataScope.of(context).authRepository;
-    if (!auth.isConfigured) {
+    if (token == null) {
       setState(() {
-        _errorMessage = 'Sign-in is not configured.';
+        _errorMessage = 'Invalid or missing reset token.';
         _loading = false;
       });
       return;
     }
 
-    final password = _passwordController.text;
     try {
-      await auth.updatePassword(password);
+      await ref.read(authNotifierProvider.notifier).resetPassword(token, password);
       if (mounted) {
         widget.onPasswordUpdated();
-      }
-    } on AuthException catch (e) {
-      if (mounted) {
-        setState(() {
-          _errorMessage = e.message;
-          _loading = false;
-        });
       }
     } catch (e) {
       if (mounted) {
         setState(() {
-          _errorMessage = e.toString();
+          _errorMessage = e.toString().replaceAll('Exception: ', '');
           _loading = false;
         });
       }
@@ -81,8 +68,7 @@ class _SetNewPasswordScreenState extends State<SetNewPasswordScreen> {
     final primary = colorScheme.primary;
     final secondary = colorScheme.secondary;
 
-    final isTablet =
-        MediaQuery.sizeOf(context).width >= AppTheme.breakpointTablet;
+    final isTablet = MediaQuery.sizeOf(context).width >= AppTheme.breakpointTablet;
     final mediaHeight = MediaQuery.sizeOf(context).height;
     final skylineHeight = isTablet ? mediaHeight * 0.08 : mediaHeight * 0.14;
 
@@ -96,17 +82,14 @@ class _SetNewPasswordScreenState extends State<SetNewPasswordScreen> {
                 child: SafeArea(
                   bottom: false,
                   child: Padding(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 28, vertical: 40),
+                    padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 40),
                     child: Form(
                       key: _formKey,
                       child: LayoutBuilder(
                         builder: (context, formConstraints) {
                           return SingleChildScrollView(
                             child: ConstrainedBox(
-                              constraints: BoxConstraints(
-                                minHeight: formConstraints.maxHeight,
-                              ),
+                              constraints: BoxConstraints(minHeight: formConstraints.maxHeight),
                               child: IntrinsicHeight(
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -121,8 +104,7 @@ class _SetNewPasswordScreenState extends State<SetNewPasswordScreen> {
                                         height: 3,
                                         decoration: BoxDecoration(
                                           color: AppTheme.accentGold,
-                                          borderRadius:
-                                              BorderRadius.circular(2),
+                                          borderRadius: BorderRadius.circular(2),
                                         ),
                                       ),
                                     ),
@@ -130,8 +112,7 @@ class _SetNewPasswordScreenState extends State<SetNewPasswordScreen> {
                                     Center(
                                       child: Text(
                                         'Set new password',
-                                        style: theme.textTheme.titleMedium
-                                            ?.copyWith(
+                                        style: theme.textTheme.titleMedium?.copyWith(
                                           color: secondary,
                                           fontWeight: FontWeight.w600,
                                         ),
@@ -140,75 +121,53 @@ class _SetNewPasswordScreenState extends State<SetNewPasswordScreen> {
                                     const SizedBox(height: 32),
                                     Center(
                                       child: ConstrainedBox(
-                                        constraints: BoxConstraints(
-                                          maxWidth: isTablet
-                                              ? 420
-                                              : double.infinity,
-                                        ),
+                                        constraints: BoxConstraints(maxWidth: isTablet ? 420 : double.infinity),
                                         child: Container(
                                           padding: const EdgeInsets.all(28),
                                           decoration: BoxDecoration(
                                             color: Colors.white,
-                                            borderRadius:
-                                                BorderRadius.circular(20),
+                                            borderRadius: BorderRadius.circular(20),
                                             border: Border.all(
-                                              color: colorScheme.outlineVariant
-                                                  .withValues(alpha: 0.8),
+                                              color: colorScheme.outlineVariant.withValues(alpha: 0.8),
                                               width: 1,
                                             ),
                                             boxShadow: [
                                               BoxShadow(
-                                                color: secondary
-                                                    .withValues(alpha: 0.06),
+                                                color: secondary.withValues(alpha: 0.06),
                                                 blurRadius: 20,
                                                 offset: const Offset(0, 6),
                                               ),
                                             ],
                                           ),
                                           child: Column(
-                                            crossAxisAlignment:
-                                                CrossAxisAlignment.stretch,
+                                            crossAxisAlignment: CrossAxisAlignment.stretch,
                                             children: [
                                               TextFormField(
                                                 controller: _passwordController,
                                                 decoration: InputDecoration(
                                                   labelText: 'New password',
                                                   hintText: '••••••••',
-                                                  prefixIcon: Icon(
-                                                      Icons.lock_outline_rounded,
-                                                      color: primary),
+                                                  prefixIcon: Icon(Icons.lock_outline_rounded, color: primary),
                                                   suffixIcon: IconButton(
                                                     icon: Icon(
                                                       _obscurePassword
-                                                          ? Icons
-                                                              .visibility_off_outlined
-                                                          : Icons
-                                                              .visibility_outlined,
+                                                          ? Icons.visibility_off_outlined
+                                                          : Icons.visibility_outlined,
                                                       color: primary,
                                                     ),
-                                                    onPressed: () => setState(
-                                                        () => _obscurePassword =
-                                                            !_obscurePassword),
+                                                    onPressed: () =>
+                                                        setState(() => _obscurePassword = !_obscurePassword),
                                                   ),
-                                                  focusedBorder:
-                                                      OutlineInputBorder(
-                                                    borderRadius:
-                                                        BorderRadius.circular(
-                                                            12),
-                                                    borderSide: BorderSide(
-                                                        color: primary,
-                                                        width: 1.5),
+                                                  focusedBorder: OutlineInputBorder(
+                                                    borderRadius: BorderRadius.circular(12),
+                                                    borderSide: BorderSide(color: primary, width: 1.5),
                                                   ),
                                                 ),
                                                 obscureText: _obscurePassword,
-                                                textInputAction:
-                                                    TextInputAction.next,
-                                                onFieldSubmitted: (_) =>
-                                                    FocusScope.of(context)
-                                                        .nextFocus(),
+                                                textInputAction: TextInputAction.next,
+                                                onFieldSubmitted: (_) => FocusScope.of(context).nextFocus(),
                                                 validator: (v) {
-                                                  if (v == null ||
-                                                      v.isEmpty) {
+                                                  if (v == null || v.isEmpty) {
                                                     return 'Enter a password';
                                                   }
                                                   if (v.length < 6) {
@@ -221,48 +180,31 @@ class _SetNewPasswordScreenState extends State<SetNewPasswordScreen> {
                                               TextFormField(
                                                 controller: _confirmController,
                                                 decoration: InputDecoration(
-                                                  labelText:
-                                                      'Confirm new password',
+                                                  labelText: 'Confirm new password',
                                                   hintText: '••••••••',
-                                                  prefixIcon: Icon(
-                                                      Icons.lock_outline_rounded,
-                                                      color: primary),
+                                                  prefixIcon: Icon(Icons.lock_outline_rounded, color: primary),
                                                   suffixIcon: IconButton(
                                                     icon: Icon(
                                                       _obscureConfirm
-                                                          ? Icons
-                                                              .visibility_off_outlined
-                                                          : Icons
-                                                              .visibility_outlined,
+                                                          ? Icons.visibility_off_outlined
+                                                          : Icons.visibility_outlined,
                                                       color: primary,
                                                     ),
-                                                    onPressed: () => setState(
-                                                        () => _obscureConfirm =
-                                                            !_obscureConfirm),
+                                                    onPressed: () => setState(() => _obscureConfirm = !_obscureConfirm),
                                                   ),
-                                                  focusedBorder:
-                                                      OutlineInputBorder(
-                                                    borderRadius:
-                                                        BorderRadius.circular(
-                                                            12),
-                                                    borderSide: BorderSide(
-                                                        color: primary,
-                                                        width: 1.5),
+                                                  focusedBorder: OutlineInputBorder(
+                                                    borderRadius: BorderRadius.circular(12),
+                                                    borderSide: BorderSide(color: primary, width: 1.5),
                                                   ),
                                                 ),
                                                 obscureText: _obscureConfirm,
-                                                textInputAction:
-                                                    TextInputAction.done,
-                                                onFieldSubmitted: (_) =>
-                                                    _submit(),
+                                                textInputAction: TextInputAction.done,
+                                                onFieldSubmitted: (_) => _submit(),
                                                 validator: (v) {
-                                                  if (v == null ||
-                                                      v.isEmpty) {
+                                                  if (v == null || v.isEmpty) {
                                                     return 'Confirm your password';
                                                   }
-                                                  if (v !=
-                                                      _passwordController
-                                                          .text) {
+                                                  if (v != _passwordController.text) {
                                                     return 'Passwords do not match';
                                                   }
                                                   return null;
@@ -271,22 +213,15 @@ class _SetNewPasswordScreenState extends State<SetNewPasswordScreen> {
                                               if (_errorMessage != null) ...[
                                                 const SizedBox(height: 20),
                                                 Container(
-                                                  padding: const EdgeInsets
-                                                      .all(12),
+                                                  padding: const EdgeInsets.all(12),
                                                   decoration: BoxDecoration(
-                                                    color: colorScheme
-                                                        .errorContainer,
-                                                    borderRadius:
-                                                        BorderRadius.circular(
-                                                            12),
+                                                    color: colorScheme.errorContainer,
+                                                    borderRadius: BorderRadius.circular(12),
                                                   ),
                                                   child: Text(
                                                     _errorMessage!,
-                                                    style: theme
-                                                        .textTheme.bodySmall
-                                                        ?.copyWith(
-                                                      color: colorScheme
-                                                          .onErrorContainer,
+                                                    style: theme.textTheme.bodySmall?.copyWith(
+                                                      color: colorScheme.onErrorContainer,
                                                     ),
                                                   ),
                                                 ),
@@ -296,10 +231,7 @@ class _SetNewPasswordScreenState extends State<SetNewPasswordScreen> {
                                                 onPressed: _loading
                                                     ? null
                                                     : () {
-                                                        if (!(_formKey
-                                                                .currentState
-                                                                ?.validate() ??
-                                                            false)) {
+                                                        if (!(_formKey.currentState?.validate() ?? false)) {
                                                           return;
                                                         }
                                                         _submit();
@@ -308,20 +240,14 @@ class _SetNewPasswordScreenState extends State<SetNewPasswordScreen> {
                                                     ? SizedBox(
                                                         height: 22,
                                                         width: 22,
-                                                        child:
-                                                            CircularProgressIndicator(
+                                                        child: CircularProgressIndicator(
                                                           strokeWidth: 2,
-                                                          color: colorScheme
-                                                              .onPrimary,
+                                                          color: colorScheme.onPrimary,
                                                         ),
                                                       )
                                                     : const Text(
                                                         'Update password',
-                                                        style: TextStyle(
-                                                          fontWeight:
-                                                              FontWeight.w600,
-                                                          fontSize: 16,
-                                                        ),
+                                                        style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
                                                       ),
                                               ),
                                             ],
@@ -343,11 +269,7 @@ class _SetNewPasswordScreenState extends State<SetNewPasswordScreen> {
               SizedBox(
                 height: skylineHeight,
                 width: double.infinity,
-                child: Image.asset(
-                  'assets/images/skyline-2.png',
-                  fit: BoxFit.cover,
-                  alignment: Alignment.bottomCenter,
-                ),
+                child: Image.asset('assets/images/skyline-2.png', fit: BoxFit.cover, alignment: Alignment.bottomCenter),
               ),
             ],
           );

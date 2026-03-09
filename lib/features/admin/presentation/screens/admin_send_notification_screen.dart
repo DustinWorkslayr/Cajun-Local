@@ -1,22 +1,23 @@
 import 'package:flutter/material.dart';
-import 'package:my_app/core/data/app_data_scope.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:my_app/core/data/models/profile.dart';
 import 'package:my_app/core/data/repositories/notifications_repository.dart';
 import 'package:my_app/core/theme/app_layout.dart';
 import 'package:my_app/core/theme/theme.dart';
 import 'package:my_app/shared/widgets/app_buttons.dart';
+import 'package:my_app/core/data/repositories/profiles_repository.dart';
 
 /// Admin: send a per-user notification. Select user, title, optional type.
-class AdminSendNotificationScreen extends StatefulWidget {
+class AdminSendNotificationScreen extends ConsumerStatefulWidget {
   const AdminSendNotificationScreen({super.key, this.embeddedInShell = false});
 
   final bool embeddedInShell;
 
   @override
-  State<AdminSendNotificationScreen> createState() => _AdminSendNotificationScreenState();
+  ConsumerState<AdminSendNotificationScreen> createState() => _AdminSendNotificationScreenState();
 }
 
-class _AdminSendNotificationScreenState extends State<AdminSendNotificationScreen> {
+class _AdminSendNotificationScreenState extends ConsumerState<AdminSendNotificationScreen> {
   final _formKey = GlobalKey<FormState>();
   final _titleController = TextEditingController();
   final _bodyController = TextEditingController();
@@ -36,7 +37,7 @@ class _AdminSendNotificationScreenState extends State<AdminSendNotificationScree
   }
 
   Future<void> _loadProfiles() async {
-    final auth = AppDataScope.of(context).authRepository;
+    final auth = ref.read(profilesRepositoryProvider);
     final list = await auth.listProfilesForAdmin();
     if (mounted) {
       setState(() {
@@ -81,7 +82,8 @@ class _AdminSendNotificationScreenState extends State<AdminSendNotificationScree
         setState(() {
           _sending = false;
           _success = true;
-          _message = 'Notification sent to ${_selectedProfile!.displayName ?? _selectedProfile!.email ?? _selectedProfile!.userId}.';
+          _message =
+              'Notification sent to ${_selectedProfile!.displayName ?? _selectedProfile!.email ?? _selectedProfile!.userId}.';
         });
         _titleController.clear();
         _bodyController.clear();
@@ -123,13 +125,12 @@ class _AdminSendNotificationScreenState extends State<AdminSendNotificationScree
                 fillColor: AppTheme.specWhite,
               ),
               items: _profiles
-                  .map((p) => DropdownMenuItem(
-                        value: p,
-                        child: Text(
-                          p.displayName ?? p.email ?? p.userId,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ))
+                  .map(
+                    (p) => DropdownMenuItem(
+                      value: p,
+                      child: Text(p.displayName ?? p.email ?? p.userId, overflow: TextOverflow.ellipsis),
+                    ),
+                  )
                   .toList(),
               onChanged: (p) => setState(() => _selectedProfile = p),
               validator: (v) => v == null ? 'Select a user' : null,
@@ -186,9 +187,7 @@ class _AdminSendNotificationScreenState extends State<AdminSendNotificationScree
               const SizedBox(height: 16),
               Text(
                 _message!,
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: _success ? Colors.green : AppTheme.specRed,
-                ),
+                style: theme.textTheme.bodySmall?.copyWith(color: _success ? Colors.green : AppTheme.specRed),
               ),
             ],
             const SizedBox(height: 24),
@@ -196,11 +195,7 @@ class _AdminSendNotificationScreenState extends State<AdminSendNotificationScree
               onPressed: _sending ? null : _submit,
               expanded: true,
               child: _sending
-                  ? const SizedBox(
-                      height: 24,
-                      width: 24,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
+                  ? const SizedBox(height: 24, width: 24, child: CircularProgressIndicator(strokeWidth: 2))
                   : const Text('Send notification'),
             ),
           ],
@@ -224,10 +219,9 @@ class _AdminSendNotificationScreenState extends State<AdminSendNotificationScree
         ),
         title: Text(
           'Send notification',
-          style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                fontWeight: FontWeight.w700,
-                color: AppTheme.specNavy,
-              ),
+          style: Theme.of(
+            context,
+          ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700, color: AppTheme.specNavy),
         ),
       ),
       body: _buildBody(context),

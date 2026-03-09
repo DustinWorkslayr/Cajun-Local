@@ -1,52 +1,37 @@
+import 'package:my_app/core/api/api_client.dart';
+import 'package:my_app/core/api/user_plans_api.dart';
 import 'package:my_app/core/data/models/user_plan.dart';
-import 'package:my_app/core/supabase/supabase_config.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:riverpod_annotation/riverpod_annotation.dart';
+
+part 'user_plans_repository.g.dart';
 
 /// User subscription plans (pricing-and-ads-cheatsheet §2.3). Public SELECT; admin-only write.
 class UserPlansRepository {
-  UserPlansRepository();
-
-  SupabaseClient? get _client =>
-      SupabaseConfig.isConfigured ? Supabase.instance.client : null;
+  UserPlansRepository({UserPlansApi? api}) : _api = api ?? UserPlansApi(ApiClient.instance);
+  final UserPlansApi _api;
 
   Future<List<UserPlan>> list() async {
-    final client = _client;
-    if (client == null) return [];
-    final list = await client
-        .from('user_plans')
-        .select()
-        .order('sort_order')
-        .order('name');
-    return (list as List<dynamic>)
-        .map((e) => UserPlan.fromJson(Map<String, dynamic>.from(e)))
-        .toList();
+    return _api.list();
   }
 
   Future<UserPlan?> getById(String id) async {
-    final client = _client;
-    if (client == null) return null;
-    final res = await client.from('user_plans').select().eq('id', id).maybeSingle();
-    if (res == null) return null;
-    return UserPlan.fromJson(Map<String, dynamic>.from(res));
+    return _api.getById(id);
   }
 
   Future<void> insert(UserPlan plan) async {
-    final client = _client;
-    if (client == null) return;
-    final data = plan.toJson()
-      ..remove('id');
-    await client.from('user_plans').insert(data);
+    await _api.insert(plan);
   }
 
   Future<void> update(UserPlan plan) async {
-    final client = _client;
-    if (client == null) return;
-    await client.from('user_plans').update(plan.toJson()).eq('id', plan.id);
+    await _api.update(plan);
   }
 
   Future<void> delete(String id) async {
-    final client = _client;
-    if (client == null) return;
-    await client.from('user_plans').delete().eq('id', id);
+    await _api.delete(id);
   }
+}
+
+@riverpod
+UserPlansRepository userPlansRepository(UserPlansRepositoryRef ref) {
+  return UserPlansRepository(api: ref.watch(userPlansApiProvider));
 }

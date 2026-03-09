@@ -1,7 +1,8 @@
 import 'package:file_picker/file_picker.dart';
 import 'package:my_app/core/data/services/storage_upload_constants.dart';
 import 'package:flutter/material.dart';
-import 'package:my_app/core/data/app_data_scope.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:my_app/core/auth/providers/auth_provider.dart';
 import 'package:my_app/core/data/models/business.dart';
 import 'package:my_app/core/data/models/business_image.dart';
 import 'package:my_app/core/data/repositories/business_repository.dart';
@@ -13,16 +14,16 @@ import 'package:my_app/shared/widgets/app_buttons.dart';
 
 /// Add a business image by uploading to the business-images bucket.
 /// [initialBusinessId] pre-selects the business when opening from listing edit.
-class AdminAddImageScreen extends StatefulWidget {
+class AdminAddImageScreen extends ConsumerStatefulWidget {
   const AdminAddImageScreen({super.key, this.initialBusinessId});
 
   final String? initialBusinessId;
 
   @override
-  State<AdminAddImageScreen> createState() => _AdminAddImageScreenState();
+  ConsumerState<AdminAddImageScreen> createState() => _AdminAddImageScreenState();
 }
 
-class _AdminAddImageScreenState extends State<AdminAddImageScreen> {
+class _AdminAddImageScreenState extends ConsumerState<AdminAddImageScreen> {
   final _formKey = GlobalKey<FormState>();
   final _sortOrderController = TextEditingController(text: '0');
   List<Business> _businesses = [];
@@ -159,9 +160,8 @@ class _AdminAddImageScreenState extends State<AdminAddImageScreen> {
     });
     final messenger = ScaffoldMessenger.of(context);
     try {
-      final auth = AppDataScope.of(context).authRepository;
-      final uid = auth.currentUserId;
-      final isAdmin = uid != null && await auth.isAdmin();
+      final uid = ref.read(authNotifierProvider).valueOrNull?.id;
+      final isAdmin = uid != null && await ref.read(authNotifierProvider.notifier).isAdmin();
       await BusinessImagesRepository().insert(
         businessId: _selectedBusiness!.id,
         url: _uploadedUrl!,
@@ -177,9 +177,7 @@ class _AdminAddImageScreenState extends State<AdminAddImageScreen> {
       });
       messenger.showSnackBar(
         SnackBar(
-          content: Text(
-            isAdmin ? 'Image added (approved).' : 'Image added. It will appear after admin approval.',
-          ),
+          content: Text(isAdmin ? 'Image added (approved).' : 'Image added. It will appear after admin approval.'),
         ),
       );
     } catch (e) {
@@ -206,16 +204,12 @@ class _AdminAddImageScreenState extends State<AdminAddImageScreen> {
           _images = reordered;
           _savingOrder = false;
         });
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Order saved.')),
-        );
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Order saved.')));
       }
     } catch (e) {
       if (mounted) {
         setState(() => _savingOrder = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to save order: $e')),
-        );
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to save order: $e')));
       }
     }
   }
@@ -239,10 +233,7 @@ class _AdminAddImageScreenState extends State<AdminAddImageScreen> {
         ),
         title: Text(
           'Add image',
-          style: theme.textTheme.titleLarge?.copyWith(
-            fontWeight: FontWeight.w700,
-            color: nav,
-          ),
+          style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700, color: nav),
         ),
       ),
       body: SingleChildScrollView(
@@ -270,9 +261,7 @@ class _AdminAddImageScreenState extends State<AdminAddImageScreen> {
                         filled: true,
                         fillColor: AppTheme.specWhite,
                       ),
-                      items: _businesses
-                          .map((b) => DropdownMenuItem(value: b, child: Text(b.name)))
-                          .toList(),
+                      items: _businesses.map((b) => DropdownMenuItem(value: b, child: Text(b.name))).toList(),
                       onChanged: (b) {
                         setState(() {
                           _selectedBusiness = b;
@@ -288,10 +277,7 @@ class _AdminAddImageScreenState extends State<AdminAddImageScreen> {
                       padding: const EdgeInsets.only(bottom: 8),
                       child: Text(
                         _selectedBusiness!.name,
-                        style: theme.textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.w600,
-                          color: nav,
-                        ),
+                        style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600, color: nav),
                       ),
                     ),
                   const SizedBox(height: 24),
@@ -314,10 +300,7 @@ class _AdminAddImageScreenState extends State<AdminAddImageScreen> {
                       children: [
                         Text(
                           'Add new photo',
-                          style: theme.textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.w700,
-                            color: nav,
-                          ),
+                          style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700, color: nav),
                         ),
                         const SizedBox(height: 12),
                         AppOutlinedButton(
@@ -401,10 +384,7 @@ class _AdminAddImageScreenState extends State<AdminAddImageScreen> {
                           children: [
                             Text(
                               'Photo order',
-                              style: theme.textTheme.titleMedium?.copyWith(
-                                fontWeight: FontWeight.w700,
-                                color: nav,
-                              ),
+                              style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700, color: nav),
                             ),
                             if (_savingOrder) ...[
                               const SizedBox(width: 8),
@@ -478,10 +458,7 @@ class _AdminAddImageScreenState extends State<AdminAddImageScreen> {
                                       ),
                                     ),
                                     subtitle: img.status != 'approved'
-                                        ? Text(
-                                            img.status,
-                                            style: theme.textTheme.bodySmall?.copyWith(color: sub),
-                                          )
+                                        ? Text(img.status, style: theme.textTheme.bodySmall?.copyWith(color: sub))
                                         : null,
                                     trailing: Icon(Icons.drag_handle_rounded, color: sub),
                                   ),
@@ -497,9 +474,7 @@ class _AdminAddImageScreenState extends State<AdminAddImageScreen> {
                   const SizedBox(height: 16),
                   Text(
                     _message!,
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: _success ? Colors.green : AppTheme.specRed,
-                    ),
+                    style: theme.textTheme.bodySmall?.copyWith(color: _success ? Colors.green : AppTheme.specRed),
                   ),
                 ],
               ],

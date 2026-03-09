@@ -1,18 +1,19 @@
 import 'package:flutter/material.dart';
-import 'package:my_app/core/data/app_data_scope.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:my_app/core/auth/providers/auth_provider.dart';
 import 'package:my_app/core/theme/theme.dart';
 import 'package:my_app/features/admin/presentation/screens/admin_sections.dart';
 
 /// Admin shell: verifies admin role, then shows dashboard or section content.
 /// Tablet: left NavigationRail with grouped sections. Mobile: scrollable TabBar + TabBarView.
-class AdminShell extends StatefulWidget {
+class AdminShell extends ConsumerStatefulWidget {
   const AdminShell({super.key});
 
   @override
-  State<AdminShell> createState() => _AdminShellState();
+  ConsumerState<AdminShell> createState() => _AdminShellState();
 }
 
-class _AdminShellState extends State<AdminShell> with SingleTickerProviderStateMixin {
+class _AdminShellState extends ConsumerState<AdminShell> with SingleTickerProviderStateMixin {
   Future<bool>? _adminCheck;
   late List<AdminSectionItem> _sections;
   int _selectedIndex = 0;
@@ -63,18 +64,13 @@ class _AdminShellState extends State<AdminShell> with SingleTickerProviderStateM
     final section = _sections[index];
     final status = _sectionStatus[index];
     final onNav = index == 0 ? _onNavigateToSection : null;
-    return section.builder(
-      context,
-      embedded: true,
-      status: status,
-      onNavigateToSection: onNav,
-    );
+    return section.builder(context, embedded: true, status: status, onNavigateToSection: onNav);
   }
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    _adminCheck ??= AppDataScope.of(context).authRepository.isAdmin();
+    _adminCheck ??= ref.read(authNotifierProvider.notifier).isAdmin();
   }
 
   @override
@@ -118,9 +114,7 @@ class _AdminShellState extends State<AdminShell> with SingleTickerProviderStateM
                     child: TabBar(
                       controller: _tabController,
                       isScrollable: true,
-                      tabs: [
-                        for (final s in _sections) Tab(text: s.label),
-                      ],
+                      tabs: [for (final s in _sections) Tab(text: s.label)],
                       onTap: _onDestinationSelected,
                     ),
                   ),
@@ -134,14 +128,8 @@ class _AdminShellState extends State<AdminShell> with SingleTickerProviderStateM
   Widget _buildTabletBody() {
     return Row(
       children: [
-        _AdminRail(
-          sections: _sections,
-          selectedIndex: _selectedIndex,
-          onDestinationSelected: _onDestinationSelected,
-        ),
-        Expanded(
-          child: _buildSectionContent(_selectedIndex),
-        ),
+        _AdminRail(sections: _sections, selectedIndex: _selectedIndex, onDestinationSelected: _onDestinationSelected),
+        Expanded(child: _buildSectionContent(_selectedIndex)),
       ],
     );
   }
@@ -149,20 +137,13 @@ class _AdminShellState extends State<AdminShell> with SingleTickerProviderStateM
   Widget _buildMobileBody() {
     return TabBarView(
       controller: _tabController,
-      children: [
-        for (var i = 0; i < _sections.length; i++)
-          _buildSectionContent(i),
-      ],
+      children: [for (var i = 0; i < _sections.length; i++) _buildSectionContent(i)],
     );
   }
 }
 
 class _AdminRail extends StatelessWidget {
-  const _AdminRail({
-    required this.sections,
-    required this.selectedIndex,
-    required this.onDestinationSelected,
-  });
+  const _AdminRail({required this.sections, required this.selectedIndex, required this.onDestinationSelected});
 
   final List<AdminSectionItem> sections;
   final int selectedIndex;
@@ -198,17 +179,13 @@ class _AdminRail extends StatelessWidget {
             leading: Icon(
               sections[i].icon,
               size: 24,
-              color: selectedIndex == i
-                  ? colorScheme.primary
-                  : colorScheme.onSurfaceVariant,
+              color: selectedIndex == i ? colorScheme.primary : colorScheme.onSurfaceVariant,
             ),
             title: Text(
               sections[i].label,
               style: theme.textTheme.bodyMedium?.copyWith(
                 fontWeight: selectedIndex == i ? FontWeight.w600 : null,
-                color: selectedIndex == i
-                    ? colorScheme.primary
-                    : colorScheme.onSurface,
+                color: selectedIndex == i ? colorScheme.primary : colorScheme.onSurface,
               ),
             ),
             selected: selectedIndex == i,
@@ -223,16 +200,9 @@ class _AdminRail extends StatelessWidget {
       child: Container(
         width: railWidth,
         decoration: BoxDecoration(
-          border: Border(
-            right: BorderSide(
-              color: AppTheme.specNavy.withValues(alpha: 0.08),
-            ),
-          ),
+          border: Border(right: BorderSide(color: AppTheme.specNavy.withValues(alpha: 0.08))),
         ),
-        child: ListView(
-          padding: const EdgeInsets.symmetric(vertical: 16),
-          children: children,
-        ),
+        child: ListView(padding: const EdgeInsets.symmetric(vertical: 16), children: children),
       ),
     );
   }

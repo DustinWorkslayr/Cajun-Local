@@ -1,80 +1,53 @@
+import 'package:my_app/core/api/api_client.dart';
+import 'package:my_app/core/api/business_events_api.dart';
 import 'package:my_app/core/data/models/business_event.dart';
-import 'package:my_app/core/supabase/supabase_config.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:riverpod_annotation/riverpod_annotation.dart';
+
+part 'business_events_repository.g.dart';
 
 /// business_events: manager/admin CRUD; public read when status = approved (§7).
 class BusinessEventsRepository {
-  BusinessEventsRepository();
+  BusinessEventsRepository({BusinessEventsApi? api}) : _api = api ?? BusinessEventsApi(ApiClient.instance);
 
-  SupabaseClient? get _client =>
-      SupabaseConfig.isConfigured ? Supabase.instance.client : null;
+  final BusinessEventsApi _api;
 
   static const _approved = 'approved';
   static const _limit = 1000;
 
-  /// List events for a business (manager sees all statuses; RLS enforces).
+  /// List events for a business (manager sees all statuses).
   Future<List<BusinessEvent>> listForBusiness(String businessId) async {
-    final client = _client;
-    if (client == null) return [];
-    final list = await client
-        .from('business_events')
-        .select()
-        .eq('business_id', businessId)
-        .order('event_date', ascending: true)
-        .limit(_limit);
-    return (list as List)
-        .map((e) => BusinessEvent.fromJson(e as Map<String, dynamic>))
-        .toList();
+    final list = await _api.listEvents(businessId: businessId, status: null, limit: _limit);
+    return list.map((e) => BusinessEvent.fromJson(e)).toList();
   }
 
-  /// Get a single event by id (for detail/analytics). RLS applies.
+  /// Get a single event by id.
   Future<BusinessEvent?> getById(String eventId) async {
-    final client = _client;
-    if (client == null) return null;
-    final res = await client
-        .from('business_events')
-        .select()
-        .eq('id', eventId)
-        .maybeSingle();
-    if (res == null) return null;
-    return BusinessEvent.fromJson(res);
+    try {
+      final res = await _api.getEventById(eventId);
+      return BusinessEvent.fromJson(res);
+    } catch (_) {
+      return null;
+    }
   }
 
-  /// Public: list approved events only (e.g. for listing detail).
+  /// Public: list approved events only.
   Future<List<BusinessEvent>> listApproved({String? businessId}) async {
-    final client = _client;
-    if (client == null) return [];
-    var q = client.from('business_events').select().eq('status', _approved);
-    if (businessId != null) q = q.eq('business_id', businessId);
-    final list = await q.order('event_date', ascending: true).limit(_limit);
-    return (list as List)
-        .map((e) => BusinessEvent.fromJson(e as Map<String, dynamic>))
-        .toList();
+    final list = await _api.listEvents(businessId: businessId, status: _approved, limit: _limit);
+    return list.map((e) => BusinessEvent.fromJson(e)).toList();
   }
 
   /// Admin: list events with optional status/business filter.
   Future<List<BusinessEvent>> listForAdmin({String? status, String? businessId}) async {
-    final client = _client;
-    if (client == null) return [];
-    var q = client.from('business_events').select();
-    if (status != null) q = q.eq('status', status);
-    if (businessId != null) q = q.eq('business_id', businessId);
-    final list = await q.order('event_date', ascending: true).limit(_limit);
-    return (list as List)
-        .map((e) => BusinessEvent.fromJson(e as Map<String, dynamic>))
-        .toList();
+    final list = await _api.listEvents(status: status, businessId: businessId, limit: _limit);
+    return list.map((e) => BusinessEvent.fromJson(e)).toList();
   }
 
   /// Admin: update event status (e.g. approve/reject).
-  /// Note: business_events may not have approved_at/approved_by; only status is required.
   Future<void> updateStatus(String id, String status, {String? approvedBy}) async {
-    final client = _client;
-    if (client == null) return;
-    final data = <String, dynamic>{'status': status};
-    await client.from('business_events').update(data).eq('id', id);
+    await _api.updateEventStatus(id, status);
   }
 
-  /// Manager/admin: insert a new event (status defaults to pending per cheatsheet).
+  /// Manager/admin: insert a new event.
   Future<void> insert({
     required String businessId,
     required String title,
@@ -84,12 +57,7 @@ class BusinessEventsRepository {
     String? location,
     String? imageUrl,
   }) async {
-    final client = _client;
-    if (client == null) return;
-    final id =
-        'e-${DateTime.now().millisecondsSinceEpoch}-${title.hashCode.abs()}';
-    await client.from('business_events').insert({
-      'id': id,
+    await _api.createEvent({
       'business_id': businessId,
       'title': title,
       'event_date': eventDate.toUtc().toIso8601String(),
@@ -97,7 +65,11 @@ class BusinessEventsRepository {
       'end_date': endDate?.toUtc().toIso8601String(),
       'location': location,
       'image_url': imageUrl,
-      'status': 'pending',
     });
   }
+}
+
+@riverpod
+BusinessEventsRepository businessEventsRepository(BusinessEventsRepositoryRef ref) {
+  return BusinessEventsRepository(api: ref.watch(businessEventsApiProvider));
 }

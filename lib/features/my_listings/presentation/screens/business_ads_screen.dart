@@ -1,6 +1,7 @@
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
-import 'package:my_app/core/data/app_data_scope.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:my_app/core/data/providers/app_data_providers.dart';
 import 'package:my_app/core/data/models/ad_package.dart';
 import 'package:my_app/core/data/models/business_ad.dart';
 import 'package:my_app/core/data/repositories/ad_packages_repository.dart';
@@ -11,38 +12,34 @@ import 'package:my_app/core/theme/theme.dart';
 import 'package:my_app/shared/widgets/app_buttons.dart';
 
 /// For a single business: list its ads and start "Buy ad" flow (package -> form -> checkout).
-class BusinessAdsScreen extends StatefulWidget {
+class BusinessAdsScreen extends ConsumerStatefulWidget {
   const BusinessAdsScreen({super.key, required this.businessId});
 
   final String businessId;
 
   @override
-  State<BusinessAdsScreen> createState() => _BusinessAdsScreenState();
+  ConsumerState<BusinessAdsScreen> createState() => _BusinessAdsScreenState();
 }
 
-class _BusinessAdsScreenState extends State<BusinessAdsScreen> {
+class _BusinessAdsScreenState extends ConsumerState<BusinessAdsScreen> {
   late Future<List<BusinessAd>> _adsFuture;
 
   @override
   void initState() {
     super.initState();
-    _adsFuture = BusinessAdsRepository().listByBusiness(widget.businessId);
+    _adsFuture = ref.read(businessAdsRepositoryProvider).listByBusiness(widget.businessId);
   }
 
   void _refresh() {
     setState(() {
-      _adsFuture =
-          BusinessAdsRepository().listByBusiness(widget.businessId);
+      _adsFuture = ref.read(businessAdsRepositoryProvider).listByBusiness(widget.businessId);
     });
   }
 
   Future<void> _buyAd(BuildContext context) async {
     final result = await Navigator.of(context).push<bool>(
       MaterialPageRoute<bool>(
-        builder: (_) => _CreateAdScreen(
-          businessId: widget.businessId,
-          onCreated: () {},
-        ),
+        builder: (_) => _CreateAdScreen(businessId: widget.businessId, onCreated: () {}),
       ),
     );
     if (result == true && mounted) _refresh();
@@ -64,20 +61,14 @@ class _BusinessAdsScreenState extends State<BusinessAdsScreen> {
         ),
         title: Text(
           'Advertising',
-          style: theme.textTheme.titleLarge?.copyWith(
-            fontWeight: FontWeight.w700,
-            color: AppTheme.specNavy,
-          ),
+          style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700, color: AppTheme.specNavy),
         ),
       ),
       body: FutureBuilder<List<BusinessAd>>(
         future: _adsFuture,
         builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting &&
-              !snapshot.hasData) {
-            return const Center(
-              child: CircularProgressIndicator(color: AppTheme.specNavy),
-            );
+          if (snapshot.connectionState == ConnectionState.waiting && !snapshot.hasData) {
+            return const Center(child: CircularProgressIndicator(color: AppTheme.specNavy));
           }
           final list = snapshot.data ?? [];
           return ListView(
@@ -85,9 +76,7 @@ class _BusinessAdsScreenState extends State<BusinessAdsScreen> {
             children: [
               Text(
                 'Promote your business with sponsored placements.',
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  color: AppTheme.specNavy.withValues(alpha: 0.8),
-                ),
+                style: theme.textTheme.bodyMedium?.copyWith(color: AppTheme.specNavy.withValues(alpha: 0.8)),
               ),
               const SizedBox(height: 16),
               if (list.isEmpty)
@@ -96,25 +85,24 @@ class _BusinessAdsScreenState extends State<BusinessAdsScreen> {
                     padding: const EdgeInsets.all(24),
                     child: Column(
                       children: [
-                        Icon(Icons.campaign_rounded,
-                            size: 64, color: AppTheme.specNavy.withValues(alpha: 0.4)),
+                        Icon(Icons.campaign_rounded, size: 64, color: AppTheme.specNavy.withValues(alpha: 0.4)),
                         const SizedBox(height: 16),
                         Text(
                           'No ads yet. Buy an ad package to get started.',
                           textAlign: TextAlign.center,
-                          style: theme.textTheme.bodyLarge?.copyWith(
-                            color: AppTheme.specNavy.withValues(alpha: 0.8),
-                          ),
+                          style: theme.textTheme.bodyLarge?.copyWith(color: AppTheme.specNavy.withValues(alpha: 0.8)),
                         ),
                       ],
                     ),
                   ),
                 )
               else
-                ...list.map((ad) => _AdCard(
-                      ad: ad,
-                      onTap: () => _AdDetailSlideOut.show(context, ad: ad),
-                    )),
+                ...list.map(
+                  (ad) => _AdCard(
+                    ad: ad,
+                    onTap: () => _AdDetailSlideOut.show(context, ad: ad),
+                  ),
+                ),
             ],
           );
         },
@@ -152,71 +140,60 @@ class _AdCard extends StatelessWidget {
             children: [
               Row(
                 children: [
-                if (ad.imageUrl != null && ad.imageUrl!.isNotEmpty)
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(10),
-                    child: Image.network(
-                      ad.imageUrl!,
-                      width: 56,
-                      height: 56,
-                      fit: BoxFit.cover,
-                      errorBuilder: (_, _, _) => _placeholder(context),
-                    ),
-                  )
-                else
-                  _placeholder(context),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        ad.headline?.isNotEmpty == true
-                            ? ad.headline!
-                            : 'Ad',
-                        style: theme.textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.w600,
-                          color: AppTheme.specNavy,
-                        ),
+                  if (ad.imageUrl != null && ad.imageUrl!.isNotEmpty)
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(10),
+                      child: Image.network(
+                        ad.imageUrl!,
+                        width: 56,
+                        height: 56,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, _, _) => _placeholder(context),
                       ),
-                      const SizedBox(height: 4),
-                      Text(
-                        '${ad.packageName ?? 'Package'} · ${BusinessAd.statusLabel(ad.status)}',
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: AppTheme.specNavy.withValues(alpha: 0.7),
-                        ),
-                      ),
-                      if (ad.impressions > 0 || ad.clicks > 0)
+                    )
+                  else
+                    _placeholder(context),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
                         Text(
-                          'Impressions: ${ad.impressions} · Clicks: ${ad.clicks}',
-                          style: theme.textTheme.labelSmall?.copyWith(
-                            color: AppTheme.specNavy.withValues(alpha: 0.6),
+                          (ad.headline != null && ad.headline!.trim().isNotEmpty) ? ad.headline! : 'Untitled Ad',
+                          style: theme.textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.w700,
+                            color: AppTheme.specNavy,
                           ),
                         ),
-                    ],
-                  ),
-                ),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: _statusColor(ad.status).withValues(alpha: 0.2),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Text(
-                    BusinessAd.statusLabel(ad.status),
-                    style: theme.textTheme.labelMedium?.copyWith(
-                      color: _statusColor(ad.status),
-                      fontWeight: FontWeight.w600,
+                        const SizedBox(height: 4),
+                        Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: _statusColor(ad.status).withValues(alpha: 0.1),
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: Text(
+                                BusinessAd.statusLabel(ad.status),
+                                style: theme.textTheme.labelSmall?.copyWith(
+                                  fontWeight: FontWeight.w700,
+                                  color: _statusColor(ad.status),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
                     ),
                   ),
-                ),
-              ],
-            ),
-          ],
+                ],
+              ),
+            ],
+          ),
         ),
       ),
-    ),
-  );
+    );
   }
 
   Widget _placeholder(BuildContext context) {
@@ -227,8 +204,7 @@ class _AdCard extends StatelessWidget {
         color: AppTheme.specGold.withValues(alpha: 0.2),
         borderRadius: BorderRadius.circular(10),
       ),
-      child: const Icon(Icons.campaign_rounded,
-          color: AppTheme.specNavy, size: 28),
+      child: const Icon(Icons.campaign_rounded, color: AppTheme.specNavy, size: 28),
     );
   }
 
@@ -262,9 +238,10 @@ class _AdDetailSlideOut extends StatelessWidget {
       barrierDismissible: true,
       transitionBuilder: (ctx, a1, a2, child) {
         return SlideTransition(
-          position: Tween<Offset>(begin: const Offset(1, 0), end: Offset.zero).animate(
-            CurvedAnimation(parent: a1, curve: Curves.easeOutCubic),
-          ),
+          position: Tween<Offset>(
+            begin: const Offset(1, 0),
+            end: Offset.zero,
+          ).animate(CurvedAnimation(parent: a1, curve: Curves.easeOutCubic)),
           child: child,
         );
       },
@@ -289,31 +266,6 @@ class _AdDetailSlideOut extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final nav = AppTheme.specNavy;
-    final sub = nav.withValues(alpha: 0.75);
-    final now = DateTime.now();
-    final end = ad.endDate;
-    final start = ad.startDate ?? ad.createdAt;
-    int? daysTotal;
-    int? daysLeft;
-    double progress = 0;
-    if (start != null && end != null) {
-      daysTotal = end.difference(start).inDays;
-      if (daysTotal > 0) {
-        if (now.isAfter(end)) {
-          daysLeft = 0;
-          progress = 0; // remaining fraction: 0 = no time left
-        } else {
-          daysLeft = end.difference(now).inDays;
-          final elapsed = now.difference(start).inDays;
-          final elapsedFraction = (elapsed / daysTotal).clamp(0.0, 1.0);
-          progress = 1.0 - elapsedFraction; // remaining: 1 = full time left, 0 = ended
-        }
-      }
-    }
-    final ctr = ad.impressions > 0
-        ? (ad.clicks / ad.impressions * 100).toStringAsFixed(1)
-        : null;
-
     return Column(
       children: [
         Padding(
@@ -323,17 +275,10 @@ class _AdDetailSlideOut extends StatelessWidget {
               Expanded(
                 child: Text(
                   'Ad details',
-                  style: theme.textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.w700,
-                    color: nav,
-                  ),
+                  style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700, color: nav),
                 ),
               ),
-              IconButton(
-                onPressed: onClose,
-                icon: const Icon(Icons.close_rounded),
-                color: nav,
-              ),
+              IconButton(onPressed: onClose, icon: const Icon(Icons.close_rounded), color: nav),
             ],
           ),
         ),
@@ -358,130 +303,30 @@ class _AdDetailSlideOut extends StatelessWidget {
                   _detailPlaceholder(),
                 const SizedBox(height: 16),
                 Text(
-                  ad.headline?.isNotEmpty == true ? ad.headline! : 'Ad',
-                  style: theme.textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w600,
-                    color: nav,
-                  ),
+                  (ad.headline != null && ad.headline!.trim().isNotEmpty) ? ad.headline! : 'Untitled Ad',
+                  style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700, color: nav),
                 ),
-                const SizedBox(height: 6),
-                Text(
-                  '${ad.packageName ?? 'Package'} · ${ad.placement != null ? AdPackage.placementLabel(ad.placement!) : ''}',
-                  style: theme.textTheme.bodySmall?.copyWith(color: sub),
-                ),
-                const SizedBox(height: 8),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: _statusColor(ad.status).withValues(alpha: 0.2),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Text(
-                    BusinessAd.statusLabel(ad.status),
-                    style: theme.textTheme.labelMedium?.copyWith(
-                      color: _statusColor(ad.status),
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
-                if (daysLeft != null || daysTotal != null) ...[
-                  const SizedBox(height: 20),
-                  Text(
-                    'Time remaining',
-                    style: theme.textTheme.titleSmall?.copyWith(
-                      fontWeight: FontWeight.w700,
-                      color: nav,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            ClipRRect(
-                              borderRadius: BorderRadius.circular(8),
-                              child: LinearProgressIndicator(
-                                value: progress,
-                                minHeight: 12,
-                                backgroundColor: nav.withValues(alpha: 0.15),
-                                valueColor: AlwaysStoppedAnimation<Color>(
-                                  daysLeft != null && daysLeft > 0
-                                      ? AppTheme.specGold
-                                      : nav.withValues(alpha: 0.5),
-                                ),
-                              ),
-                            ),
-                            const SizedBox(height: 6),
-                            Text(
-                              daysLeft != null
-                                  ? (daysLeft > 0
-                                      ? '$daysLeft of $daysTotal days left'
-                                      : 'Ad ended')
-                                  : (daysTotal != null ? '$daysTotal days total' : '—'),
-                              style: theme.textTheme.labelSmall?.copyWith(
-                                color: sub,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Text(
-                        daysLeft != null
-                            ? (daysLeft > 0 ? '$daysLeft days left' : 'Ended')
-                            : (daysTotal != null ? '$daysTotal days' : '—'),
-                        style: theme.textTheme.labelLarge?.copyWith(
-                          fontWeight: FontWeight.w600,
-                          color: nav,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-                const SizedBox(height: 20),
-                Text(
-                  'Analytics',
-                  style: theme.textTheme.titleSmall?.copyWith(
-                    fontWeight: FontWeight.w700,
-                    color: nav,
-                  ),
-                ),
-                const SizedBox(height: 10),
+                const SizedBox(height: 4),
                 Row(
                   children: [
-                    Expanded(
-                      child: _StatChip(
-                        label: 'Impressions',
-                        value: '${ad.impressions}',
-                        theme: theme,
-                        nav: nav,
-                        sub: sub,
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: _statusColor(ad.status).withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(8),
                       ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: _StatChip(
-                        label: 'Clicks',
-                        value: '${ad.clicks}',
-                        theme: theme,
-                        nav: nav,
-                        sub: sub,
+                      child: Text(
+                        BusinessAd.statusLabel(ad.status).toUpperCase(),
+                        style: theme.textTheme.labelSmall?.copyWith(
+                          fontWeight: FontWeight.w800,
+                          color: _statusColor(ad.status),
+                          letterSpacing: 0.5,
+                        ),
                       ),
                     ),
                   ],
                 ),
-                if (ctr != null) ...[
-                  const SizedBox(height: 10),
-                  _StatChip(
-                    label: 'Click-through rate',
-                    value: '$ctr%',
-                    theme: theme,
-                    nav: nav,
-                    sub: sub,
-                  ),
-                ],
+                const SizedBox(height: 24),
               ],
             ),
           ),
@@ -497,9 +342,7 @@ class _AdDetailSlideOut extends StatelessWidget {
         color: AppTheme.specGold.withValues(alpha: 0.2),
         borderRadius: BorderRadius.circular(12),
       ),
-      child: const Center(
-        child: Icon(Icons.campaign_rounded, color: AppTheme.specNavy, size: 48),
-      ),
+      child: const Center(child: Icon(Icons.campaign_rounded, color: AppTheme.specNavy, size: 48)),
     );
   }
 
@@ -519,51 +362,6 @@ class _AdDetailSlideOut extends StatelessWidget {
   }
 }
 
-class _StatChip extends StatelessWidget {
-  const _StatChip({
-    required this.label,
-    required this.value,
-    required this.theme,
-    required this.nav,
-    required this.sub,
-  });
-
-  final String label;
-  final String value;
-  final ThemeData theme;
-  final Color nav;
-  final Color sub;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-      decoration: BoxDecoration(
-        color: AppTheme.specWhite,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: nav.withValues(alpha: 0.1)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            label,
-            style: theme.textTheme.labelMedium?.copyWith(color: sub),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            value,
-            style: theme.textTheme.titleMedium?.copyWith(
-              fontWeight: FontWeight.w700,
-              color: nav,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
 /// Upsell block for Buy ad page: what ads are, how they work, why advertise.
 class _BuyAdUpsellBlock extends StatelessWidget {
   const _BuyAdUpsellBlock({required this.theme});
@@ -580,13 +378,7 @@ class _BuyAdUpsellBlock extends StatelessWidget {
         color: AppTheme.specWhite,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: AppTheme.specGold.withValues(alpha: 0.35)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.06),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
-          ),
-        ],
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.06), blurRadius: 12, offset: const Offset(0, 4))],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -608,10 +400,7 @@ class _BuyAdUpsellBlock extends StatelessWidget {
                   children: [
                     Text(
                       'Get in front of more locals',
-                      style: theme.textTheme.titleSmall?.copyWith(
-                        fontWeight: FontWeight.w700,
-                        color: nav,
-                      ),
+                      style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700, color: nav),
                     ),
                     Text(
                       'Sponsored placements in Explore and Deals',
@@ -630,10 +419,7 @@ class _BuyAdUpsellBlock extends StatelessWidget {
           const SizedBox(height: 14),
           Text(
             'How it works',
-            style: theme.textTheme.labelLarge?.copyWith(
-              fontWeight: FontWeight.w700,
-              color: nav,
-            ),
+            style: theme.textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w700, color: nav),
           ),
           const SizedBox(height: 6),
           _UpsellStep(theme: theme, step: 1, text: 'Pick a package that fits your goals.', sub: sub),
@@ -642,10 +428,7 @@ class _BuyAdUpsellBlock extends StatelessWidget {
           const SizedBox(height: 12),
           Text(
             'Why advertise here',
-            style: theme.textTheme.labelLarge?.copyWith(
-              fontWeight: FontWeight.w700,
-              color: nav,
-            ),
+            style: theme.textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w700, color: nav),
           ),
           const SizedBox(height: 6),
           Row(
@@ -682,12 +465,7 @@ class _BuyAdUpsellBlock extends StatelessWidget {
 }
 
 class _UpsellStep extends StatelessWidget {
-  const _UpsellStep({
-    required this.theme,
-    required this.step,
-    required this.text,
-    required this.sub,
-  });
+  const _UpsellStep({required this.theme, required this.step, required this.text, required this.sub});
 
   final ThemeData theme;
   final int step;
@@ -712,19 +490,13 @@ class _UpsellStep extends StatelessWidget {
             child: Center(
               child: Text(
                 '$step',
-                style: theme.textTheme.labelSmall?.copyWith(
-                  fontWeight: FontWeight.w700,
-                  color: AppTheme.specNavy,
-                ),
+                style: theme.textTheme.labelSmall?.copyWith(fontWeight: FontWeight.w700, color: AppTheme.specNavy),
               ),
             ),
           ),
           const SizedBox(width: 8),
           Expanded(
-            child: Text(
-              text,
-              style: theme.textTheme.bodySmall?.copyWith(color: sub, height: 1.35),
-            ),
+            child: Text(text, style: theme.textTheme.bodySmall?.copyWith(color: sub, height: 1.35)),
           ),
         ],
       ),
@@ -733,20 +505,17 @@ class _UpsellStep extends StatelessWidget {
 }
 
 /// Flow: select package -> form (headline, image) -> create draft -> Stripe checkout. Taps open listing in-app.
-class _CreateAdScreen extends StatefulWidget {
-  const _CreateAdScreen({
-    required this.businessId,
-    required this.onCreated,
-  });
+class _CreateAdScreen extends ConsumerStatefulWidget {
+  const _CreateAdScreen({required this.businessId, required this.onCreated});
 
   final String businessId;
   final VoidCallback onCreated;
 
   @override
-  State<_CreateAdScreen> createState() => _CreateAdScreenState();
+  ConsumerState<_CreateAdScreen> createState() => _CreateAdScreenState();
 }
 
-class _CreateAdScreenState extends State<_CreateAdScreen> {
+class _CreateAdScreenState extends ConsumerState<_CreateAdScreen> {
   List<AdPackage> _packages = [];
   bool _loadingPackages = true;
   AdPackage? _selectedPackage;
@@ -769,7 +538,7 @@ class _CreateAdScreenState extends State<_CreateAdScreen> {
   }
 
   Future<void> _loadPackages() async {
-    final list = await AdPackagesRepository().list(activeOnly: true);
+    final list = await ref.read(adPackagesRepositoryProvider).list(activeOnly: true);
     if (mounted) {
       setState(() {
         _packages = list;
@@ -779,10 +548,7 @@ class _CreateAdScreenState extends State<_CreateAdScreen> {
   }
 
   Future<void> _pickImage() async {
-    final result = await FilePicker.platform.pickFiles(
-      type: FileType.image,
-      allowMultiple: false,
-    );
+    final result = await FilePicker.platform.pickFiles(type: FileType.image, allowMultiple: false);
     if (result == null || result.files.isEmpty || !mounted) return;
     final path = result.files.single.path;
     if (path == null) return;
@@ -791,11 +557,7 @@ class _CreateAdScreenState extends State<_CreateAdScreen> {
     setState(() => _uploading = true);
     try {
       final ext = result.files.single.extension ?? 'jpg';
-      final url = await AppStorageService().uploadAdImage(
-        businessId: widget.businessId,
-        bytes: bytes,
-        extension: ext,
-      );
+      final url = await AppStorageService().uploadAdImage(businessId: widget.businessId, bytes: bytes, extension: ext);
       if (mounted) {
         setState(() {
           _imageUrl = url;
@@ -823,13 +585,11 @@ class _CreateAdScreenState extends State<_CreateAdScreen> {
       _submitting = true;
     });
     try {
-      final repo = BusinessAdsRepository();
+      final repo = ref.read(businessAdsRepositoryProvider);
       final ad = await repo.insertDraft(
         businessId: widget.businessId,
         packageId: pkg.id,
-        headline: _headlineController.text.trim().isEmpty
-            ? null
-            : _headlineController.text.trim(),
+        headline: _headlineController.text.trim().isEmpty ? null : _headlineController.text.trim(),
         imageUrl: _imageUrl,
         targetUrl: null,
       );
@@ -837,7 +597,7 @@ class _CreateAdScreenState extends State<_CreateAdScreen> {
       final rcProductId = pkg.revenuecatProductId;
       if (rcProductId != null && rcProductId.isNotEmpty) {
         if (!mounted) return;
-        final rc = AppDataScope.of(context).revenueCatService;
+        final rc = ref.read(revenueCatServiceProvider);
         if (rc == null || !rc.isConfigured) {
           if (mounted) {
             setState(() => _submitting = false);
@@ -851,9 +611,9 @@ class _CreateAdScreenState extends State<_CreateAdScreen> {
           switch (result) {
             case AdPurchaseResult.purchased:
               Navigator.of(context).pop(true);
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Payment successful. Your ad is pending approval.')),
-              );
+              ScaffoldMessenger.of(
+                context,
+              ).showSnackBar(const SnackBar(content: Text('Payment successful. Your ad is pending approval.')));
               break;
             case AdPurchaseResult.cancelled:
               break;
@@ -870,8 +630,7 @@ class _CreateAdScreenState extends State<_CreateAdScreen> {
           setState(() => _submitting = false);
           Navigator.of(context).pop(true);
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-                content: Text('Ad created as draft. RevenueCat product ID not set for this package.')),
+            const SnackBar(content: Text('Ad created as draft. RevenueCat product ID not set for this package.')),
           );
         }
       }
@@ -901,16 +660,11 @@ class _CreateAdScreenState extends State<_CreateAdScreen> {
         ),
         title: Text(
           'Buy ad',
-          style: theme.textTheme.titleLarge?.copyWith(
-            fontWeight: FontWeight.w700,
-            color: AppTheme.specNavy,
-          ),
+          style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700, color: AppTheme.specNavy),
         ),
       ),
       body: _loadingPackages
-          ? const Center(
-              child: CircularProgressIndicator(color: AppTheme.specNavy),
-            )
+          ? const Center(child: CircularProgressIndicator(color: AppTheme.specNavy))
           : SingleChildScrollView(
               padding: const EdgeInsets.all(16),
               child: Column(
@@ -920,10 +674,7 @@ class _CreateAdScreenState extends State<_CreateAdScreen> {
                   const SizedBox(height: 24),
                   Text(
                     'Select a package',
-                    style: theme.textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w600,
-                      color: AppTheme.specNavy,
-                    ),
+                    style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600, color: AppTheme.specNavy),
                   ),
                   const SizedBox(height: 8),
                   if (_packages.isEmpty)
@@ -931,101 +682,88 @@ class _CreateAdScreenState extends State<_CreateAdScreen> {
                       padding: const EdgeInsets.all(24),
                       child: Text(
                         'No ad packages available. Contact support.',
-                        style: theme.textTheme.bodyMedium?.copyWith(
-                          color: AppTheme.specNavy.withValues(alpha: 0.8),
-                        ),
+                        style: theme.textTheme.bodyMedium?.copyWith(color: AppTheme.specNavy.withValues(alpha: 0.8)),
                       ),
                     )
                   else
-                    ..._packages.map((p) => Padding(
-                          padding: const EdgeInsets.only(bottom: 8),
-                          child: Material(
-                            color: _selectedPackage?.id == p.id
-                                ? AppTheme.specGold.withValues(alpha: 0.25)
-                                : AppTheme.specWhite,
+                    ..._packages.map(
+                      (p) => Padding(
+                        padding: const EdgeInsets.only(bottom: 8),
+                        child: Material(
+                          color: _selectedPackage?.id == p.id
+                              ? AppTheme.specGold.withValues(alpha: 0.25)
+                              : AppTheme.specWhite,
+                          borderRadius: BorderRadius.circular(12),
+                          child: InkWell(
+                            onTap: () => setState(() => _selectedPackage = p),
                             borderRadius: BorderRadius.circular(12),
-                            child: InkWell(
-                              onTap: () =>
-                                  setState(() => _selectedPackage = p),
-                              borderRadius: BorderRadius.circular(12),
-                              child: Padding(
-                                padding: const EdgeInsets.all(16),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Row(
-                                      children: [
-                                        Icon(
-                                          Icons.campaign_rounded,
-                                          color: AppTheme.specNavy,
-                                          size: 28,
-                                        ),
-                                        const SizedBox(width: 12),
-                                        Expanded(
-                                          child: Column(
-                                            crossAxisAlignment:
-                                                CrossAxisAlignment.start,
-                                            children: [
-                                              Text(
-                                                p.name,
-                                                style: theme.textTheme.titleSmall
-                                                    ?.copyWith(
-                                                        fontWeight: FontWeight.w600,
-                                                        color: AppTheme.specNavy),
+                            child: Padding(
+                              padding: const EdgeInsets.all(16),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    children: [
+                                      Icon(Icons.campaign_rounded, color: AppTheme.specNavy, size: 28),
+                                      const SizedBox(width: 12),
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              p.name,
+                                              style: theme.textTheme.titleSmall?.copyWith(
+                                                fontWeight: FontWeight.w600,
+                                                color: AppTheme.specNavy,
                                               ),
-                                              Text(
-                                                '\$${p.price.toStringAsFixed(0)} · ${p.durationDays} days · ${AdPackage.placementLabel(p.placement)}',
-                                                style: theme.textTheme.bodySmall
-                                                    ?.copyWith(
-                                                        color: AppTheme.specNavy
-                                                            .withValues(alpha: 0.7)),
+                                            ),
+                                            Text(
+                                              '\$${p.price.toStringAsFixed(0)} · ${p.durationDays} days · ${AdPackage.placementLabel(p.placement)}',
+                                              style: theme.textTheme.bodySmall?.copyWith(
+                                                color: AppTheme.specNavy.withValues(alpha: 0.7),
                                               ),
-                                            ],
-                                          ),
-                                        ),
-                                        if (_selectedPackage?.id == p.id)
-                                          const Icon(Icons.check_circle_rounded,
-                                              color: AppTheme.specNavy),
-                                      ],
-                                    ),
-                                    if (_selectedPackage?.id == p.id) ...[
-                                      const SizedBox(height: 12),
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                                        decoration: BoxDecoration(
-                                          color: AppTheme.specOffWhite,
-                                          borderRadius: BorderRadius.circular(10),
-                                          border: Border.all(color: AppTheme.specNavy.withValues(alpha: 0.1)),
-                                        ),
-                                        child: Text(
-                                          AdPackage.placementDescription(p.placement),
-                                          style: theme.textTheme.bodySmall?.copyWith(
-                                            color: AppTheme.specNavy.withValues(alpha: 0.85),
-                                            height: 1.4,
-                                          ),
+                                            ),
+                                          ],
                                         ),
                                       ),
+                                      if (_selectedPackage?.id == p.id)
+                                        const Icon(Icons.check_circle_rounded, color: AppTheme.specNavy),
                                     ],
+                                  ),
+                                  if (_selectedPackage?.id == p.id) ...[
+                                    const SizedBox(height: 12),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                                      decoration: BoxDecoration(
+                                        color: AppTheme.specOffWhite,
+                                        borderRadius: BorderRadius.circular(10),
+                                        border: Border.all(color: AppTheme.specNavy.withValues(alpha: 0.1)),
+                                      ),
+                                      child: Text(
+                                        AdPackage.placementDescription(p.placement),
+                                        style: theme.textTheme.bodySmall?.copyWith(
+                                          color: AppTheme.specNavy.withValues(alpha: 0.85),
+                                          height: 1.4,
+                                        ),
+                                      ),
+                                    ),
                                   ],
-                                ),
+                                ],
                               ),
                             ),
                           ),
-                        )),
+                        ),
+                      ),
+                    ),
                   const SizedBox(height: 24),
                   Text(
                     'Ad details (optional)',
-                    style: theme.textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w600,
-                      color: AppTheme.specNavy,
-                    ),
+                    style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600, color: AppTheme.specNavy),
                   ),
                   const SizedBox(height: 6),
                   Text(
                     'When someone taps your ad, they\'re taken to your listing inside the app—they stay in Cajun Local.',
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: AppTheme.specNavy.withValues(alpha: 0.75),
-                    ),
+                    style: theme.textTheme.bodySmall?.copyWith(color: AppTheme.specNavy.withValues(alpha: 0.75)),
                   ),
                   const SizedBox(height: 8),
                   TextFormField(
@@ -1044,12 +782,7 @@ class _CreateAdScreenState extends State<_CreateAdScreen> {
                       if (_imageUrl != null)
                         ClipRRect(
                           borderRadius: BorderRadius.circular(8),
-                          child: Image.network(
-                            _imageUrl!,
-                            width: 80,
-                            height: 80,
-                            fit: BoxFit.cover,
-                          ),
+                          child: Image.network(_imageUrl!, width: 80, height: 80, fit: BoxFit.cover),
                         )
                       else
                         Container(
@@ -1059,18 +792,13 @@ class _CreateAdScreenState extends State<_CreateAdScreen> {
                             color: AppTheme.specNavy.withValues(alpha: 0.08),
                             borderRadius: BorderRadius.circular(8),
                           ),
-                          child: Icon(Icons.image_rounded,
-                              color: AppTheme.specNavy.withValues(alpha: 0.5)),
+                          child: Icon(Icons.image_rounded, color: AppTheme.specNavy.withValues(alpha: 0.5)),
                         ),
                       const SizedBox(width: 12),
                       TextButton.icon(
                         onPressed: _uploading ? null : _pickImage,
                         icon: _uploading
-                            ? const SizedBox(
-                                width: 20,
-                                height: 20,
-                                child: CircularProgressIndicator(strokeWidth: 2),
-                              )
+                            ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
                             : const Icon(Icons.upload_rounded, size: 20),
                         label: Text(_imageUrl != null ? 'Change image' : 'Upload image'),
                       ),
@@ -1078,12 +806,7 @@ class _CreateAdScreenState extends State<_CreateAdScreen> {
                   ),
                   if (_error != null) ...[
                     const SizedBox(height: 12),
-                    Text(
-                      _error!,
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: AppTheme.specRed,
-                      ),
-                    ),
+                    Text(_error!, style: theme.textTheme.bodySmall?.copyWith(color: AppTheme.specRed)),
                   ],
                   const SizedBox(height: 24),
                   AppSecondaryButton(
@@ -1092,10 +815,7 @@ class _CreateAdScreenState extends State<_CreateAdScreen> {
                         ? const SizedBox(
                             height: 22,
                             width: 22,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              color: Colors.white,
-                            ),
+                            child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                           )
                         : const Text('Create ad & pay'),
                   ),

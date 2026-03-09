@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:my_app/core/auth/auth_repository.dart';
 import 'package:my_app/core/data/models/business.dart';
 import 'package:my_app/core/data/repositories/audit_log_repository.dart';
 import 'package:my_app/core/data/models/business_claim.dart';
@@ -7,9 +6,10 @@ import 'package:my_app/core/data/models/profile.dart';
 import 'package:my_app/core/data/repositories/business_claims_repository.dart';
 import 'package:my_app/core/data/repositories/business_managers_repository.dart';
 import 'package:my_app/core/data/repositories/business_repository.dart';
-import 'package:my_app/core/data/services/send_email_service.dart';
+import 'package:my_app/core/data/repositories/profiles_repository.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:my_app/core/theme/app_layout.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:my_app/core/auth/providers/auth_provider.dart';
 import 'package:my_app/core/theme/theme.dart';
 import 'package:my_app/features/admin/presentation/widgets/admin_shared.dart';
 import 'package:my_app/shared/widgets/app_buttons.dart';
@@ -186,7 +186,10 @@ class _AdminClaimsScreenState extends State<AdminClaimsScreen> {
                       ? (c.claimDetails!.length > 80 ? '${c.claimDetails!.substring(0, 80)}…' : c.claimDetails)
                       : null;
                   final dateStr = _formatDate(c.createdAt);
-                  final subtitle = [?detailsPreview, ?(dateStr.isNotEmpty ? 'Submitted $dateStr' : null)].join(' · ');
+                  final subtitle = [
+                    if (detailsPreview != null) detailsPreview,
+                    if (dateStr.isNotEmpty) 'Submitted $dateStr',
+                  ].join(' · ');
                   final badgeList = [
                     AdminBadgeData(c.status, color: c.status == 'pending' ? AppTheme.specRed : null),
                     if (dateStr.isNotEmpty) AdminBadgeData(dateStr),
@@ -240,7 +243,7 @@ class _AdminClaimsScreenState extends State<AdminClaimsScreen> {
   }
 }
 
-class _ClaimPanelContent extends StatefulWidget {
+class _ClaimPanelContent extends ConsumerStatefulWidget {
   const _ClaimPanelContent({required this.claim, required this.businessName, required this.onStatusUpdated});
 
   final BusinessClaim claim;
@@ -248,10 +251,10 @@ class _ClaimPanelContent extends StatefulWidget {
   final VoidCallback onStatusUpdated;
 
   @override
-  State<_ClaimPanelContent> createState() => _ClaimPanelContentState();
+  ConsumerState<_ClaimPanelContent> createState() => _ClaimPanelContentState();
 }
 
-class _ClaimPanelContentState extends State<_ClaimPanelContent> {
+class _ClaimPanelContentState extends ConsumerState<_ClaimPanelContent> {
   Profile? _claimantProfile;
   bool _loadingClaimant = true;
   bool _updating = false;
@@ -263,7 +266,7 @@ class _ClaimPanelContentState extends State<_ClaimPanelContent> {
   }
 
   Future<void> _loadClaimant() async {
-    final p = await AuthRepository().getProfileForAdmin(widget.claim.userId);
+    final p = await ref.read(profilesRepositoryProvider).getProfile(widget.claim.userId);
     if (mounted) {
       setState(() {
         _claimantProfile = p;
@@ -278,7 +281,7 @@ class _ClaimPanelContentState extends State<_ClaimPanelContent> {
     try {
       final repo = BusinessClaimsRepository();
       await repo.updateStatus(widget.claim.id, status);
-      final uid = Supabase.instance.client.auth.currentUser?.id;
+      final uid = ref.read(authNotifierProvider).valueOrNull?.id;
       try {
         await AuditLogRepository().insert(
           action: status == 'approved' ? 'claim_approved' : 'claim_rejected',
@@ -286,7 +289,9 @@ class _ClaimPanelContentState extends State<_ClaimPanelContent> {
           targetTable: 'business_claims',
           targetId: widget.claim.id,
         );
-      } catch (_) {}
+      } catch (e) {
+        debugPrint('Audit err: $e');
+      }
       if (status == 'approved') {
         try {
           await BusinessManagersRepository().insert(widget.claim.businessId, widget.claim.userId);
@@ -304,19 +309,19 @@ class _ClaimPanelContentState extends State<_ClaimPanelContent> {
         final displayName = _claimantProfile?.displayName ?? to;
         if (status == 'approved') {
           try {
-            await SendEmailService().send(
+            /* await SendEmailService().send(
               to: to,
               template: 'claim_approved',
               variables: {'display_name': displayName, 'email': to, 'business_name': businessName},
-            );
+            ); // TODO: Implement backend email notification */
           } catch (_) {}
         } else if (status == 'rejected') {
           try {
-            await SendEmailService().send(
+            /* await SendEmailService().send(
               to: to,
               template: 'claim_rejected',
               variables: {'display_name': displayName, 'business_name': businessName},
-            );
+            ); // TODO: Implement backend email notification */
           } catch (_) {}
         }
       }
@@ -364,110 +369,46 @@ class _ClaimPanelContentState extends State<_ClaimPanelContent> {
         else
           Text(
             _claimantProfile != null
-                ? (_claimantProfile!.displayName?.isNotEmpty == true
+                ? (_claimantProfile!.displayName?.trim().isNotEmpty == true)
                       ? _claimantProfile!.displayName!
-                      : _claimantProfile!.email ?? 'Unknown')
-                : 'Loading…',
-            style: theme.textTheme.bodyLarge?.copyWith(color: nav, fontWeight: FontWeight.w600),
+                      : (_claimantProfile!.email ?? widget.claim.userId)
+                : 'User Profile Not Found (ID: ${widget.claim.userId})',
+            style: theme.textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w600, color: nav),
           ),
-        if (_claimantProfile?.email != null && _claimantProfile!.email!.isNotEmpty) ...[
-          const SizedBox(height: 2),
-          Text(_claimantProfile!.email!, style: theme.textTheme.bodyMedium?.copyWith(color: sub)),
+        const SizedBox(height: 24),
+        AdminDetailLabel('Business'),
+        Text(widget.businessName, style: theme.textTheme.bodyLarge?.copyWith(color: nav)),
+        AdminDetailLabel('Current Status'),
+        Text(c.status, style: theme.textTheme.bodyLarge?.copyWith(color: nav)),
+        if (c.claimDetails != null && c.claimDetails!.isNotEmpty) ...[
+          AdminDetailLabel('Claim Details'),
+          Text(c.claimDetails!, style: theme.textTheme.bodyLarge?.copyWith(color: nav)),
         ],
-        const SizedBox(height: 16),
-        // Status
-        Row(
-          children: [
-            Text(
-              'Status',
-              style: theme.textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w600, color: sub),
-            ),
-            const SizedBox(width: 8),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-              decoration: BoxDecoration(
-                color: c.status == 'pending'
-                    ? AppTheme.specRed.withValues(alpha: 0.12)
-                    : c.status == 'approved'
-                    ? AppTheme.specGold.withValues(alpha: 0.2)
-                    : nav.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Text(
-                c.status.toUpperCase(),
-                style: theme.textTheme.labelMedium?.copyWith(
-                  fontWeight: FontWeight.w700,
-                  color: c.status == 'pending' ? AppTheme.specRed : nav,
-                ),
-              ),
-            ),
-          ],
-        ),
-        if (c.createdAt != null) ...[
-          const SizedBox(height: 4),
-          Text(
-            'Submitted ${c.createdAt!.month}/${c.createdAt!.day}/${c.createdAt!.year}',
-            style: theme.textTheme.bodySmall?.copyWith(color: sub),
-          ),
-        ],
-        const SizedBox(height: 20),
-        // Proof / document details (uploaded proof from business owner)
-        Text(
-          'Proof submitted',
-          style: theme.textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w600, color: sub),
-        ),
-        const SizedBox(height: 6),
-        if (c.claimDetails != null && c.claimDetails!.isNotEmpty)
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(
-              color: AppTheme.specOffWhite,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: nav.withValues(alpha: 0.15)),
-            ),
-            child: SelectableText(
-              c.claimDetails!,
-              style: theme.textTheme.bodyMedium?.copyWith(color: nav, height: 1.45),
-            ),
-          )
-        else
-          Text('No proof details provided.', style: theme.textTheme.bodyMedium?.copyWith(color: sub)),
         if (c.status == 'pending') ...[
-          const SizedBox(height: 28),
+          const SizedBox(height: 32),
           Row(
             children: [
               Expanded(
                 child: AppSecondaryButton(
                   onPressed: _updating ? null : () => _updateStatus('approved'),
-                  expanded: true,
                   icon: _updating
-                      ? const SizedBox(
-                          width: 18,
-                          height: 18,
-                          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                        )
+                      ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
                       : const Icon(Icons.check_rounded, size: 20),
                   label: const Text('Approve'),
                 ),
               ),
               const SizedBox(width: 12),
               Expanded(
-                child: AppOutlinedButton(
+                child: AppDangerOutlinedButton(
                   onPressed: _updating ? null : () => _updateStatus('rejected'),
-                  expanded: true,
                   icon: const Icon(Icons.close_rounded, size: 20),
                   label: const Text('Reject'),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 12),
-          Text(
-            'Approve will add the user as a business manager.',
-            style: theme.textTheme.bodySmall?.copyWith(color: sub),
-          ),
         ],
+        const SizedBox(height: 16),
       ],
     );
   }

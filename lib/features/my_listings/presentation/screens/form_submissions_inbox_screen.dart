@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:my_app/core/auth/auth_repository.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:my_app/core/auth/providers/auth_provider.dart';
 import 'package:my_app/core/data/contact_form_templates.dart';
 import 'package:my_app/core/data/models/form_submission.dart';
 import 'package:my_app/core/data/models/profile.dart';
@@ -7,7 +8,7 @@ import 'package:my_app/core/data/repositories/business_managers_repository.dart'
 import 'package:my_app/core/data/repositories/business_repository.dart';
 import 'package:my_app/core/data/repositories/conversations_repository.dart';
 import 'package:my_app/core/data/repositories/form_submissions_repository.dart';
-import 'package:my_app/core/supabase/supabase_config.dart';
+import 'package:my_app/core/data/repositories/profiles_repository.dart';
 import 'package:my_app/core/theme/theme.dart';
 import 'package:my_app/shared/widgets/app_buttons.dart';
 import 'package:my_app/features/messaging/presentation/screens/conversation_thread_screen.dart';
@@ -16,21 +17,17 @@ import 'package:my_app/features/messaging/presentation/screens/conversation_thre
 /// Shows which listing each submission is for when user has multiple businesses.
 /// When [singleBusinessId] is set, only submissions for that business are shown (e.g. when embedded in a listing tab).
 /// When [embeddedInTab] is true, only the body is built (no Scaffold/AppBar) for use inside ListingEditScreen.
-class FormSubmissionsInboxScreen extends StatefulWidget {
-  const FormSubmissionsInboxScreen({
-    super.key,
-    this.singleBusinessId,
-    this.embeddedInTab = false,
-  });
+class FormSubmissionsInboxScreen extends ConsumerStatefulWidget {
+  const FormSubmissionsInboxScreen({super.key, this.singleBusinessId, this.embeddedInTab = false});
 
   final String? singleBusinessId;
   final bool embeddedInTab;
 
   @override
-  State<FormSubmissionsInboxScreen> createState() => _FormSubmissionsInboxScreenState();
+  ConsumerState<FormSubmissionsInboxScreen> createState() => _FormSubmissionsInboxScreenState();
 }
 
-class _FormSubmissionsInboxScreenState extends State<FormSubmissionsInboxScreen> {
+class _FormSubmissionsInboxScreenState extends ConsumerState<FormSubmissionsInboxScreen> {
   List<FormSubmission> _submissions = [];
   Map<String, Profile?> _userProfiles = {};
   bool _loading = true;
@@ -43,14 +40,7 @@ class _FormSubmissionsInboxScreenState extends State<FormSubmissionsInboxScreen>
   }
 
   Future<void> _load() async {
-    if (!SupabaseConfig.isConfigured) {
-      setState(() {
-        _loading = false;
-        _error = 'Not configured';
-      });
-      return;
-    }
-    final uid = AuthRepository().currentUserId;
+    final uid = ref.read(authNotifierProvider).valueOrNull?.id;
     if (uid == null) {
       setState(() {
         _loading = false;
@@ -80,14 +70,11 @@ class _FormSubmissionsInboxScreenState extends State<FormSubmissionsInboxScreen>
         final b = await BusinessRepository().getByIdForManager(id);
         if (b != null) namesById[id] = b.name;
       }
-      final list = await FormSubmissionsRepository().listForBusinesses(
-        businessIds,
-        businessNamesById: namesById,
-      );
+      final list = await FormSubmissionsRepository().listForBusinesses(businessIds, businessNamesById: namesById);
       final userIds = list.map((s) => s.userId).toSet().toList();
       final profiles = <String, Profile?>{};
       for (final uid in userIds) {
-        profiles[uid] = await AuthRepository().getProfileForAdmin(uid);
+        profiles[uid] = await ref.read(profilesRepositoryProvider).getProfile(uid);
       }
       if (mounted) {
         setState(() {
@@ -114,7 +101,9 @@ class _FormSubmissionsInboxScreenState extends State<FormSubmissionsInboxScreen>
         subject: ContactFormTemplates.getByKey(s.template)?.name,
       );
       if (!context.mounted) return;
-      final userDisplayName = await AuthRepository().getProfileForAdmin(s.userId)
+      final userDisplayName = await ref
+          .read(profilesRepositoryProvider)
+          .getProfile(s.userId)
           .then((p) => p?.displayName ?? p?.email);
       if (!context.mounted) return;
       Navigator.of(context).push(
@@ -129,9 +118,7 @@ class _FormSubmissionsInboxScreenState extends State<FormSubmissionsInboxScreen>
       );
     } catch (e) {
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Could not open conversation: $e')),
-        );
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Could not open conversation: $e')));
       }
     }
   }
@@ -142,19 +129,23 @@ class _FormSubmissionsInboxScreenState extends State<FormSubmissionsInboxScreen>
       if (mounted) {
         setState(() {
           _submissions = _submissions
-              .map((e) => e.id == s.id ? FormSubmission(
-                    id: e.id,
-                    businessId: e.businessId,
-                    userId: e.userId,
-                    template: e.template,
-                    data: e.data,
-                    isRead: true,
-                    createdAt: e.createdAt,
-                    businessName: e.businessName,
-                    adminNote: e.adminNote,
-                    repliedAt: e.repliedAt,
-                    repliedBy: e.repliedBy,
-                  ) : e)
+              .map(
+                (e) => e.id == s.id
+                    ? FormSubmission(
+                        id: e.id,
+                        businessId: e.businessId,
+                        userId: e.userId,
+                        template: e.template,
+                        data: e.data,
+                        isRead: true,
+                        createdAt: e.createdAt,
+                        businessName: e.businessName,
+                        adminNote: e.adminNote,
+                        repliedAt: e.repliedAt,
+                        repliedBy: e.repliedBy,
+                      )
+                    : e,
+              )
               .toList();
         });
       }
@@ -175,10 +166,7 @@ class _FormSubmissionsInboxScreenState extends State<FormSubmissionsInboxScreen>
             children: [
               Text(_error!, textAlign: TextAlign.center, style: theme.textTheme.bodyMedium),
               const SizedBox(height: 16),
-              AppSecondaryButton(
-                onPressed: _load,
-                child: const Text('Retry'),
-              ),
+              AppSecondaryButton(onPressed: _load, child: const Text('Retry')),
             ],
           ),
         ),
@@ -191,10 +179,7 @@ class _FormSubmissionsInboxScreenState extends State<FormSubmissionsInboxScreen>
           children: [
             Icon(Icons.inbox_outlined, size: 64, color: AppTheme.specNavy.withValues(alpha: 0.4)),
             const SizedBox(height: 16),
-            Text(
-              'No messages yet',
-              style: theme.textTheme.titleMedium?.copyWith(color: AppTheme.specNavy),
-            ),
+            Text('No messages yet', style: theme.textTheme.titleMedium?.copyWith(color: AppTheme.specNavy)),
             const SizedBox(height: 8),
             Text(
               widget.singleBusinessId != null
@@ -215,12 +200,12 @@ class _FormSubmissionsInboxScreenState extends State<FormSubmissionsInboxScreen>
         itemBuilder: (context, index) {
           final s = _submissions[index];
           final profile = _userProfiles[s.userId];
-          final displayName = profile?.displayName?.trim().isNotEmpty == true
-              ? profile!.displayName
-              : profile?.email;
+          final displayName = (profile != null && profile.displayName != null && profile.displayName!.trim().isNotEmpty)
+              ? profile.displayName!
+              : (profile?.email ?? 'Customer');
           return _SubmissionTile(
             submission: s,
-            userDisplayName: displayName ?? 'Customer',
+            userDisplayName: displayName,
             userAvatarUrl: profile?.avatarUrl,
             onTap: () => _markReadAndExpand(s),
             onReply: () => _openConversation(context, s),
@@ -238,17 +223,15 @@ class _FormSubmissionsInboxScreenState extends State<FormSubmissionsInboxScreen>
     return Scaffold(
       backgroundColor: AppTheme.specOffWhite,
       appBar: AppBar(
-        title: const Text('Messages', style: TextStyle(color: AppTheme.specNavy, fontWeight: FontWeight.w700)),
+        title: const Text(
+          'Messages',
+          style: TextStyle(color: AppTheme.specNavy, fontWeight: FontWeight.w700),
+        ),
         backgroundColor: AppTheme.specWhite,
         foregroundColor: AppTheme.specNavy,
         surfaceTintColor: Colors.transparent,
         elevation: 0,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh_rounded),
-            onPressed: _loading ? null : _load,
-          ),
-        ],
+        actions: [IconButton(icon: const Icon(Icons.refresh_rounded), onPressed: _loading ? null : _load)],
       ),
       body: _buildBody(context),
     );
@@ -344,32 +327,23 @@ class _SubmissionTileState extends State<_SubmissionTile> {
                       Flexible(
                         child: Text(
                           s.businessName!,
-                          style: theme.textTheme.labelSmall?.copyWith(
-                            color: AppTheme.specGold,
-                          ),
+                          style: theme.textTheme.labelSmall?.copyWith(color: AppTheme.specGold),
                           overflow: TextOverflow.ellipsis,
                         ),
                       ),
                     const SizedBox(width: 8),
                     Text(
                       _formatDate(s.createdAt),
-                      style: theme.textTheme.labelSmall?.copyWith(
-                        color: AppTheme.specNavy.withValues(alpha: 0.6),
-                      ),
+                      style: theme.textTheme.labelSmall?.copyWith(color: AppTheme.specNavy.withValues(alpha: 0.6)),
                     ),
-                    Icon(
-                      _expanded ? Icons.expand_less_rounded : Icons.expand_more_rounded,
-                      color: AppTheme.specNavy,
-                    ),
+                    Icon(_expanded ? Icons.expand_less_rounded : Icons.expand_more_rounded, color: AppTheme.specNavy),
                   ],
                 ),
                 if (summary.isNotEmpty) ...[
                   const SizedBox(height: 6),
                   Text(
                     summary,
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: AppTheme.specNavy.withValues(alpha: 0.85),
-                    ),
+                    style: theme.textTheme.bodySmall?.copyWith(color: AppTheme.specNavy.withValues(alpha: 0.85)),
                     maxLines: _expanded ? null : 2,
                     overflow: _expanded ? null : TextOverflow.ellipsis,
                   ),
@@ -387,29 +361,31 @@ class _SubmissionTileState extends State<_SubmissionTile> {
                     ),
                   ),
                   const SizedBox(height: 12),
-                  ...s.data.entries.map((e) => Padding(
-                        padding: const EdgeInsets.only(bottom: 6),
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            SizedBox(
-                              width: 120,
-                              child: Text(
-                                _labelForKey(e.key),
-                                style: theme.textTheme.labelMedium?.copyWith(
-                                  color: AppTheme.specNavy.withValues(alpha: 0.8),
-                                ),
+                  ...s.data.entries.map(
+                    (e) => Padding(
+                      padding: const EdgeInsets.only(bottom: 6),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          SizedBox(
+                            width: 120,
+                            child: Text(
+                              _labelForKey(e.key),
+                              style: theme.textTheme.labelMedium?.copyWith(
+                                color: AppTheme.specNavy.withValues(alpha: 0.8),
                               ),
                             ),
-                            Expanded(
-                              child: Text(
-                                e.value?.toString() ?? '—',
-                                style: theme.textTheme.bodyMedium?.copyWith(color: AppTheme.specNavy),
-                              ),
+                          ),
+                          Expanded(
+                            child: Text(
+                              e.value?.toString() ?? '—',
+                              style: theme.textTheme.bodyMedium?.copyWith(color: AppTheme.specNavy),
                             ),
-                          ],
-                        ),
-                      )),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
                   if (s.adminNote != null && s.adminNote!.isNotEmpty) ...[
                     const SizedBox(height: 12),
                     const Divider(height: 1),
@@ -430,10 +406,7 @@ class _SubmissionTileState extends State<_SubmissionTile> {
                         borderRadius: BorderRadius.circular(8),
                         border: Border.all(color: AppTheme.specGold.withValues(alpha: 0.3)),
                       ),
-                      child: Text(
-                        s.adminNote!,
-                        style: theme.textTheme.bodyMedium?.copyWith(color: AppTheme.specNavy),
-                      ),
+                      child: Text(s.adminNote!, style: theme.textTheme.bodyMedium?.copyWith(color: AppTheme.specNavy)),
                     ),
                   ],
                 ],
@@ -482,4 +455,3 @@ class _SubmissionTileState extends State<_SubmissionTile> {
     return '${d.month}/${d.day}/${d.year}';
   }
 }
-

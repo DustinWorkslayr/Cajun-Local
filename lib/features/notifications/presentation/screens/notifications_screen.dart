@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:my_app/core/data/app_data_scope.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:my_app/core/auth/providers/auth_provider.dart';
 import 'package:my_app/core/data/models/app_notification.dart';
 import 'package:my_app/core/data/repositories/notifications_repository.dart';
 import 'package:my_app/core/theme/app_layout.dart';
@@ -9,16 +10,16 @@ import 'package:url_launcher/url_launcher.dart';
 /// Per-user notifications list: filter by type, mark read, delete, open action links.
 /// When [onHandleActionUrl] is set and returns true for an action_url, in-app navigation
 /// (e.g. app://news/id, app://listings/id) is handled by the host; otherwise the URL is launched externally.
-class NotificationsScreen extends StatefulWidget {
+class NotificationsScreen extends ConsumerStatefulWidget {
   const NotificationsScreen({super.key, this.onHandleActionUrl});
 
   final bool Function(String actionUrl)? onHandleActionUrl;
 
   @override
-  State<NotificationsScreen> createState() => _NotificationsScreenState();
+  ConsumerState<NotificationsScreen> createState() => _NotificationsScreenState();
 }
 
-class _NotificationsScreenState extends State<NotificationsScreen> {
+class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
   List<AppNotification> _list = [];
   bool _loading = true;
   bool _loadingMore = false;
@@ -27,8 +28,26 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   String? _typeFilter; // null = All, or deal, reminder, listing, system, news, event, loyalty
 
   static const int _pageSize = 50;
-  static const List<String?> _filterOptions = [null, 'deal', 'event', 'loyalty', 'news', 'reminder', 'listing', 'system'];
-  static const List<String> _filterLabels = ['All', 'Deals', 'Events', 'Loyalty', 'News', 'Reminders', 'Listings', 'System'];
+  static const List<String?> _filterOptions = [
+    null,
+    'deal',
+    'event',
+    'loyalty',
+    'news',
+    'reminder',
+    'listing',
+    'system',
+  ];
+  static const List<String> _filterLabels = [
+    'All',
+    'Deals',
+    'Events',
+    'Loyalty',
+    'News',
+    'Reminders',
+    'Listings',
+    'System',
+  ];
 
   @override
   void didChangeDependencies() {
@@ -37,17 +56,12 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   }
 
   Future<void> _load() async {
-    final uid = AppDataScope.of(context).authRepository.currentUserId;
+    final uid = ref.read(authNotifierProvider).valueOrNull?.id;
     if (uid == null) {
       if (mounted) setState(() => _loading = false);
       return;
     }
-    final list = await NotificationsRepository().listForUser(
-      uid,
-      typeFilter: _typeFilter,
-      limit: _pageSize,
-      offset: 0,
-    );
+    final list = await NotificationsRepository().listForUser(uid, typeFilter: _typeFilter, limit: _pageSize, offset: 0);
     if (mounted) {
       setState(() {
         _list = list;
@@ -59,7 +73,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   }
 
   Future<void> _loadMore() async {
-    final uid = AppDataScope.of(context).authRepository.currentUserId;
+    final uid = ref.read(authNotifierProvider).valueOrNull?.id;
     if (uid == null || _loadingMore || !_hasMore) return;
     setState(() => _loadingMore = true);
     final list = await NotificationsRepository().listForUser(
@@ -89,7 +103,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   }
 
   Future<void> _markAllAsRead() async {
-    final uid = AppDataScope.of(context).authRepository.currentUserId;
+    final uid = ref.read(authNotifierProvider).valueOrNull?.id;
     if (uid == null) return;
     await NotificationsRepository().markAllAsRead(uid);
     if (mounted) {
@@ -156,7 +170,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final padding = AppLayout.horizontalPadding(context);
-    final uid = AppDataScope.of(context).authRepository.currentUserId;
+    final uid = ref.watch(authNotifierProvider).valueOrNull?.id;
     final hasUnread = _list.any((e) => !e.isRead);
 
     return Scaffold(
@@ -171,10 +185,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         ),
         title: Text(
           'Notifications',
-          style: theme.textTheme.titleLarge?.copyWith(
-            fontWeight: FontWeight.w700,
-            color: AppTheme.specNavy,
-          ),
+          style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700, color: AppTheme.specNavy),
         ),
         actions: [
           if (!_loading && _list.isNotEmpty && hasUnread && uid != null)
@@ -220,63 +231,69 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
             child: _loading
                 ? const Center(child: CircularProgressIndicator())
                 : _list.isEmpty
-                    ? Center(
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(Icons.notifications_none_rounded, size: 64, color: AppTheme.specNavy.withValues(alpha: 0.4)),
-                            const SizedBox(height: 16),
-                            Text(
-                              _typeFilter == null ? 'No notifications' : 'No ${_filterLabels[_filterOptions.indexOf(_typeFilter)].toLowerCase()}',
-                              style: theme.textTheme.titleMedium?.copyWith(color: AppTheme.specNavy),
-                            ),
-                            const SizedBox(height: 8),
-                            Text(
-                              _typeFilter == null
-                                  ? 'We\'ll notify you here when something happens. Use Profile → Preferences to choose which types you get.'
-                                  : 'Try "All" to see every notification.',
-                              style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-                              textAlign: TextAlign.center,
-                            ),
-                          ],
+                ? Center(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.notifications_none_rounded,
+                          size: 64,
+                          color: AppTheme.specNavy.withValues(alpha: 0.4),
                         ),
-                      )
-                    : RefreshIndicator(
-                        onRefresh: _load,
-                        child: ListView.builder(
-                          padding: EdgeInsets.fromLTRB(padding.left, 8, padding.right, 24),
-                          itemCount: _list.length + (_hasMore ? 1 : 0),
-                          itemBuilder: (context, index) {
-                            if (index >= _list.length) {
-                              return Padding(
-                                padding: const EdgeInsets.symmetric(vertical: 16),
-                                child: Center(
-                                  child: _loadingMore
-                                      ? const SizedBox(
-                                          width: 24,
-                                          height: 24,
-                                          child: CircularProgressIndicator(strokeWidth: 2),
-                                        )
-                                      : TextButton.icon(
-                                          onPressed: _loadMore,
-                                          icon: const Icon(Icons.add_circle_outline_rounded, size: 20),
-                                          label: const Text('Load more'),
-                                        ),
-                                ),
-                              );
-                            }
-                            final n = _list[index];
-                            return _NotificationTile(
-                              notification: n,
-                              onTap: () => _markAsRead(n),
-                              onAction: n.actionUrl != null ? () => _onAction(n) : null,
-                              onDelete: () => _delete(n),
-                              timeAgo: _timeAgo(n.createdAt),
-                              icon: _iconForType(n.type),
-                            );
-                          },
+                        const SizedBox(height: 16),
+                        Text(
+                          _typeFilter == null
+                              ? 'No notifications'
+                              : 'No ${_filterLabels[_filterOptions.indexOf(_typeFilter)].toLowerCase()}',
+                          style: theme.textTheme.titleMedium?.copyWith(color: AppTheme.specNavy),
                         ),
-                      ),
+                        const SizedBox(height: 8),
+                        Text(
+                          _typeFilter == null
+                              ? 'We\'ll notify you here when something happens. Use Profile → Preferences to choose which types you get.'
+                              : 'Try "All" to see every notification.',
+                          style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                          textAlign: TextAlign.center,
+                        ),
+                      ],
+                    ),
+                  )
+                : RefreshIndicator(
+                    onRefresh: _load,
+                    child: ListView.builder(
+                      padding: EdgeInsets.fromLTRB(padding.left, 8, padding.right, 24),
+                      itemCount: _list.length + (_hasMore ? 1 : 0),
+                      itemBuilder: (context, index) {
+                        if (index >= _list.length) {
+                          return Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                            child: Center(
+                              child: _loadingMore
+                                  ? const SizedBox(
+                                      width: 24,
+                                      height: 24,
+                                      child: CircularProgressIndicator(strokeWidth: 2),
+                                    )
+                                  : TextButton.icon(
+                                      onPressed: _loadMore,
+                                      icon: const Icon(Icons.add_circle_outline_rounded, size: 20),
+                                      label: const Text('Load more'),
+                                    ),
+                            ),
+                          );
+                        }
+                        final n = _list[index];
+                        return _NotificationTile(
+                          notification: n,
+                          onTap: () => _markAsRead(n),
+                          onAction: n.actionUrl != null ? () => _onAction(n) : null,
+                          onDelete: () => _delete(n),
+                          timeAgo: _timeAgo(n.createdAt),
+                          icon: _iconForType(n.type),
+                        );
+                      },
+                    ),
+                  ),
           ),
         ],
       ),
@@ -329,9 +346,7 @@ class _NotificationTile extends StatelessWidget {
             padding: const EdgeInsets.all(14),
             margin: const EdgeInsets.only(bottom: 8),
             decoration: BoxDecoration(
-              color: n.isRead
-                  ? AppTheme.specNavy.withValues(alpha: 0.04)
-                  : AppTheme.specNavy.withValues(alpha: 0.08),
+              color: n.isRead ? AppTheme.specNavy.withValues(alpha: 0.04) : AppTheme.specNavy.withValues(alpha: 0.08),
               borderRadius: BorderRadius.circular(14),
               border: Border.all(color: AppTheme.specNavy.withValues(alpha: 0.1)),
             ),
@@ -359,9 +374,7 @@ class _NotificationTile extends StatelessWidget {
                         const SizedBox(height: 4),
                         Text(
                           n.body!,
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: AppTheme.specNavy.withValues(alpha: 0.75),
-                          ),
+                          style: theme.textTheme.bodySmall?.copyWith(color: AppTheme.specNavy.withValues(alpha: 0.75)),
                           maxLines: 3,
                           overflow: TextOverflow.ellipsis,
                         ),
@@ -398,9 +411,7 @@ class _NotificationTile extends StatelessWidget {
                         const SizedBox(height: 4),
                         Text(
                           timeAgo,
-                          style: theme.textTheme.labelSmall?.copyWith(
-                            color: AppTheme.specNavy.withValues(alpha: 0.5),
-                          ),
+                          style: theme.textTheme.labelSmall?.copyWith(color: AppTheme.specNavy.withValues(alpha: 0.5)),
                         ),
                       ],
                       if (onAction != null) ...[

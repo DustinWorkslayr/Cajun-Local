@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:my_app/core/data/app_data_scope.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:my_app/core/auth/providers/auth_provider.dart';
 import 'package:my_app/shared/widgets/app_buttons.dart';
 import 'package:my_app/core/data/models/business.dart';
 import 'package:my_app/core/data/models/profile.dart';
@@ -7,27 +8,23 @@ import 'package:my_app/core/data/models/review.dart';
 import 'package:my_app/core/data/repositories/business_repository.dart';
 import 'package:my_app/core/data/repositories/audit_log_repository.dart';
 import 'package:my_app/core/data/repositories/reviews_repository.dart';
-import 'package:my_app/core/data/services/send_email_service.dart';
 import 'package:my_app/core/theme/app_layout.dart';
 import 'package:my_app/core/theme/theme.dart';
 import 'package:my_app/features/admin/presentation/widgets/admin_shared.dart';
+import 'package:my_app/core/data/repositories/profiles_repository.dart';
 
 /// Admin reviews: search, pagination, user-friendly cards (rating + preview, no UUIDs). Panel: approve/reject.
-class AdminReviewsScreen extends StatefulWidget {
-  const AdminReviewsScreen({
-    super.key,
-    this.status,
-    this.embeddedInShell = false,
-  });
+class AdminReviewsScreen extends ConsumerStatefulWidget {
+  const AdminReviewsScreen({super.key, this.status, this.embeddedInShell = false});
 
   final String? status;
   final bool embeddedInShell;
 
   @override
-  State<AdminReviewsScreen> createState() => _AdminReviewsScreenState();
+  ConsumerState<AdminReviewsScreen> createState() => _AdminReviewsScreenState();
 }
 
-class _AdminReviewsScreenState extends State<AdminReviewsScreen> {
+class _AdminReviewsScreenState extends ConsumerState<AdminReviewsScreen> {
   final _searchController = TextEditingController();
   String _query = '';
   int _pageIndex = 0;
@@ -63,15 +60,17 @@ class _AdminReviewsScreenState extends State<AdminReviewsScreen> {
     try {
       final repo = ReviewsRepository();
       final businessRepo = BusinessRepository();
-      final authRepo = AppDataScope.of(context).authRepository;
-      final results = await Future.wait([
-        repo.listForAdmin(status: widget.status),
-        businessRepo.listForAdmin(),
-        authRepo.listProfilesForAdmin(),
-      ]);
+      final authRepo = ref.read(profilesRepositoryProvider);
+      final reviewsFuture = repo.listForAdmin(status: widget.status);
+      final businessesFuture = businessRepo.listForAdmin();
+      final profilesFuture = authRepo.listProfilesForAdmin();
+
+      final results = await Future.wait<dynamic>([reviewsFuture, businessesFuture, profilesFuture]);
+
       final list = results[0] as List<Review>;
       final businesses = results[1] as List<Business>;
       final profiles = results[2] as List<Profile>;
+
       final nameById = {for (final b in businesses) b.id: b.name};
       final profileByUserId = {for (final p in profiles) p.userId: p};
       if (mounted) {
@@ -97,27 +96,17 @@ class _AdminReviewsScreenState extends State<AdminReviewsScreen> {
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Delete review?'),
-        content: const Text(
-          'This review will be permanently removed. This action cannot be undone.',
-        ),
+        content: const Text('This review will be permanently removed. This action cannot be undone.'),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('Cancel'),
-          ),
-          AppDangerButton(
-            onPressed: () => Navigator.of(ctx).pop(true),
-            child: const Text('Delete'),
-          ),
+          TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Cancel')),
+          AppDangerButton(onPressed: () => Navigator.of(ctx).pop(true), child: const Text('Delete')),
         ],
       ),
     );
     if (confirmed != true || !mounted) return;
     await ReviewsRepository().deleteForAdmin(r.id);
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Review deleted')),
-      );
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Review deleted')));
       _load();
     }
   }
@@ -139,12 +128,7 @@ class _AdminReviewsScreenState extends State<AdminReviewsScreen> {
     AdminDetailPanel.show(
       context: context,
       title: 'Review',
-      child: _ReviewPanelContent(
-        review: r,
-        profile: profile,
-        onStatusUpdated: _load,
-        onDeleted: _load,
-      ),
+      child: _ReviewPanelContent(review: r, profile: profile, onStatusUpdated: _load, onDeleted: _load),
     );
   }
 
@@ -178,9 +162,7 @@ class _AdminReviewsScreenState extends State<AdminReviewsScreen> {
                   const SizedBox(height: 4),
                   Text(
                     total == 0 ? 'No reviews' : '$total review${total == 1 ? '' : 's'}',
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      color: AppTheme.specNavy.withValues(alpha: 0.7),
-                    ),
+                    style: theme.textTheme.bodyMedium?.copyWith(color: AppTheme.specNavy.withValues(alpha: 0.7)),
                   ),
                   const SizedBox(height: 16),
                   AdminSearchBar(
@@ -192,9 +174,7 @@ class _AdminReviewsScreenState extends State<AdminReviewsScreen> {
                     const SizedBox(height: 8),
                     Text(
                       'Filter: ${widget.status}',
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: theme.colorScheme.onSurfaceVariant,
-                      ),
+                      style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
                     ),
                   ],
                 ],
@@ -202,7 +182,9 @@ class _AdminReviewsScreenState extends State<AdminReviewsScreen> {
             ),
           ),
           if (_loading)
-            const Expanded(child: Center(child: CircularProgressIndicator(color: AppTheme.specNavy)))
+            const Expanded(
+              child: Center(child: CircularProgressIndicator(color: AppTheme.specNavy)),
+            )
           else if (_error != null)
             Expanded(
               child: Center(
@@ -235,7 +217,11 @@ class _AdminReviewsScreenState extends State<AdminReviewsScreen> {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(Icons.star_outline_rounded, size: 64, color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.5)),
+                    Icon(
+                      Icons.star_outline_rounded,
+                      size: 64,
+                      color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.5),
+                    ),
                     const SizedBox(height: 16),
                     Text(
                       _query.isEmpty ? 'No reviews yet.' : 'No matches for "$_query".',
@@ -254,9 +240,10 @@ class _AdminReviewsScreenState extends State<AdminReviewsScreen> {
                 itemBuilder: (context, index) {
                   final r = pageItems[index];
                   final profile = _profileByUserId[r.userId];
-                  final displayName = profile?.displayName?.trim().isNotEmpty == true
-                      ? profile!.displayName!
-                      : 'Unknown user';
+                  final displayName =
+                      (profile != null && profile.displayName != null && profile.displayName!.trim().isNotEmpty)
+                      ? profile.displayName!
+                      : (profile?.email ?? 'Unknown user');
                   final avatarUrl = profile?.avatarUrl;
                   final businessName = _businessNameById[r.businessId] ?? r.businessId;
                   final preview = r.body != null && r.body!.isNotEmpty
@@ -326,11 +313,7 @@ class _StarRating extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: List.generate(5, (i) {
         final filled = i < rating;
-        return Icon(
-          filled ? Icons.star_rounded : Icons.star_border_rounded,
-          size: size,
-          color: AppTheme.specGold,
-        );
+        return Icon(filled ? Icons.star_rounded : Icons.star_border_rounded, size: size, color: AppTheme.specGold);
       }),
     );
   }
@@ -373,15 +356,9 @@ class _ReviewListCard extends StatelessWidget {
           decoration: BoxDecoration(
             color: colorScheme.surface,
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(
-              color: colorScheme.outlineVariant.withValues(alpha: 0.4),
-            ),
+            border: Border.all(color: colorScheme.outlineVariant.withValues(alpha: 0.4)),
             boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.04),
-                blurRadius: 8,
-                offset: const Offset(0, 2),
-              ),
+              BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 8, offset: const Offset(0, 2)),
             ],
           ),
           child: Row(
@@ -390,9 +367,7 @@ class _ReviewListCard extends StatelessWidget {
               CircleAvatar(
                 radius: 24,
                 backgroundColor: AppTheme.specNavy.withValues(alpha: 0.08),
-                backgroundImage: avatarUrl != null && avatarUrl!.isNotEmpty
-                    ? NetworkImage(avatarUrl!)
-                    : null,
+                backgroundImage: avatarUrl != null && avatarUrl!.isNotEmpty ? NetworkImage(avatarUrl!) : null,
                 child: avatarUrl == null || avatarUrl!.isEmpty
                     ? Text(
                         displayName.isNotEmpty ? displayName[0].toUpperCase() : '?',
@@ -433,10 +408,7 @@ class _ReviewListCard extends StatelessWidget {
                     const SizedBox(height: 4),
                     Text(
                       preview,
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: colorScheme.onSurfaceVariant,
-                        height: 1.35,
-                      ),
+                      style: theme.textTheme.bodySmall?.copyWith(color: colorScheme.onSurfaceVariant, height: 1.35),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -445,12 +417,7 @@ class _ReviewListCard extends StatelessWidget {
                       Wrap(
                         spacing: 6,
                         runSpacing: 6,
-                        children: badges
-                            .map((b) => AdminBadge(
-                                  label: b.label,
-                                  color: b.color,
-                                ))
-                            .toList(),
+                        children: badges.map((b) => AdminBadge(label: b.label, color: b.color)).toList(),
                       ),
                     ],
                   ],
@@ -470,7 +437,7 @@ class _ReviewListCard extends StatelessWidget {
   }
 }
 
-class _ReviewPanelContent extends StatefulWidget {
+class _ReviewPanelContent extends ConsumerStatefulWidget {
   const _ReviewPanelContent({
     required this.review,
     required this.profile,
@@ -484,10 +451,10 @@ class _ReviewPanelContent extends StatefulWidget {
   final VoidCallback onDeleted;
 
   @override
-  State<_ReviewPanelContent> createState() => _ReviewPanelContentState();
+  ConsumerState<_ReviewPanelContent> createState() => _ReviewPanelContentState();
 }
 
-class _ReviewPanelContentState extends State<_ReviewPanelContent> {
+class _ReviewPanelContentState extends ConsumerState<_ReviewPanelContent> {
   String? _businessName;
   bool _loadingName = true;
   bool _updating = false;
@@ -511,7 +478,7 @@ class _ReviewPanelContentState extends State<_ReviewPanelContent> {
   Future<void> _updateStatus(String status) async {
     setState(() => _updating = true);
     final repo = ReviewsRepository();
-    final uid = AppDataScope.of(context).authRepository.currentUserId;
+    final uid = ref.read(authNotifierProvider).valueOrNull?.id;
     await repo.updateStatus(widget.review.id, status, approvedBy: uid);
     AuditLogRepository().insert(
       action: status == 'approved' ? 'review_approved' : 'review_rejected',
@@ -523,21 +490,17 @@ class _ReviewPanelContentState extends State<_ReviewPanelContent> {
       final to = widget.profile?.email?.trim();
       if (to != null && to.isNotEmpty) {
         final businessName = _businessName ?? widget.review.businessId;
-        await SendEmailService().send(
+        /* await SendEmailService().send(
           to: to,
           template: 'review_approved',
-          variables: {
-            'display_name': widget.profile?.displayName ?? to,
-            'email': to,
-            'business_name': businessName,
-          },
-        );
+          variables: {'display_name': widget.profile?.displayName ?? to, 'email': to, 'business_name': businessName},
+        ); // TODO: Implement backend email notification */
       }
     }
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Review ${status == 'approved' ? 'approved' : 'rejected'}')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Review ${status == 'approved' ? 'approved' : 'rejected'}')));
       widget.onStatusUpdated();
       setState(() => _updating = false);
       Navigator.of(context).pop();
@@ -549,18 +512,10 @@ class _ReviewPanelContentState extends State<_ReviewPanelContent> {
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Delete review?'),
-        content: const Text(
-          'This review will be permanently removed. This action cannot be undone.',
-        ),
+        content: const Text('This review will be permanently removed. This action cannot be undone.'),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('Cancel'),
-          ),
-          AppDangerButton(
-            onPressed: () => Navigator.of(ctx).pop(true),
-            child: const Text('Delete'),
-          ),
+          TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Cancel')),
+          AppDangerButton(onPressed: () => Navigator.of(ctx).pop(true), child: const Text('Delete')),
         ],
       ),
     );
@@ -568,9 +523,7 @@ class _ReviewPanelContentState extends State<_ReviewPanelContent> {
     setState(() => _updating = true);
     await ReviewsRepository().deleteForAdmin(widget.review.id);
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Review deleted')),
-      );
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Review deleted')));
       Navigator.of(context).pop();
       widget.onDeleted();
       setState(() => _updating = false);
@@ -582,9 +535,9 @@ class _ReviewPanelContentState extends State<_ReviewPanelContent> {
     final theme = Theme.of(context);
     final r = widget.review;
     final profile = widget.profile;
-    final displayName = profile?.displayName?.trim().isNotEmpty == true
-        ? profile!.displayName!
-        : 'Unknown user';
+    final displayName = (profile?.displayName != null && profile!.displayName!.trim().isNotEmpty)
+        ? profile.displayName!
+        : (profile?.email ?? 'Unknown user');
     final avatarUrl = profile?.avatarUrl;
 
     return SingleChildScrollView(
@@ -597,9 +550,7 @@ class _ReviewPanelContentState extends State<_ReviewPanelContent> {
               CircleAvatar(
                 radius: 28,
                 backgroundColor: AppTheme.specNavy.withValues(alpha: 0.08),
-                backgroundImage: avatarUrl != null && avatarUrl.isNotEmpty
-                    ? NetworkImage(avatarUrl)
-                    : null,
+                backgroundImage: avatarUrl != null && avatarUrl.isNotEmpty ? NetworkImage(avatarUrl) : null,
                 child: avatarUrl == null || avatarUrl.isEmpty
                     ? Text(
                         displayName.isNotEmpty ? displayName[0].toUpperCase() : '?',
@@ -648,7 +599,9 @@ class _ReviewPanelContentState extends State<_ReviewPanelContent> {
                 Expanded(
                   child: AppSecondaryButton(
                     onPressed: _updating ? null : () => _updateStatus('approved'),
-                    icon: _updating ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2)) : const Icon(Icons.check_rounded, size: 20),
+                    icon: _updating
+                        ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
+                        : const Icon(Icons.check_rounded, size: 20),
                     label: const Text('Approve'),
                   ),
                 ),

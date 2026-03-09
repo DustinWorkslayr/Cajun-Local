@@ -25,15 +25,18 @@ class Business {
     this.createdAt,
     this.updatedAt,
     this.isClaimable,
+    this.createdBy,
   });
 
   final String id;
   final String name;
   final String status;
   final String categoryId;
+
   /// URL-safe slug (auto-generated from name; duplicates get -1, -2). Unique.
   final String? slug;
   final String? city;
+
   /// Parish id (e.g. 'lafayette') for directory filtering. Single primary parish.
   final String? parish;
   final String? state;
@@ -44,16 +47,21 @@ class Business {
   final String? phone;
   final String? website;
   final String? tagline;
+
   /// URL of business logo (stored in business-images bucket). DB column: logo_url.
   final String? logoUrl;
+
   /// URL of listing banner/cover image (hero). DB column: banner_url.
   final String? bannerUrl;
+
   /// One of: general_inquiry, appointment_request, quote_request, event_booking. Null = no form.
   final String? contactFormTemplate;
   final DateTime? createdAt;
   final DateTime? updatedAt;
+
   /// True if no manager has claimed this business; false once claimed. Null if backend does not expose (no badge).
   final bool? isClaimable;
+  final String? createdBy;
 
   factory Business.fromJson(Map<String, dynamic> json) {
     return Business(
@@ -75,13 +83,10 @@ class Business {
       logoUrl: json['logo_url'] as String? ?? json['cover_image_url'] as String?,
       bannerUrl: json['banner_url'] as String? ?? json['cover_image_url'] as String?,
       contactFormTemplate: json['contact_form_template'] as String?,
-      createdAt: json['created_at'] != null
-          ? DateTime.tryParse(json['created_at'] as String)
-          : null,
-      updatedAt: json['updated_at'] != null
-          ? DateTime.tryParse(json['updated_at'] as String)
-          : null,
+      createdAt: json['created_at'] != null ? DateTime.tryParse(json['created_at'] as String) : null,
+      updatedAt: json['updated_at'] != null ? DateTime.tryParse(json['updated_at'] as String) : null,
       isClaimable: json['is_claimable'] as bool?,
+      createdBy: json['created_by'] as String?,
     );
   }
 }

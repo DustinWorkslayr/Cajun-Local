@@ -1,23 +1,22 @@
 import 'package:flutter/material.dart';
-import 'package:my_app/core/auth/auth_repository.dart';
-import 'package:my_app/core/data/app_data_scope.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:my_app/core/auth/providers/auth_provider.dart';
 import 'package:my_app/core/data/models/business_image.dart';
 import 'package:my_app/core/data/repositories/audit_log_repository.dart';
 import 'package:my_app/core/data/repositories/business_images_repository.dart';
 import 'package:my_app/core/data/repositories/business_managers_repository.dart';
 import 'package:my_app/core/data/repositories/business_repository.dart';
-import 'package:my_app/core/data/services/send_email_service.dart';
-
-class AdminImageDetailScreen extends StatefulWidget {
+import 'package:my_app/core/data/repositories/profiles_repository.dart';
+class AdminImageDetailScreen extends ConsumerStatefulWidget {
   const AdminImageDetailScreen({super.key, required this.imageId});
 
   final String imageId;
 
   @override
-  State<AdminImageDetailScreen> createState() => _AdminImageDetailScreenState();
+  ConsumerState<AdminImageDetailScreen> createState() => _AdminImageDetailScreenState();
 }
 
-class _AdminImageDetailScreenState extends State<AdminImageDetailScreen> {
+class _AdminImageDetailScreenState extends ConsumerState<AdminImageDetailScreen> {
   BusinessImage? _image;
   String? _businessName;
   bool _loading = true;
@@ -53,7 +52,7 @@ class _AdminImageDetailScreenState extends State<AdminImageDetailScreen> {
 
   Future<void> _updateStatus(String status) async {
     final repo = BusinessImagesRepository();
-    final uid = AppDataScope.of(context).authRepository.currentUserId;
+    final uid = ref.read(authNotifierProvider).valueOrNull?.id;
     await repo.updateStatus(widget.imageId, status, approvedBy: uid);
     AuditLogRepository().insert(
       action: status == 'approved' ? 'image_approved' : 'image_rejected',
@@ -63,13 +62,14 @@ class _AdminImageDetailScreenState extends State<AdminImageDetailScreen> {
     );
     if (status == 'approved' && _image != null) {
       final businessRepo = BusinessRepository();
-      final userId = await BusinessManagersRepository().getFirstManagerUserId(_image!.businessId) ??
+      final userId =
+          await BusinessManagersRepository().getFirstManagerUserId(_image!.businessId) ??
           await businessRepo.getCreatedBy(_image!.businessId);
       if (userId != null) {
-        final profile = await AuthRepository().getProfileForAdmin(userId);
+        final profile = await ref.read(profilesRepositoryProvider).getProfile(userId);
         final to = profile?.email?.trim();
         if (to != null && to.isNotEmpty) {
-          await SendEmailService().send(
+          /* await SendEmailService().send(
             to: to,
             template: 'image_approved',
             variables: {
@@ -77,14 +77,12 @@ class _AdminImageDetailScreenState extends State<AdminImageDetailScreen> {
               'email': to,
               'business_name': _businessName ?? _image!.businessId,
             },
-          );
+          ); // TODO: Implement backend email notification */
         }
       }
     }
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Status set to $status')),
-      );
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Status set to $status')));
       _load();
     }
   }
@@ -98,43 +96,42 @@ class _AdminImageDetailScreenState extends State<AdminImageDetailScreen> {
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : _error != null
-              ? Center(child: Text(_error!, style: theme.textTheme.bodyLarge))
-              : SingleChildScrollView(
-                  padding: const EdgeInsets.all(24),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      if (_image!.url.isNotEmpty)
-                        Image.network(_image!.url, height: 200, fit: BoxFit.cover),
-                      const SizedBox(height: 16),
-                      _DetailRow(label: 'Status', value: _image!.status),
-                      _DetailRow(label: 'Business', value: _businessName ?? _image!.businessId),
-                      _DetailRow(label: 'URL', value: _image!.url),
-                      const SizedBox(height: 24),
-                      if (_image!.status == 'pending') ...[
-                        Row(
-                          children: [
-                            Expanded(
-                              child: FilledButton.icon(
-                                onPressed: () => _updateStatus('approved'),
-                                icon: const Icon(Icons.check_rounded, size: 20),
-                                label: const Text('Approve'),
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: OutlinedButton.icon(
-                                onPressed: () => _updateStatus('rejected'),
-                                icon: const Icon(Icons.close_rounded, size: 20),
-                                label: const Text('Reject'),
-                              ),
-                            ),
-                          ],
+          ? Center(child: Text(_error!, style: theme.textTheme.bodyLarge))
+          : SingleChildScrollView(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  if (_image!.url.isNotEmpty) Image.network(_image!.url, height: 200, fit: BoxFit.cover),
+                  const SizedBox(height: 16),
+                  _DetailRow(label: 'Status', value: _image!.status),
+                  _DetailRow(label: 'Business', value: _businessName ?? _image!.businessId),
+                  _DetailRow(label: 'URL', value: _image!.url),
+                  const SizedBox(height: 24),
+                  if (_image!.status == 'pending') ...[
+                    Row(
+                      children: [
+                        Expanded(
+                          child: FilledButton.icon(
+                            onPressed: () => _updateStatus('approved'),
+                            icon: const Icon(Icons.check_rounded, size: 20),
+                            label: const Text('Approve'),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: OutlinedButton.icon(
+                            onPressed: () => _updateStatus('rejected'),
+                            icon: const Icon(Icons.close_rounded, size: 20),
+                            label: const Text('Reject'),
+                          ),
                         ),
                       ],
-                    ],
-                  ),
-                ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
     );
   }
 }

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:my_app/app/main_shell.dart';
-import 'package:my_app/core/auth/auth_repository.dart';
+import 'package:my_app/core/auth/providers/auth_provider.dart';
 import 'package:my_app/core/data/app_data_scope.dart';
 import 'package:my_app/core/data/listing_data_source.dart';
 import 'package:my_app/core/data/repositories/favorites_repository.dart';
@@ -9,32 +10,28 @@ import 'package:my_app/core/data/repositories/user_subscriptions_repository.dart
 import 'package:my_app/core/favorites/favorites_scope.dart';
 import 'package:my_app/core/revenuecat/revenuecat_service.dart';
 import 'package:my_app/core/subscription/user_tier_service.dart';
-import 'package:my_app/core/supabase/supabase_config.dart';
 import 'package:my_app/core/theme/theme.dart';
 import 'package:my_app/features/auth/presentation/screens/set_new_password_screen.dart';
 import 'package:my_app/features/auth/presentation/screens/sign_in_screen.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
 /// Root MaterialApp for Cajun Local.
-class CajunLocalApp extends StatefulWidget {
+class CajunLocalApp extends ConsumerStatefulWidget {
   const CajunLocalApp({super.key, this.revenueCatService});
 
   /// RevenueCat service (initialized in main). Null on web or if not configured.
   final RevenueCatService? revenueCatService;
 
   @override
-  State<CajunLocalApp> createState() => _CajunLocalAppState();
+  ConsumerState<CajunLocalApp> createState() => _CajunLocalAppState();
 }
 
-class _CajunLocalAppState extends State<CajunLocalApp> {
+class _CajunLocalAppState extends ConsumerState<CajunLocalApp> {
   final ValueNotifier<Set<String>> _favoriteIds = ValueNotifier<Set<String>>({});
   final _dataSource = ListingDataSource();
-  final _authRepository = AuthRepository();
   final _favoritesRepository = FavoritesRepository();
   final _subscriptionsRepository = UserSubscriptionsRepository();
   final _plansRepository = UserPlansRepository();
   late final UserTierService _userTierService = UserTierService(
-    authRepository: _authRepository,
     subscriptionsRepository: _subscriptionsRepository,
     plansRepository: _plansRepository,
   );
@@ -45,22 +42,10 @@ class _CajunLocalAppState extends State<CajunLocalApp> {
   @override
   void initState() {
     super.initState();
-    _userTierService.refresh();
-    _loadFavoritesWhenSignedIn();
-    _authRepository.authStateChanges.listen((AuthState state) {
-      if (state.event == AuthChangeEvent.passwordRecovery) {
-        if (mounted) setState(() => _isRecoverySession = true);
-      }
-      _userTierService.refresh();
-      _loadFavoritesWhenSignedIn();
-      widget.revenueCatService?.logIn(_authRepository.currentUserId);
-    });
-    widget.revenueCatService?.logIn(_authRepository.currentUserId);
   }
 
-  Future<void> _loadFavoritesWhenSignedIn() async {
-    if (!SupabaseConfig.isConfigured) return;
-    if (_authRepository.currentUserId == null) {
+  Future<void> _loadFavoritesWhenSignedIn([String? userId]) async {
+    if (userId == null) {
       _favoriteIds.value = {};
       return;
     }
@@ -76,51 +61,58 @@ class _CajunLocalAppState extends State<CajunLocalApp> {
 
   @override
   Widget build(BuildContext context) {
+    final authState = ref.watch(authNotifierProvider);
+
+    // Handle auth changes for dependent services
+    ref.listen(authNotifierProvider, (previous, next) {
+      final oldUser = previous?.valueOrNull;
+      final newUser = next.valueOrNull;
+      if (oldUser?.id != newUser?.id) {
+        _loadFavoritesWhenSignedIn(newUser?.id);
+        _userTierService.refresh(newUser?.id);
+        if (newUser != null) {
+          widget.revenueCatService?.logIn(newUser.id);
+        }
+      }
+    });
+
     return AppDataScope(
       dataSource: _dataSource,
-      authRepository: _authRepository,
       favoritesRepository: _favoritesRepository,
       userTierService: _userTierService,
       revenueCatService: widget.revenueCatService,
       child: FavoritesScope(
         favoriteIds: _favoriteIds,
         child: MaterialApp(
-        title: 'Cajun Local',
-        debugShowCheckedModeBanner: false,
-        theme: AppTheme.light,
-        darkTheme: AppTheme.dark,
-        themeMode: ThemeMode.system,
-        builder: (context, child) {
-          final size = MediaQuery.sizeOf(context);
-          return UnconstrainedBox(
-            child: SizedBox(width: size.width, height: size.height, child: child),
-          );
-        },
-          home: Builder(
-            builder: (context) {
-              final auth = AppDataScope.of(context).authRepository;
-              return StreamBuilder<AuthState>(
-                stream: auth.authStateChanges,
-                builder: (context, snapshot) {
-                  if (!SupabaseConfig.isConfigured) {
-                    return const SizedBox.expand(child: MainShell());
-                  }
-                  if (auth.currentUserId != null && _isRecoverySession) {
-                    return SizedBox.expand(
-                      child: SetNewPasswordScreen(
-                        onPasswordUpdated: () {
-                          setState(() => _isRecoverySession = false);
-                        },
-                      ),
-                    );
-                  }
-                  if (auth.currentUserId != null) {
-                    return const SizedBox.expand(child: MainShell());
-                  }
-                  return const SizedBox.expand(child: SignInScreen());
-                },
-              );
+          title: 'Cajun Local',
+          debugShowCheckedModeBanner: false,
+          theme: AppTheme.light,
+          darkTheme: AppTheme.dark,
+          themeMode: ThemeMode.system,
+          builder: (context, child) {
+            final size = MediaQuery.sizeOf(context);
+            return UnconstrainedBox(
+              child: SizedBox(width: size.width, height: size.height, child: child),
+            );
+          },
+          home: authState.when(
+            data: (user) {
+              if (user != null && _isRecoverySession) {
+                return SizedBox.expand(
+                  child: SetNewPasswordScreen(
+                    onPasswordUpdated: () {
+                      setState(() => _isRecoverySession = false);
+                    },
+                  ),
+                );
+              }
+              if (user != null) {
+                return const SizedBox.expand(child: MainShell());
+              }
+              return const SizedBox.expand(child: SignInScreen());
             },
+            loading: () => const Scaffold(body: Center(child: CircularProgressIndicator())),
+            error: (e, __) => Scaffold(body: Center(child: Text('Error: $e'))),
           ),
         ),
       ),

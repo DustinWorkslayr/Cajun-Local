@@ -1,19 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:my_app/shared/widgets/app_buttons.dart';
-import 'package:my_app/core/auth/auth_repository.dart';
+import 'package:my_app/core/auth/providers/auth_provider.dart';
 import 'package:my_app/core/data/contact_form_templates.dart';
 import 'package:my_app/core/data/models/business.dart';
 import 'package:my_app/core/data/repositories/business_repository.dart';
 import 'package:my_app/core/data/repositories/conversations_repository.dart';
 import 'package:my_app/core/data/repositories/form_submissions_repository.dart';
 import 'package:my_app/core/data/repositories/messages_repository.dart';
-import 'package:my_app/core/supabase/supabase_config.dart';
 import 'package:my_app/core/theme/theme.dart';
 
 /// Renders the business's contact form (template-based). Shown on listing detail.
 /// When Supabase is off or business has no contact_form_template, shows nothing.
-class ContactFormWidget extends StatefulWidget {
+class ContactFormWidget extends ConsumerStatefulWidget {
   const ContactFormWidget({
     super.key,
     required this.businessId,
@@ -25,14 +25,15 @@ class ContactFormWidget extends StatefulWidget {
   final String businessId;
   final String? businessName;
   final bool isSignedIn;
+
   /// Called after successful submit with conversationId so caller can open the thread.
   final void Function(String conversationId)? onConversationStarted;
 
   @override
-  State<ContactFormWidget> createState() => _ContactFormWidgetState();
+  ConsumerState<ContactFormWidget> createState() => _ContactFormWidgetState();
 }
 
-class _ContactFormWidgetState extends State<ContactFormWidget> {
+class _ContactFormWidgetState extends ConsumerState<ContactFormWidget> {
   Business? _business;
   bool _loading = true;
   final Map<String, TextEditingController> _controllers = {};
@@ -46,15 +47,13 @@ class _ContactFormWidgetState extends State<ContactFormWidget> {
   }
 
   Future<void> _load() async {
-    if (!SupabaseConfig.isConfigured) {
+    if (false) {
       if (mounted) setState(() => _loading = false);
       return;
     }
     final b = await BusinessRepository().getById(widget.businessId);
     if (!mounted) return;
-    if (b != null &&
-        b.contactFormTemplate != null &&
-        ContactFormTemplates.getByKey(b.contactFormTemplate!) != null) {
+    if (b != null && b.contactFormTemplate != null && ContactFormTemplates.getByKey(b.contactFormTemplate!) != null) {
       final def = ContactFormTemplates.getByKey(b.contactFormTemplate!);
       for (final f in def!.fields) {
         _controllers[f.key] = TextEditingController();
@@ -88,7 +87,7 @@ class _ContactFormWidgetState extends State<ContactFormWidget> {
     final templateKey = _business!.contactFormTemplate!;
     final def = ContactFormTemplates.getByKey(templateKey);
     if (def == null) return;
-    final uid = AuthRepository().currentUserId;
+    final uid = ref.read(authNotifierProvider).valueOrNull?.id;
     if (uid == null) {
       setState(() => _error = 'You must be signed in to submit.');
       return;
@@ -118,11 +117,7 @@ class _ContactFormWidgetState extends State<ContactFormWidget> {
       final templateName = def.name;
       final convRepo = ConversationsRepository();
       final msgRepo = MessagesRepository();
-      final conv = await convRepo.getOrCreate(
-        businessId: widget.businessId,
-        userId: uid,
-        subject: templateName,
-      );
+      final conv = await convRepo.getOrCreate(businessId: widget.businessId, userId: uid, subject: templateName);
       // Build first message with all form data so the business owner sees the full submission.
       final lines = <String>['Contact form: $templateName', ''];
       for (final f in def.fields) {
@@ -165,9 +160,7 @@ class _ContactFormWidgetState extends State<ContactFormWidget> {
     if (_loading) {
       return const SizedBox.shrink();
     }
-    if (_business == null ||
-        _business!.contactFormTemplate == null ||
-        _business!.contactFormTemplate!.trim().isEmpty) {
+    if (_business == null || _business!.contactFormTemplate == null || _business!.contactFormTemplate!.trim().isEmpty) {
       return Text(
         'This business hasn\'t set up a contact form.',
         style: theme.textTheme.bodySmall?.copyWith(
@@ -191,25 +184,15 @@ class _ContactFormWidgetState extends State<ContactFormWidget> {
       children: [
         Text(
           'Contact ${widget.businessName ?? 'this business'}',
-          style: theme.textTheme.titleMedium?.copyWith(
-            fontWeight: FontWeight.w700,
-            color: AppTheme.specNavy,
-          ),
+          style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700, color: AppTheme.specNavy),
         ),
         const SizedBox(height: 8),
-        Text(
-          def.name,
-          style: theme.textTheme.bodySmall?.copyWith(
-            color: theme.colorScheme.onSurfaceVariant,
-          ),
-        ),
+        Text(def.name, style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
         if (!widget.isSignedIn) ...[
           const SizedBox(height: 12),
           Text(
             'Sign in to send a message.',
-            style: theme.textTheme.bodyMedium?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
-            ),
+            style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant),
           ),
         ] else ...[
           const SizedBox(height: 16),
@@ -230,10 +213,10 @@ class _ContactFormWidgetState extends State<ContactFormWidget> {
                 keyboardType: f.type == ContactFormFieldType.email
                     ? TextInputType.emailAddress
                     : f.type == ContactFormFieldType.phone
-                        ? TextInputType.phone
-                        : f.type == ContactFormFieldType.textarea
-                            ? TextInputType.multiline
-                            : TextInputType.text,
+                    ? TextInputType.phone
+                    : f.type == ContactFormFieldType.textarea
+                    ? TextInputType.multiline
+                    : TextInputType.text,
                 maxLines: f.type == ContactFormFieldType.textarea ? 4 : 1,
                 textInputAction: f.type == ContactFormFieldType.textarea
                     ? TextInputAction.newline
@@ -246,10 +229,7 @@ class _ContactFormWidgetState extends State<ContactFormWidget> {
           }),
           if (_error != null) ...[
             const SizedBox(height: 8),
-            Text(
-              _error!,
-              style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.error),
-            ),
+            Text(_error!, style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.error)),
           ],
           const SizedBox(height: 16),
           AppSecondaryButton(

@@ -1,49 +1,44 @@
+import 'package:my_app/core/api/api_client.dart';
+import 'package:my_app/core/api/business_ads_api.dart';
 import 'package:my_app/core/data/models/ad_package.dart';
-import 'package:my_app/core/supabase/supabase_config.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:riverpod_annotation/riverpod_annotation.dart';
+
+part 'ad_packages_repository.g.dart';
 
 /// Ad packages (pricing-and-ads-cheatsheet §2.5). Public SELECT; admin-only write.
 class AdPackagesRepository {
-  AdPackagesRepository();
+  AdPackagesRepository({BusinessAdsApi? api}) : _api = api ?? BusinessAdsApi(ApiClient.instance);
 
-  SupabaseClient? get _client =>
-      SupabaseConfig.isConfigured ? Supabase.instance.client : null;
+  final BusinessAdsApi _api;
 
   Future<List<AdPackage>> list({bool activeOnly = false}) async {
-    final client = _client;
-    if (client == null) return [];
-    var query = client.from('ad_packages').select();
-    if (activeOnly) query = query.eq('is_active', true);
-    final list = await query.order('sort_order').order('name');
-    return (list as List<dynamic>)
-        .map((e) => AdPackage.fromJson(Map<String, dynamic>.from(e)))
-        .toList();
+    final list = await _api.listPackages(activeOnly: activeOnly);
+    return list.map((e) => AdPackage.fromJson(e)).toList();
   }
 
   Future<AdPackage?> getById(String id) async {
-    final client = _client;
-    if (client == null) return null;
-    final res = await client.from('ad_packages').select().eq('id', id).maybeSingle();
-    if (res == null) return null;
-    return AdPackage.fromJson(Map<String, dynamic>.from(res));
+    try {
+      final res = await _api.getPackageById(id);
+      return AdPackage.fromJson(res);
+    } catch (_) {
+      return null;
+    }
   }
 
   Future<void> insert(AdPackage pkg) async {
-    final client = _client;
-    if (client == null) return;
-    final data = pkg.toJson()..remove('id');
-    await client.from('ad_packages').insert(data);
+    await _api.createPackage(pkg.toJson());
   }
 
   Future<void> update(AdPackage pkg) async {
-    final client = _client;
-    if (client == null) return;
-    await client.from('ad_packages').update(pkg.toJson()).eq('id', pkg.id);
+    await _api.updatePackage(pkg.id, pkg.toJson());
   }
 
   Future<void> delete(String id) async {
-    final client = _client;
-    if (client == null) return;
-    await client.from('ad_packages').delete().eq('id', id);
+    await _api.deletePackage(id);
   }
+}
+
+@riverpod
+AdPackagesRepository adPackagesRepository(AdPackagesRepositoryRef ref) {
+  return AdPackagesRepository(api: ref.watch(businessAdsApiProvider));
 }

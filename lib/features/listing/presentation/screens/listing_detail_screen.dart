@@ -1,9 +1,10 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:my_app/core/auth/auth_repository.dart';
-import 'package:my_app/core/data/app_data_scope.dart';
+import 'package:my_app/core/auth/providers/auth_provider.dart';
+import 'package:my_app/core/data/providers/app_data_providers.dart';
 import 'package:my_app/core/data/listing_data_source.dart';
 import 'package:my_app/core/data/deal_type_icons.dart';
 import 'package:my_app/core/data/mock_data.dart';
@@ -13,16 +14,13 @@ import 'package:my_app/core/data/models/business_claim.dart';
 import 'package:my_app/core/data/models/business_image.dart';
 import 'package:my_app/core/data/repositories/business_claims_repository.dart';
 import 'package:my_app/core/data/repositories/business_managers_repository.dart';
-import 'package:my_app/core/data/repositories/favorites_repository.dart';
-import 'package:my_app/core/data/repositories/business_repository.dart';
-import 'package:my_app/core/data/services/send_email_service.dart';
+import 'package:my_app/core/data/repositories/favorites_repository.dart' hide favoritesRepositoryProvider;
+import 'package:my_app/core/data/repositories/business_repository.dart' hide businessRepositoryProvider;
+import 'package:my_app/core/data/repositories/reviews_repository.dart' hide reviewsRepositoryProvider;
+import 'package:my_app/core/data/repositories/event_rsvps_repository.dart' hide eventRsvpsRepositoryProvider;
 import 'package:my_app/core/data/models/review.dart';
 import 'package:my_app/core/data/repositories/business_images_repository.dart';
 import 'package:my_app/core/data/repositories/business_subscriptions_repository.dart';
-import 'package:my_app/core/data/repositories/reviews_repository.dart';
-import 'package:my_app/core/data/repositories/event_rsvps_repository.dart';
-import 'package:my_app/core/data/repositories/user_deals_repository.dart';
-import 'package:my_app/core/data/repositories/user_punch_cards_repository.dart';
 import 'package:my_app/core/favorites/favorites_scope.dart';
 import 'package:my_app/core/subscription/resolved_permissions.dart';
 import 'package:my_app/core/theme/app_layout.dart';
@@ -68,32 +66,46 @@ class _DetailData {
   final List<MockDeal> deals;
   final List<MockPunchCard> punchCards;
   final List<MockEvent> events;
+
   /// First approved business image URL (banner). Used for free tier.
   final String? bannerImageUrl;
+
   /// Business logo URL. Shown in hero for free tier.
   final String? logoUrl;
+
   /// All approved business image URLs. Carousel for partner tier.
   final List<String> imageUrls;
+
   /// Current user's claim for this business (pending or approved), if any.
   final BusinessClaim? userClaim;
+
   /// True when business has paid/partner tier — show carousel and Partner badge.
   final bool isPartner;
+
   /// True when current user is owner/manager of this listing — show Edit listing.
   final bool isOwnerOrManager;
+
   /// Contact form template key (e.g. general_inquiry, appointment_request). Null = no form.
   final String? contactFormTemplate;
+
   /// Total number of users who favorited this listing.
   final int favoritesCount;
+
   /// Approved reviews for this business.
   final List<Review> reviews;
+
   /// Average rating (1–5) from approved reviews.
   final double averageRating;
+
   /// Number of approved reviews.
   final int reviewCount;
+
   /// Plan tier for badge (e.g. local_plus, local_partner).
   final String? subscriptionTier;
+
   /// Distance from user in miles (null if unknown).
   final double? distanceMi;
+
   /// Listing coordinates for map preview (from business when Supabase).
   final double? listingLatitude;
   final double? listingLongitude;
@@ -111,24 +123,25 @@ class ListingDetailScreen extends StatelessWidget {
   }
 }
 
-class _ListingDetailBody extends StatefulWidget {
+class _ListingDetailBody extends ConsumerStatefulWidget {
   const _ListingDetailBody({required this.listingId});
   final String listingId;
 
   @override
-  State<_ListingDetailBody> createState() => _ListingDetailBodyState();
+  ConsumerState<_ListingDetailBody> createState() => _ListingDetailBodyState();
 }
 
-class _ListingDetailBodyState extends State<_ListingDetailBody> {
+class _ListingDetailBodyState extends ConsumerState<_ListingDetailBody> {
   Future<_DetailData?>? _future;
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
     if (_future == null) {
-      final scope = AppDataScope.of(context);
-      _future = _load(scope.dataSource, scope.authRepository.currentUserId, scope.favoritesRepository);
-      setState(() {}); // Rebuild so FutureBuilder receives the future and shows loading/content
+      final dataSource = ref.read(listingDataSourceProvider);
+      final userId = ref.read(authNotifierProvider).valueOrNull?.id;
+      final favoritesRepository = ref.read(favoritesRepositoryProvider);
+      _future = _load(dataSource, userId, favoritesRepository);
     }
   }
 
@@ -145,16 +158,13 @@ class _ListingDetailBodyState extends State<_ListingDetailBody> {
       ds.getApprovedEventsForListing(widget.listingId),
     ];
     final supabaseFutures = <Future<dynamic>>[];
-    if (ds.useSupabase) {
+    if (ds.useBackend) {
       supabaseFutures
         ..add(BusinessRepository().getByIdForAdmin(widget.listingId))
         ..add(BusinessImagesRepository().getApprovedForBusiness(widget.listingId))
         ..add(BusinessSubscriptionsRepository().getByBusinessId(widget.listingId))
         ..add(favRepo.getCountForBusiness(widget.listingId))
-        ..add(ReviewsRepository().listForAdmin(
-          businessId: widget.listingId,
-          status: 'approved',
-        ));
+        ..add(ReviewsRepository().listForAdmin(businessId: widget.listingId, status: 'approved'));
       if (userId != null) {
         supabaseFutures
           ..add(BusinessClaimsRepository().getForUserAndBusiness(userId, widget.listingId))
@@ -185,7 +195,7 @@ class _ListingDetailBodyState extends State<_ListingDetailBody> {
     String? subscriptionTier;
     bool isOwnerOrManager = false;
 
-    if (ds.useSupabase && supabaseResults.isNotEmpty) {
+    if (ds.useBackend && supabaseResults.isNotEmpty) {
       int i = 0;
       final business = supabaseResults[i++] as Business?;
       logoUrl = business?.logoUrl;
@@ -282,18 +292,19 @@ class _ListingDetailBodyState extends State<_ListingDetailBody> {
                   children: [
                     Text(
                       'Couldn\'t load this listing',
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w600,
-                        color: AppTheme.specNavy,
-                      ),
+                      style: Theme.of(
+                        context,
+                      ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600, color: AppTheme.specNavy),
                       textAlign: TextAlign.center,
                     ),
                     const SizedBox(height: 12),
                     AppSecondaryButton(
                       onPressed: () {
                         setState(() {
-                          final scope = AppDataScope.of(context);
-                          _future = _load(scope.dataSource, scope.authRepository.currentUserId, scope.favoritesRepository);
+                          final dataSource = ref.read(listingDataSourceProvider);
+                          final userId = ref.read(authNotifierProvider).valueOrNull?.id;
+                          final favoritesRepository = ref.read(favoritesRepositoryProvider);
+                          _future = _load(dataSource, userId, favoritesRepository);
                         });
                       },
                       child: const Text('Retry'),
@@ -316,14 +327,16 @@ class _ListingDetailBodyState extends State<_ListingDetailBody> {
             body: const Center(child: Text('Listing not found')),
           );
         }
-        final scope = AppDataScope.of(context);
+        final userId = ref.watch(authNotifierProvider).valueOrNull?.id;
         return _ListingDetailContent(
           data: data,
-          isSignedIn: scope.authRepository.currentUserId != null,
-          currentUserId: scope.authRepository.currentUserId,
+          isSignedIn: userId != null,
+          currentUserId: userId,
           onReload: () {
             setState(() {
-              _future = _load(scope.dataSource, scope.authRepository.currentUserId, scope.favoritesRepository);
+              final dataSource = ref.read(listingDataSourceProvider);
+              final favRepo = ref.read(favoritesRepositoryProvider);
+              _future = _load(dataSource, userId, favRepo);
             });
           },
         );
@@ -332,7 +345,7 @@ class _ListingDetailBodyState extends State<_ListingDetailBody> {
   }
 }
 
-class _ListingDetailContent extends StatelessWidget {
+class _ListingDetailContent extends ConsumerWidget {
   const _ListingDetailContent({
     required this.data,
     required this.isSignedIn,
@@ -348,7 +361,7 @@ class _ListingDetailContent extends StatelessWidget {
   static const double _contentRadius = 20;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final listing = data.listing;
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
@@ -362,16 +375,14 @@ class _ListingDetailContent extends StatelessWidget {
         body: NestedScrollView(
           headerSliverBuilder: (context, innerBoxIsScrolled) {
             return [
-              _buildHero(context, listing),
+              _buildHero(context, ref, listing),
               SliverToBoxAdapter(
                 child: Transform.translate(
                   offset: const Offset(0, -_contentRadius),
                   child: Container(
                     decoration: BoxDecoration(
                       color: AppTheme.specWhite,
-                      borderRadius: const BorderRadius.vertical(
-                        top: Radius.circular(_contentRadius),
-                      ),
+                      borderRadius: const BorderRadius.vertical(top: Radius.circular(_contentRadius)),
                       boxShadow: [
                         BoxShadow(
                           color: Colors.black.withValues(alpha: 0.06),
@@ -428,7 +439,7 @@ class _ListingDetailContent extends StatelessWidget {
     );
   }
 
-  Widget _buildHero(BuildContext context, MockListing listing) {
+  Widget _buildHero(BuildContext context, WidgetRef ref, MockListing listing) {
     final showCarousel = data.isPartner && data.imageUrls.length > 1;
     final singleImageUrl = data.bannerImageUrl ?? (data.imageUrls.isNotEmpty ? data.imageUrls.first : null);
 
@@ -438,10 +449,7 @@ class _ListingDetailContent extends StatelessWidget {
       stretch: true,
       backgroundColor: Colors.transparent,
       systemOverlayStyle: SystemUiOverlayStyle.light,
-      leading: _GlassButton(
-        icon: Icons.arrow_back_ios_new_rounded,
-        onTap: () => Navigator.of(context).pop(),
-      ),
+      leading: _GlassButton(icon: Icons.arrow_back_ios_new_rounded, onTap: () => Navigator.of(context).pop()),
       actions: [
         if (data.isOwnerOrManager) ...[
           Tooltip(
@@ -449,11 +457,9 @@ class _ListingDetailContent extends StatelessWidget {
             child: _GlassButton(
               icon: Icons.edit_rounded,
               onTap: () {
-                Navigator.of(context).push(
-                  MaterialPageRoute<void>(
-                    builder: (_) => ListingEditScreen(listingId: listing.id),
-                  ),
-                );
+                Navigator.of(
+                  context,
+                ).push(MaterialPageRoute<void>(builder: (_) => ListingEditScreen(listingId: listing.id)));
               },
             ),
           ),
@@ -482,23 +488,22 @@ class _ListingDetailContent extends StatelessWidget {
                   icon: isFav ? Icons.favorite_rounded : Icons.favorite_border_rounded,
                   onTap: () async {
                     final next = Set<String>.from(ids);
-                    final scope = AppDataScope.of(context);
                     if (next.contains(listing.id)) {
                       next.remove(listing.id);
-                      if (scope.dataSource.useSupabase) {
-                        await scope.favoritesRepository.remove(listing.id);
+                      if (ref.read(listingDataSourceProvider).useBackend) {
+                        await ref.read(favoritesRepositoryProvider).remove(listing.id);
                       }
                     } else {
-                      final perms = scope.userTierService.value ?? ResolvedPermissions.free;
-                      if (scope.dataSource.useSupabase &&
+                      final perms = ref.read(userTierServiceProvider).value ?? ResolvedPermissions.free;
+                      if (ref.read(listingDataSourceProvider).useBackend &&
                           perms.wouldExceedFavoritesLimit(ids.length)) {
                         if (!context.mounted) return;
                         await presentSubscriptionPaywall(context);
                         return;
                       }
                       next.add(listing.id);
-                      if (scope.dataSource.useSupabase) {
-                        await scope.favoritesRepository.add(listing.id);
+                      if (ref.read(listingDataSourceProvider).useBackend) {
+                        await ref.read(favoritesRepositoryProvider).add(listing.id);
                       }
                     }
                     if (!context.mounted) return;
@@ -510,10 +515,7 @@ class _ListingDetailContent extends StatelessWidget {
           },
         ),
         const SizedBox(width: 8),
-        _GlassButton(
-          icon: Icons.share_rounded,
-          onTap: () {},
-        ),
+        _GlassButton(icon: Icons.share_rounded, onTap: () {}),
         const SizedBox(width: 8),
       ],
       flexibleSpace: FlexibleSpaceBar(
@@ -583,12 +585,7 @@ class _ListingDetailContent extends StatelessWidget {
                 ),
               ),
             ),
-            CustomPaint(
-              painter: _GridOverlayPainter(
-                color: Colors.white.withValues(alpha: 0.04),
-                spacing: 24,
-              ),
-            ),
+            CustomPaint(painter: _GridOverlayPainter(color: Colors.white.withValues(alpha: 0.04), spacing: 24)),
             if (data.deals.isNotEmpty)
               Positioned(
                 left: 16,
@@ -599,11 +596,7 @@ class _ListingDetailContent extends StatelessWidget {
                     color: AppTheme.specNavy.withValues(alpha: 0.9),
                     borderRadius: BorderRadius.circular(20),
                     boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.3),
-                        blurRadius: 8,
-                        offset: const Offset(0, 2),
-                      ),
+                      BoxShadow(color: Colors.black.withValues(alpha: 0.3), blurRadius: 8, offset: const Offset(0, 2)),
                     ],
                   ),
                   child: Row(
@@ -614,10 +607,9 @@ class _ListingDetailContent extends StatelessWidget {
                       Flexible(
                         child: Text(
                           data.deals.first.title,
-                          style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                                color: Colors.white,
-                                fontWeight: FontWeight.w600,
-                              ),
+                          style: Theme.of(
+                            context,
+                          ).textTheme.labelMedium?.copyWith(color: Colors.white, fontWeight: FontWeight.w600),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
@@ -637,11 +629,7 @@ class _ListingDetailContent extends StatelessWidget {
                     borderRadius: BorderRadius.circular(8),
                     border: Border.all(color: AppTheme.specGold.withValues(alpha: 0.6)),
                     boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.15),
-                        blurRadius: 8,
-                        offset: const Offset(0, 2),
-                      ),
+                      BoxShadow(color: Colors.black.withValues(alpha: 0.15), blurRadius: 8, offset: const Offset(0, 2)),
                     ],
                   ),
                   child: Text(
@@ -651,10 +639,10 @@ class _ListingDetailContent extends StatelessWidget {
                         ? '+ Local Partner'
                         : '+ Local Plus',
                     style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                          color: AppTheme.specGold,
-                          fontWeight: FontWeight.w700,
-                          letterSpacing: 0.3,
-                        ),
+                      color: AppTheme.specGold,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 0.3,
+                    ),
                   ),
                 ),
               ),
@@ -755,17 +743,9 @@ class _DetailScrollContentState extends State<_DetailScrollContent> {
     return ListView(
       padding: EdgeInsets.fromLTRB(widget.padding.left, 20, widget.padding.right, 36),
       children: [
-        _BusinessIdentitySection(
-          listing: listing,
-          data: data,
-          theme: theme,
-        ),
+        _BusinessIdentitySection(listing: listing, data: data, theme: theme),
         const SizedBox(height: 16),
-        _ActionRow(
-          listing: listing,
-          data: data,
-          onReload: widget.onReload,
-        ),
+        _ActionRow(listing: listing, data: data, onReload: widget.onReload),
         if (hasDeals) ...[
           const SizedBox(height: 20),
           _FeaturedDealCard(
@@ -799,28 +779,17 @@ class _DetailScrollContentState extends State<_DetailScrollContent> {
             onReload: widget.onReload,
           )
         else if (_selectedTabIndex == 1)
-          _DealsTabContent(
-            listingId: data.listing.id,
-            listingName: data.listing.name,
-            deals: data.deals,
-          )
+          _DealsTabContent(listingId: data.listing.id, listingName: data.listing.name, deals: data.deals)
         else if (_selectedTabIndex == 2)
           _MenusTabContent(menuItems: data.menuItems, theme: theme)
         else
-          _ReviewsTabContent(
-            data: data,
-            theme: theme,
-          ),
+          _ReviewsTabContent(data: data, theme: theme),
         if (hasPunch) ...[
           const SizedBox(height: 24),
           _Section(
             title: 'Punch cards',
             icon: Icons.loyalty_rounded,
-            child: _PunchCardsBlock(
-              cards: data.punchCards,
-              isSignedIn: widget.isSignedIn,
-              onEnroll: widget.onReload,
-            ),
+            child: _PunchCardsBlock(cards: data.punchCards, isSignedIn: widget.isSignedIn, onEnroll: widget.onReload),
           ),
         ],
         if (hasEvents) ...[
@@ -828,11 +797,7 @@ class _DetailScrollContentState extends State<_DetailScrollContent> {
           _Section(
             title: 'Events',
             icon: Icons.event_rounded,
-            child: _EventsBlock(
-              events: data.events,
-              isSignedIn: widget.isSignedIn,
-              onRsvpChanged: widget.onReload,
-            ),
+            child: _EventsBlock(events: data.events, isSignedIn: widget.isSignedIn, onRsvpChanged: widget.onReload),
           ),
         ],
       ],
@@ -852,11 +817,7 @@ class _DetailScrollContentState extends State<_DetailScrollContent> {
 }
 
 class _BusinessIdentitySection extends StatelessWidget {
-  const _BusinessIdentitySection({
-    required this.listing,
-    required this.data,
-    required this.theme,
-  });
+  const _BusinessIdentitySection({required this.listing, required this.data, required this.theme});
   final MockListing listing;
   final _DetailData data;
   final ThemeData theme;
@@ -869,22 +830,19 @@ class _BusinessIdentitySection extends StatelessWidget {
       children: [
         Text(
           listing.name,
-          style: theme.textTheme.headlineSmall?.copyWith(
-            fontWeight: FontWeight.w800,
-            color: nav,
-            letterSpacing: -0.5,
-          ),
+          style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w800, color: nav, letterSpacing: -0.5),
         ),
         const SizedBox(height: 8),
         Row(
           children: [
-            ...List.generate(5, (i) => Icon(
-              i < data.averageRating.round().clamp(0, 5)
-                  ? Icons.star_rounded
-                  : Icons.star_border_rounded,
-              size: 20,
-              color: AppTheme.specGold,
-            )),
+            ...List.generate(
+              5,
+              (i) => Icon(
+                i < data.averageRating.round().clamp(0, 5) ? Icons.star_rounded : Icons.star_border_rounded,
+                size: 20,
+                color: AppTheme.specGold,
+              ),
+            ),
             const SizedBox(width: 6),
             Text(
               '(${data.reviewCount})',
@@ -896,18 +854,11 @@ class _BusinessIdentitySection extends StatelessWidget {
             const SizedBox(width: 12),
             Icon(Icons.check_circle_outline_rounded, size: 18, color: nav.withValues(alpha: 0.7)),
             const SizedBox(width: 4),
-            Text(
-              listing.categoryName,
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: nav.withValues(alpha: 0.8),
-              ),
-            ),
+            Text(listing.categoryName, style: theme.textTheme.bodyMedium?.copyWith(color: nav.withValues(alpha: 0.8))),
             if (data.distanceMi != null) ...[
               Text(
                 ' · ${data.distanceMi!.toStringAsFixed(1)} mi',
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  color: nav.withValues(alpha: 0.7),
-                ),
+                style: theme.textTheme.bodyMedium?.copyWith(color: nav.withValues(alpha: 0.7)),
               ),
             ],
           ],
@@ -917,18 +868,14 @@ class _BusinessIdentitySection extends StatelessWidget {
   }
 }
 
-class _ActionRow extends StatelessWidget {
-  const _ActionRow({
-    required this.listing,
-    required this.data,
-    required this.onReload,
-  });
+class _ActionRow extends ConsumerWidget {
+  const _ActionRow({required this.listing, required this.data, required this.onReload});
   final MockListing listing;
   final _DetailData data;
   final VoidCallback onReload;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return Row(
       children: [
         Expanded(
@@ -936,7 +883,9 @@ class _ActionRow extends StatelessWidget {
             icon: Icons.phone_rounded,
             label: 'Call',
             onTap: listing.phone != null
-                ? () async { await _ActionRow._launchUrl('tel:${listing.phone}'); }
+                ? () async {
+                    await _ActionRow._launchUrl('tel:${listing.phone}');
+                  }
                 : null,
           ),
         ),
@@ -964,24 +913,23 @@ class _ActionRow extends StatelessWidget {
                 icon: isFav ? Icons.favorite_rounded : Icons.favorite_border_rounded,
                 label: 'Save',
                 onTap: () async {
-                  final scope = AppDataScope.of(context);
                   final next = Set<String>.from(ids);
+                  final dataSource = ref.read(listingDataSourceProvider);
                   if (next.contains(listing.id)) {
                     next.remove(listing.id);
-                    if (scope.dataSource.useSupabase) {
-                      await scope.favoritesRepository.remove(listing.id);
+                    if (dataSource.useBackend) {
+                      await ref.read(favoritesRepositoryProvider).remove(listing.id);
                     }
                   } else {
-                    final perms = scope.userTierService.value ?? ResolvedPermissions.free;
-                    if (scope.dataSource.useSupabase &&
-                        perms.wouldExceedFavoritesLimit(ids.length)) {
+                    final perms = ref.read(userTierServiceProvider).value ?? ResolvedPermissions.free;
+                    if (dataSource.useBackend && perms.wouldExceedFavoritesLimit(ids.length)) {
                       if (!context.mounted) return;
                       await presentSubscriptionPaywall(context);
                       return;
                     }
                     next.add(listing.id);
-                    if (scope.dataSource.useSupabase) {
-                      await scope.favoritesRepository.add(listing.id);
+                    if (dataSource.useBackend) {
+                      await ref.read(favoritesRepositoryProvider).add(listing.id);
                     }
                   }
                   if (!context.mounted) return;
@@ -1005,11 +953,7 @@ class _ActionRow extends StatelessWidget {
 }
 
 class _ActionButton extends StatelessWidget {
-  const _ActionButton({
-    required this.icon,
-    required this.label,
-    this.onTap,
-  });
+  const _ActionButton({required this.icon, required this.label, this.onTap});
   final IconData icon;
   final String label;
   final VoidCallback? onTap;
@@ -1032,11 +976,7 @@ class _ActionButton extends StatelessWidget {
             borderRadius: BorderRadius.circular(14),
             border: Border.all(color: nav.withValues(alpha: 0.12)),
             boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.04),
-                blurRadius: 8,
-                offset: const Offset(0, 2),
-              ),
+              BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 8, offset: const Offset(0, 2)),
             ],
           ),
           child: Column(
@@ -1046,10 +986,7 @@ class _ActionButton extends StatelessWidget {
               const SizedBox(height: 4),
               Text(
                 label,
-                style: theme.textTheme.labelMedium?.copyWith(
-                  color: nav,
-                  fontWeight: FontWeight.w600,
-                ),
+                style: theme.textTheme.labelMedium?.copyWith(color: nav, fontWeight: FontWeight.w600),
               ),
             ],
           ),
@@ -1059,7 +996,7 @@ class _ActionButton extends StatelessWidget {
   }
 }
 
-class _FeaturedDealCard extends StatefulWidget {
+class _FeaturedDealCard extends ConsumerStatefulWidget {
   const _FeaturedDealCard({
     required this.deal,
     required this.listingName,
@@ -1076,10 +1013,10 @@ class _FeaturedDealCard extends StatefulWidget {
   final VoidCallback onReload;
 
   @override
-  State<_FeaturedDealCard> createState() => _FeaturedDealCardState();
+  ConsumerState<_FeaturedDealCard> createState() => _FeaturedDealCardState();
 }
 
-class _FeaturedDealCardState extends State<_FeaturedDealCard> {
+class _FeaturedDealCardState extends ConsumerState<_FeaturedDealCard> {
   bool _claimed = false;
 
   @override
@@ -1092,13 +1029,7 @@ class _FeaturedDealCardState extends State<_FeaturedDealCard> {
         color: AppTheme.specGold.withValues(alpha: 0.2),
         borderRadius: BorderRadius.circular(20),
         border: Border.all(color: AppTheme.specGold.withValues(alpha: 0.5)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.06),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
-          ),
-        ],
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.06), blurRadius: 12, offset: const Offset(0, 4))],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1107,23 +1038,13 @@ class _FeaturedDealCardState extends State<_FeaturedDealCard> {
             padding: const EdgeInsets.only(bottom: 8),
             child: Container(
               padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: nav.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Icon(
-                DealTypeIcons.iconFor(widget.deal.dealType),
-                size: 24,
-                color: nav,
-              ),
+              decoration: BoxDecoration(color: nav.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(10)),
+              child: Icon(DealTypeIcons.iconFor(widget.deal.dealType), size: 24, color: nav),
             ),
           ),
           Text(
             widget.deal.title,
-            style: theme.textTheme.titleLarge?.copyWith(
-              fontWeight: FontWeight.w700,
-              color: nav,
-            ),
+            style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700, color: nav),
           ),
           if (widget.deal.expiry != null) ...[
             const SizedBox(height: 6),
@@ -1141,10 +1062,7 @@ class _FeaturedDealCardState extends State<_FeaturedDealCard> {
           const SizedBox(height: 10),
           Text(
             widget.deal.description,
-            style: theme.textTheme.bodyMedium?.copyWith(
-              color: nav.withValues(alpha: 0.85),
-              height: 1.4,
-            ),
+            style: theme.textTheme.bodyMedium?.copyWith(color: nav.withValues(alpha: 0.85), height: 1.4),
             maxLines: 3,
             overflow: TextOverflow.ellipsis,
           ),
@@ -1172,19 +1090,20 @@ class _FeaturedDealCardState extends State<_FeaturedDealCard> {
                 isClaimed: _claimed,
                 isUsed: false,
                 usedAt: null,
-                onClaim: widget.isSignedIn ? () async {
-                  final scope = AppDataScope.of(context);
-                  final uid = scope.authRepository.currentUserId;
-                  if (uid == null) return;
-                  final canClaim = scope.userTierService.value?.canClaimDeals ?? false;
-                  if (!canClaim) {
-                    await presentSubscriptionPaywall(context);
-                    return;
-                  }
-                  await UserDealsRepository(authRepository: scope.authRepository).claim(uid, widget.deal.id);
-                  if (mounted) setState(() => _claimed = true);
-                  widget.onReload();
-                } : null,
+                onClaim: widget.isSignedIn
+                    ? () async {
+                        final uid = ref.read(authNotifierProvider).valueOrNull?.id;
+                        if (uid == null) return;
+                        final canClaim = ref.read(userTierServiceProvider).value?.canClaimDeals ?? false;
+                        if (!canClaim) {
+                          await presentSubscriptionPaywall(context);
+                          return;
+                        }
+                        await ref.read(userDealsRepositoryProvider).claim(uid, widget.deal.id);
+                        if (mounted) setState(() => _claimed = true);
+                        widget.onReload();
+                      }
+                    : null,
                 onClaimUpsell: widget.isSignedIn ? () => presentSubscriptionPaywall(context) : null,
               );
             },
@@ -1207,11 +1126,7 @@ class _FeaturedDealCardState extends State<_FeaturedDealCard> {
 }
 
 class _SegmentedTabs extends StatelessWidget {
-  const _SegmentedTabs({
-    required this.selectedIndex,
-    required this.onChanged,
-    required this.theme,
-  });
+  const _SegmentedTabs({required this.selectedIndex, required this.onChanged, required this.theme});
   final int selectedIndex;
   final ValueChanged<int> onChanged;
   final ThemeData theme;
@@ -1221,10 +1136,7 @@ class _SegmentedTabs extends StatelessWidget {
     final nav = AppTheme.specNavy;
     return Container(
       padding: const EdgeInsets.all(4),
-      decoration: BoxDecoration(
-        color: nav.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(14),
-      ),
+      decoration: BoxDecoration(color: nav.withValues(alpha: 0.08), borderRadius: BorderRadius.circular(14)),
       child: Row(
         children: [
           _TabChip(label: 'Info', selected: selectedIndex == 0, onTap: () => onChanged(0)),
@@ -1238,11 +1150,7 @@ class _SegmentedTabs extends StatelessWidget {
 }
 
 class _TabChip extends StatelessWidget {
-  const _TabChip({
-    required this.label,
-    required this.selected,
-    required this.onTap,
-  });
+  const _TabChip({required this.label, required this.selected, required this.onTap});
   final String label;
   final bool selected;
   final VoidCallback onTap;
@@ -1276,11 +1184,7 @@ class _TabChip extends StatelessWidget {
 }
 
 class _DealsTabContent extends StatelessWidget {
-  const _DealsTabContent({
-    required this.listingId,
-    required this.listingName,
-    required this.deals,
-  });
+  const _DealsTabContent({required this.listingId, required this.listingName, required this.deals});
   final String listingId;
   final String listingName;
   final List<MockDeal> deals;
@@ -1293,27 +1197,18 @@ class _DealsTabContent extends StatelessWidget {
         child: Center(
           child: Text(
             'No active deals',
-            style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-              color: AppTheme.specNavy.withValues(alpha: 0.6),
-            ),
+            style: Theme.of(context).textTheme.bodyLarge?.copyWith(color: AppTheme.specNavy.withValues(alpha: 0.6)),
           ),
         ),
       );
     }
-    return _DealsBlock(
-      listingId: listingId,
-      listingName: listingName,
-      deals: deals,
-    );
+    return _DealsBlock(listingId: listingId, listingName: listingName, deals: deals);
   }
 }
 
 /// Menus / services / products tab: sections and items in card layout.
 class _MenusTabContent extends StatelessWidget {
-  const _MenusTabContent({
-    required this.menuItems,
-    required this.theme,
-  });
+  const _MenusTabContent({required this.menuItems, required this.theme});
 
   final List<MockMenuItem> menuItems;
   final ThemeData theme;
@@ -1329,17 +1224,11 @@ class _MenusTabContent extends StatelessWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(
-                Icons.restaurant_menu_rounded,
-                size: 48,
-                color: nav.withValues(alpha: 0.4),
-              ),
+              Icon(Icons.restaurant_menu_rounded, size: 48, color: nav.withValues(alpha: 0.4)),
               const SizedBox(height: 12),
               Text(
                 'No menu or services listed yet',
-                style: theme.textTheme.bodyLarge?.copyWith(
-                  color: nav.withValues(alpha: 0.7),
-                ),
+                style: theme.textTheme.bodyLarge?.copyWith(color: nav.withValues(alpha: 0.7)),
                 textAlign: TextAlign.center,
               ),
             ],
@@ -1363,11 +1252,7 @@ class _MenusTabContent extends StatelessWidget {
               borderRadius: BorderRadius.circular(14),
               border: Border.all(color: AppTheme.specGold.withValues(alpha: 0.3)),
               boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.06),
-                  blurRadius: 12,
-                  offset: const Offset(0, 4),
-                ),
+                BoxShadow(color: Colors.black.withValues(alpha: 0.06), blurRadius: 12, offset: const Offset(0, 4)),
               ],
             ),
             child: Column(
@@ -1377,69 +1262,56 @@ class _MenusTabContent extends StatelessWidget {
                   padding: const EdgeInsets.fromLTRB(16, 14, 16, 10),
                   child: Row(
                     children: [
-                      Icon(
-                        Icons.restaurant_menu_rounded,
-                        size: 20,
-                        color: AppTheme.specGold,
-                      ),
+                      Icon(Icons.restaurant_menu_rounded, size: 20, color: AppTheme.specGold),
                       const SizedBox(width: 8),
                       Text(
                         entry.key,
-                        style: theme.textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.w700,
-                          color: nav,
-                        ),
+                        style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700, color: nav),
                       ),
                     ],
                   ),
                 ),
                 const Divider(height: 1),
-                ...entry.value.map((item) => Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
+                ...entry.value.map(
+                  (item) => Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                item.name,
+                                style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600, color: nav),
+                              ),
+                              if (item.description != null && item.description!.isNotEmpty) ...[
+                                const SizedBox(height: 4),
                                 Text(
-                                  item.name,
-                                  style: theme.textTheme.bodyMedium?.copyWith(
-                                    fontWeight: FontWeight.w600,
-                                    color: nav,
-                                  ),
+                                  item.description!,
+                                  style: theme.textTheme.bodySmall?.copyWith(color: colorScheme.onSurfaceVariant),
                                 ),
-                                if (item.description != null && item.description!.isNotEmpty) ...[
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    item.description!,
-                                    style: theme.textTheme.bodySmall?.copyWith(
-                                      color: colorScheme.onSurfaceVariant,
-                                    ),
-                                  ),
-                                ],
                               ],
+                            ],
+                          ),
+                        ),
+                        if (item.price != null && item.price!.isNotEmpty)
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                            decoration: BoxDecoration(
+                              color: AppTheme.specGold.withValues(alpha: 0.2),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Text(
+                              item.price!,
+                              style: theme.textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w700, color: nav),
                             ),
                           ),
-                          if (item.price != null && item.price!.isNotEmpty)
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                              decoration: BoxDecoration(
-                                color: AppTheme.specGold.withValues(alpha: 0.2),
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: Text(
-                                item.price!,
-                                style: theme.textTheme.labelLarge?.copyWith(
-                                  fontWeight: FontWeight.w700,
-                                  color: nav,
-                                ),
-                              ),
-                            ),
-                        ],
-                      ),
-                    )),
+                      ],
+                    ),
+                  ),
+                ),
                 const SizedBox(height: 8),
               ],
             ),
@@ -1479,9 +1351,7 @@ class _InfoTabContent extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final hasHours = listing.hours != null && listing.hours!.isNotEmpty;
-    final hasContact = listing.address != null ||
-        listing.phone != null ||
-        listing.website != null;
+    final hasContact = listing.address != null || listing.phone != null || listing.website != null;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -1490,16 +1360,10 @@ class _InfoTabContent extends StatelessWidget {
             padding: const EdgeInsets.only(bottom: 16),
             child: Text(
               listing.description,
-              style: theme.textTheme.bodyLarge?.copyWith(
-                height: 1.55,
-                color: colorScheme.onSurfaceVariant,
-              ),
+              style: theme.textTheme.bodyLarge?.copyWith(height: 1.55, color: colorScheme.onSurfaceVariant),
             ),
           ),
-        if (hasContact) ...[
-          _ContactBlock(listing: listing),
-          const SizedBox(height: 16),
-        ],
+        if (hasContact) ...[_ContactBlock(listing: listing), const SizedBox(height: 16)],
         if (hasHours) ...[
           _Section(
             title: 'Hours',
@@ -1517,10 +1381,7 @@ class _InfoTabContent extends StatelessWidget {
           const SizedBox(height: 16),
         ],
         if (data.listingLatitude != null && data.listingLongitude != null) ...[
-          _MapPreviewPlaceholder(
-            lat: data.listingLatitude!,
-            lng: data.listingLongitude!,
-          ),
+          _MapPreviewPlaceholder(lat: data.listingLatitude!, lng: data.listingLongitude!),
           const SizedBox(height: 16),
         ],
         if (data.socialLinks.isNotEmpty) ...[
@@ -1541,10 +1402,7 @@ class _InfoTabContent extends StatelessWidget {
             Navigator.of(context).pop();
             Navigator.of(context).push(
               MaterialPageRoute<void>(
-                builder: (_) => ConversationThreadScreen(
-                  conversationId: conversationId,
-                  businessName: listing.name,
-                ),
+                builder: (_) => ConversationThreadScreen(conversationId: conversationId, businessName: listing.name),
               ),
             );
           },
@@ -1557,11 +1415,8 @@ class _InfoTabContent extends StatelessWidget {
             onClaimTap: () async {
               final ok = await Navigator.of(context).push<bool>(
                 MaterialPageRoute(
-                  builder: (context) => ClaimBusinessScreen(
-                    businessId: listing.id,
-                    businessName: listing.name,
-                    userId: currentUserId!,
-                  ),
+                  builder: (context) =>
+                      ClaimBusinessScreen(businessId: listing.id, businessName: listing.name, userId: currentUserId!),
                 ),
               );
               if (ok == true) onClaimSubmitted();
@@ -1574,10 +1429,7 @@ class _InfoTabContent extends StatelessWidget {
 }
 
 class _ReviewsTabContent extends StatelessWidget {
-  const _ReviewsTabContent({
-    required this.data,
-    required this.theme,
-  });
+  const _ReviewsTabContent({required this.data, required this.theme});
   final _DetailData data;
   final ThemeData theme;
 
@@ -1588,12 +1440,7 @@ class _ReviewsTabContent extends StatelessWidget {
       return Padding(
         padding: const EdgeInsets.all(24),
         child: Center(
-          child: Text(
-            'No reviews yet',
-            style: theme.textTheme.bodyLarge?.copyWith(
-              color: nav.withValues(alpha: 0.6),
-            ),
-          ),
+          child: Text('No reviews yet', style: theme.textTheme.bodyLarge?.copyWith(color: nav.withValues(alpha: 0.6))),
         ),
       );
     }
@@ -1602,20 +1449,18 @@ class _ReviewsTabContent extends StatelessWidget {
       children: [
         Row(
           children: [
-            ...List.generate(5, (i) => Icon(
-              i < data.averageRating.round().clamp(0, 5)
-                  ? Icons.star_rounded
-                  : Icons.star_border_rounded,
-              size: 24,
-              color: AppTheme.specGold,
-            )),
+            ...List.generate(
+              5,
+              (i) => Icon(
+                i < data.averageRating.round().clamp(0, 5) ? Icons.star_rounded : Icons.star_border_rounded,
+                size: 24,
+                color: AppTheme.specGold,
+              ),
+            ),
             const SizedBox(width: 8),
             Text(
               '${data.averageRating.toStringAsFixed(1)} (${data.reviewCount})',
-              style: theme.textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.w600,
-                color: nav,
-              ),
+              style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600, color: nav),
             ),
           ],
         ),
@@ -1630,11 +1475,7 @@ class _ReviewsTabContent extends StatelessWidget {
                 borderRadius: BorderRadius.circular(14),
                 border: Border.all(color: nav.withValues(alpha: 0.1)),
                 boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.04),
-                    blurRadius: 8,
-                    offset: const Offset(0, 2),
-                  ),
+                  BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 8, offset: const Offset(0, 2)),
                 ],
               ),
               child: Column(
@@ -1642,29 +1483,24 @@ class _ReviewsTabContent extends StatelessWidget {
                 children: [
                   Row(
                     children: [
-                      ...List.generate(5, (i) => Icon(
-                        i < r.rating ? Icons.star_rounded : Icons.star_border_rounded,
-                        size: 16,
-                        color: AppTheme.specGold,
-                      )),
+                      ...List.generate(
+                        5,
+                        (i) => Icon(
+                          i < r.rating ? Icons.star_rounded : Icons.star_border_rounded,
+                          size: 16,
+                          color: AppTheme.specGold,
+                        ),
+                      ),
                       const SizedBox(width: 8),
                       Text(
                         _formatDate(r.createdAt),
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: nav.withValues(alpha: 0.6),
-                        ),
+                        style: theme.textTheme.bodySmall?.copyWith(color: nav.withValues(alpha: 0.6)),
                       ),
                     ],
                   ),
                   if (r.body != null && r.body!.isNotEmpty) ...[
                     const SizedBox(height: 6),
-                    Text(
-                      r.body!,
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        color: nav,
-                        height: 1.4,
-                      ),
-                    ),
+                    Text(r.body!, style: theme.textTheme.bodyMedium?.copyWith(color: nav, height: 1.4)),
                   ],
                 ],
               ),
@@ -1703,9 +1539,7 @@ class _MapPreviewPlaceholder extends StatelessWidget {
             const SizedBox(width: 8),
             Text(
               'Map · $lat, $lng',
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: AppTheme.specNavy.withValues(alpha: 0.6),
-              ),
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppTheme.specNavy.withValues(alpha: 0.6)),
             ),
           ],
         ),
@@ -1715,11 +1549,7 @@ class _MapPreviewPlaceholder extends StatelessWidget {
 }
 
 class _EventsBlock extends StatefulWidget {
-  const _EventsBlock({
-    required this.events,
-    required this.isSignedIn,
-    required this.onRsvpChanged,
-  });
+  const _EventsBlock({required this.events, required this.isSignedIn, required this.onRsvpChanged});
 
   final List<MockEvent> events;
   final bool isSignedIn;
@@ -1748,10 +1578,12 @@ class _EventsBlockState extends State<_EventsBlock> {
 
   Future<void> _loadMyRsvps() async {
     final map = <String, String>{};
-    await Future.wait(widget.events.map((e) async {
-      final rsvp = await _rsvpRepo.getMyRsvpForEvent(e.id);
-      map[e.id] = rsvp?.status ?? '';
-    }));
+    await Future.wait(
+      widget.events.map((e) async {
+        final rsvp = await _rsvpRepo.getMyRsvpForEvent(e.id);
+        map[e.id] = rsvp?.status ?? '';
+      }),
+    );
     if (!mounted) return;
     setState(() {
       _myStatusByEventId = map;
@@ -1794,11 +1626,7 @@ class _EventsBlockState extends State<_EventsBlock> {
               borderRadius: BorderRadius.circular(14),
               border: Border.all(color: nav.withValues(alpha: 0.12)),
               boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.04),
-                  blurRadius: 8,
-                  offset: const Offset(0, 2),
-                ),
+                BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 8, offset: const Offset(0, 2)),
               ],
             ),
             child: Column(
@@ -1806,10 +1634,7 @@ class _EventsBlockState extends State<_EventsBlock> {
               children: [
                 Text(
                   e.title,
-                  style: theme.textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w700,
-                    color: nav,
-                  ),
+                  style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700, color: nav),
                 ),
                 const SizedBox(height: 4),
                 Text(
@@ -1818,9 +1643,7 @@ class _EventsBlockState extends State<_EventsBlock> {
                     if (_timeStr(e.eventDate).isNotEmpty) _timeStr(e.eventDate),
                     if (e.location != null && e.location!.trim().isNotEmpty) e.location,
                   ].join(' · '),
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: nav.withValues(alpha: 0.7),
-                  ),
+                  style: theme.textTheme.bodySmall?.copyWith(color: nav.withValues(alpha: 0.7)),
                 ),
                 if (widget.isSignedIn) ...[
                   const SizedBox(height: 12),
@@ -1870,12 +1693,7 @@ class _EventsBlockState extends State<_EventsBlock> {
 }
 
 class _RsvpChip extends StatelessWidget {
-  const _RsvpChip({
-    required this.label,
-    required this.status,
-    required this.selected,
-    required this.onTap,
-  });
+  const _RsvpChip({required this.label, required this.status, required this.selected, required this.onTap});
 
   final String label;
   final String status;
@@ -1917,9 +1735,7 @@ class _StickyConnectPanel extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final nav = AppTheme.specNavy;
-    final hasContact = listing.address != null ||
-        listing.phone != null ||
-        listing.website != null;
+    final hasContact = listing.address != null || listing.phone != null || listing.website != null;
     final hasHours = listing.hours != null && listing.hours!.isNotEmpty;
     final showClaim = listing.isClaimable == true && isSignedIn && currentUserId != null;
     final hasPendingClaim = data.userClaim?.status == 'pending';
@@ -1934,11 +1750,7 @@ class _StickyConnectPanel extends StatelessWidget {
           color: AppTheme.specWhite,
           borderRadius: BorderRadius.circular(20),
           boxShadow: [
-            BoxShadow(
-              color: AppTheme.specNavy.withValues(alpha: 0.08),
-              blurRadius: 16,
-              offset: const Offset(0, 4),
-            ),
+            BoxShadow(color: AppTheme.specNavy.withValues(alpha: 0.08), blurRadius: 16, offset: const Offset(0, 4)),
           ],
         ),
         child: Column(
@@ -1959,26 +1771,17 @@ class _StickyConnectPanel extends StatelessWidget {
                           data.subscriptionTier!.toLowerCase() == 'premium'
                       ? '+ Local Partner'
                       : '+ Local Plus',
-                  style: theme.textTheme.labelMedium?.copyWith(
-                    color: AppTheme.specGold,
-                    fontWeight: FontWeight.w700,
-                  ),
+                  style: theme.textTheme.labelMedium?.copyWith(color: AppTheme.specGold, fontWeight: FontWeight.w700),
                 ),
               ),
               const SizedBox(height: 16),
             ],
             Text(
               'Information',
-              style: theme.textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.w700,
-                color: nav,
-              ),
+              style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700, color: nav),
             ),
             const SizedBox(height: 16),
-            if (hasContact) ...[
-              _ContactBlock(listing: listing),
-              const SizedBox(height: 20),
-            ],
+            if (hasContact) ...[_ContactBlock(listing: listing), const SizedBox(height: 20)],
             if (hasHours) ...[
               _Section(
                 title: 'Hours',
@@ -1996,37 +1799,29 @@ class _StickyConnectPanel extends StatelessWidget {
               const SizedBox(height: 20),
             ],
             if (data.listingLatitude != null && data.listingLongitude != null) ...[
-              _MapPreviewPlaceholder(
-                lat: data.listingLatitude!,
-                lng: data.listingLongitude!,
-              ),
+              _MapPreviewPlaceholder(lat: data.listingLatitude!, lng: data.listingLongitude!),
               const SizedBox(height: 20),
             ],
             if (data.reviewCount > 0) ...[
               Text(
                 'Reviews',
-                style: theme.textTheme.titleSmall?.copyWith(
-                  fontWeight: FontWeight.w700,
-                  color: nav,
-                ),
+                style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700, color: nav),
               ),
               const SizedBox(height: 6),
               Row(
                 children: [
-                  ...List.generate(5, (i) => Icon(
-                    i < data.averageRating.round().clamp(0, 5)
-                        ? Icons.star_rounded
-                        : Icons.star_border_rounded,
-                    size: 18,
-                    color: AppTheme.specGold,
-                  )),
+                  ...List.generate(
+                    5,
+                    (i) => Icon(
+                      i < data.averageRating.round().clamp(0, 5) ? Icons.star_rounded : Icons.star_border_rounded,
+                      size: 18,
+                      color: AppTheme.specGold,
+                    ),
+                  ),
                   const SizedBox(width: 6),
                   Text(
                     '${data.averageRating.toStringAsFixed(1)} (${data.reviewCount})',
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      fontWeight: FontWeight.w600,
-                      color: nav,
-                    ),
+                    style: theme.textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w600, color: nav),
                   ),
                 ],
               ),
@@ -2044,9 +1839,7 @@ class _StickyConnectPanel extends StatelessWidget {
                     children: [
                       Text(
                         data.reviews.first.body ?? '—',
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: nav.withValues(alpha: 0.85),
-                        ),
+                        style: theme.textTheme.bodySmall?.copyWith(color: nav.withValues(alpha: 0.85)),
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -2066,10 +1859,7 @@ class _StickyConnectPanel extends StatelessWidget {
             ],
             Text(
               'Connect',
-              style: theme.textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.w700,
-                color: nav,
-              ),
+              style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700, color: nav),
             ),
             const SizedBox(height: 16),
             if (showClaim && !hasApprovedClaim) ...[
@@ -2099,10 +1889,8 @@ class _StickyConnectPanel extends StatelessWidget {
                 Navigator.of(context).pop();
                 Navigator.of(context).push(
                   MaterialPageRoute<void>(
-                    builder: (_) => ConversationThreadScreen(
-                      conversationId: conversationId,
-                      businessName: listing.name,
-                    ),
+                    builder: (_) =>
+                        ConversationThreadScreen(conversationId: conversationId, businessName: listing.name),
                   ),
                 );
               },
@@ -2116,11 +1904,7 @@ class _StickyConnectPanel extends StatelessWidget {
 
 /// Small badge + CTA at bottom of listing when unclaimed and user can claim.
 class _UnclaimedClaimSection extends StatelessWidget {
-  const _UnclaimedClaimSection({
-    required this.listing,
-    required this.hasPendingClaim,
-    required this.onClaimTap,
-  });
+  const _UnclaimedClaimSection({required this.listing, required this.hasPendingClaim, required this.onClaimTap});
   final MockListing listing;
   final bool hasPendingClaim;
   final VoidCallback onClaimTap;
@@ -2139,10 +1923,7 @@ class _UnclaimedClaimSection extends StatelessWidget {
               const SizedBox(width: 8),
               Text(
                 'Unclaimed listing',
-                style: theme.textTheme.titleSmall?.copyWith(
-                  fontWeight: FontWeight.w600,
-                  color: AppTheme.specNavy,
-                ),
+                style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600, color: AppTheme.specNavy),
               ),
             ],
           ),
@@ -2160,16 +1941,12 @@ class _UnclaimedClaimSection extends StatelessWidget {
                 if (hasPendingClaim)
                   Text(
                     'Your claim is under review. We\'ll notify you once approved.',
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      color: AppTheme.specNavy.withValues(alpha: 0.9),
-                    ),
+                    style: theme.textTheme.bodyMedium?.copyWith(color: AppTheme.specNavy.withValues(alpha: 0.9)),
                   )
                 else ...[
                   Text(
                     'Own this business? Submit proof of identification; we\'ll review and approve your claim.',
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      color: AppTheme.specNavy.withValues(alpha: 0.9),
-                    ),
+                    style: theme.textTheme.bodyMedium?.copyWith(color: AppTheme.specNavy.withValues(alpha: 0.9)),
                   ),
                   const SizedBox(height: 12),
                   AppPrimaryButton(
@@ -2190,10 +1967,7 @@ class _UnclaimedClaimSection extends StatelessWidget {
 
 /// Compact chip for sticky panel.
 class _UnclaimedClaimChip extends StatelessWidget {
-  const _UnclaimedClaimChip({
-    required this.hasPendingClaim,
-    required this.onTap,
-  });
+  const _UnclaimedClaimChip({required this.hasPendingClaim, required this.onTap});
   final bool hasPendingClaim;
   final VoidCallback onTap;
 
@@ -2214,19 +1988,12 @@ class _UnclaimedClaimChip extends StatelessWidget {
           ),
           child: Row(
             children: [
-              Icon(
-                hasPendingClaim ? Icons.schedule_rounded : Icons.store_outlined,
-                size: 20,
-                color: AppTheme.specNavy,
-              ),
+              Icon(hasPendingClaim ? Icons.schedule_rounded : Icons.store_outlined, size: 20, color: AppTheme.specNavy),
               const SizedBox(width: 10),
               Expanded(
                 child: Text(
                   hasPendingClaim ? 'Claim under review' : 'Unclaimed — tap to claim',
-                  style: theme.textTheme.labelMedium?.copyWith(
-                    color: AppTheme.specNavy,
-                    fontWeight: FontWeight.w600,
-                  ),
+                  style: theme.textTheme.labelMedium?.copyWith(color: AppTheme.specNavy, fontWeight: FontWeight.w600),
                 ),
               ),
             ],
@@ -2259,11 +2026,7 @@ class _GridOverlayPainter extends CustomPainter {
 }
 
 class _Section extends StatelessWidget {
-  const _Section({
-    required this.title,
-    required this.child,
-    this.icon,
-  });
+  const _Section({required this.title, required this.child, this.icon});
 
   final String title;
   final Widget child;
@@ -2279,14 +2042,7 @@ class _Section extends StatelessWidget {
         children: [
           Row(
             children: [
-              if (icon != null) ...[
-                Icon(
-                  icon,
-                  size: 20,
-                  color: AppTheme.specNavy,
-                ),
-                const SizedBox(width: 8),
-              ],
+              if (icon != null) ...[Icon(icon, size: 20, color: AppTheme.specNavy), const SizedBox(width: 8)],
               Text(
                 title,
                 style: theme.textTheme.titleMedium?.copyWith(
@@ -2318,33 +2074,22 @@ class _HoursBlock extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppTheme.specOffWhite,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: AppTheme.specNavy.withValues(alpha: 0.08),
-        ),
+        border: Border.all(color: AppTheme.specNavy.withValues(alpha: 0.08)),
       ),
       child: Column(
         children: [
           for (int i = 0; i < hours.length; i++) ...[
-            if (i > 0)
-              Divider(
-                height: 24,
-                color: AppTheme.specNavy.withValues(alpha: 0.12),
-              ),
+            if (i > 0) Divider(height: 24, color: AppTheme.specNavy.withValues(alpha: 0.12)),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
                   hours[i].day,
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    fontWeight: FontWeight.w500,
-                    color: AppTheme.specNavy,
-                  ),
+                  style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w500, color: AppTheme.specNavy),
                 ),
                 Text(
                   hours[i].range,
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    color: theme.colorScheme.onSurfaceVariant,
-                  ),
+                  style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant),
                 ),
               ],
             ),
@@ -2368,9 +2113,7 @@ class _AmenitiesBlock extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppTheme.specOffWhite,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: AppTheme.specNavy.withValues(alpha: 0.08),
-        ),
+        border: Border.all(color: AppTheme.specNavy.withValues(alpha: 0.08)),
       ),
       child: Wrap(
         spacing: 8,
@@ -2383,11 +2126,7 @@ class _AmenitiesBlock extends StatelessWidget {
               borderRadius: BorderRadius.circular(20),
               border: Border.all(color: AppTheme.specGold.withValues(alpha: 0.4)),
               boxShadow: [
-                BoxShadow(
-                  color: AppTheme.specNavy.withValues(alpha: 0.06),
-                  blurRadius: 6,
-                  offset: const Offset(0, 2),
-                ),
+                BoxShadow(color: AppTheme.specNavy.withValues(alpha: 0.06), blurRadius: 6, offset: const Offset(0, 2)),
               ],
             ),
             child: Row(
@@ -2397,10 +2136,7 @@ class _AmenitiesBlock extends StatelessWidget {
                 const SizedBox(width: 6),
                 Text(
                   name,
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    fontWeight: FontWeight.w500,
-                    color: AppTheme.specNavy,
-                  ),
+                  style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w500, color: AppTheme.specNavy),
                 ),
               ],
             ),
@@ -2457,10 +2193,9 @@ class _ContactCtaSection extends StatelessWidget {
                 padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
                 child: Text(
                   'Contact $listingName',
-                  style: Theme.of(ctx).textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.w700,
-                    color: AppTheme.specNavy,
-                  ),
+                  style: Theme.of(
+                    ctx,
+                  ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700, color: AppTheme.specNavy),
                 ),
               ),
               Flexible(
@@ -2485,9 +2220,7 @@ class _ContactCtaSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final def = contactFormTemplate != null
-        ? ContactFormTemplates.getByKey(contactFormTemplate!)
-        : null;
+    final def = contactFormTemplate != null ? ContactFormTemplates.getByKey(contactFormTemplate!) : null;
 
     if (def == null) {
       return Text(
@@ -2505,9 +2238,7 @@ class _ContactCtaSection extends StatelessWidget {
         children: [
           Text(
             'Sign in to send a message.',
-            style: theme.textTheme.bodyMedium?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
-            ),
+            style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant),
           ),
         ],
       );
@@ -2532,26 +2263,14 @@ class _ContactBlock extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         if (listing.address != null)
-          _ContactRow(
-            icon: Icons.location_on_outlined,
-            label: listing.address!,
-            onTap: () {},
-          ),
+          _ContactRow(icon: Icons.location_on_outlined, label: listing.address!, onTap: () {}),
         if (listing.phone != null) ...[
           const SizedBox(height: 12),
-          _ContactRow(
-            icon: Icons.phone_outlined,
-            label: listing.phone!,
-            onTap: () {},
-          ),
+          _ContactRow(icon: Icons.phone_outlined, label: listing.phone!, onTap: () {}),
         ],
         if (listing.website != null) ...[
           const SizedBox(height: 12),
-          _ContactRow(
-            icon: Icons.language_rounded,
-            label: listing.website!,
-            onTap: () {},
-          ),
+          _ContactRow(icon: Icons.language_rounded, label: listing.website!, onTap: () {}),
         ],
       ],
     );
@@ -2559,11 +2278,7 @@ class _ContactBlock extends StatelessWidget {
 }
 
 class _ContactRow extends StatelessWidget {
-  const _ContactRow({
-    required this.icon,
-    required this.label,
-    required this.onTap,
-  });
+  const _ContactRow({required this.icon, required this.label, required this.onTap});
 
   final IconData icon;
   final String label;
@@ -2585,18 +2300,9 @@ class _ContactRow extends StatelessWidget {
               Icon(icon, size: 20, color: AppTheme.specNavy),
               const SizedBox(width: 12),
               Expanded(
-                child: Text(
-                  label,
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    color: AppTheme.specNavy,
-                  ),
-                ),
+                child: Text(label, style: theme.textTheme.bodyMedium?.copyWith(color: AppTheme.specNavy)),
               ),
-              Icon(
-                Icons.arrow_forward_ios_rounded,
-                size: 12,
-                color: AppTheme.specGold,
-              ),
+              Icon(Icons.arrow_forward_ios_rounded, size: 12, color: AppTheme.specGold),
             ],
           ),
         ),
@@ -2629,11 +2335,7 @@ class _SocialLinksBlock extends StatelessWidget {
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(
-                      _iconForType(link.type),
-                      size: 20,
-                      color: AppTheme.specNavy,
-                    ),
+                    Icon(_iconForType(link.type), size: 20, color: AppTheme.specNavy),
                     const SizedBox(width: 8),
                     Text(
                       link.label ?? _labelForType(link.type),
@@ -2678,22 +2380,18 @@ class _SocialLinksBlock extends StatelessWidget {
   }
 }
 
-class _DealsBlock extends StatefulWidget {
-  const _DealsBlock({
-    required this.listingId,
-    required this.deals,
-    this.listingName,
-  });
+class _DealsBlock extends ConsumerStatefulWidget {
+  const _DealsBlock({required this.listingId, required this.deals, this.listingName});
 
   final String listingId;
   final List<MockDeal> deals;
   final String? listingName;
 
   @override
-  State<_DealsBlock> createState() => _DealsBlockState();
+  ConsumerState<_DealsBlock> createState() => _DealsBlockState();
 }
 
-class _DealsBlockState extends State<_DealsBlock> {
+class _DealsBlockState extends ConsumerState<_DealsBlock> {
   Map<String, UserDeal> _userDealsByDealId = {};
   bool _claimedLoaded = false;
 
@@ -2704,29 +2402,28 @@ class _DealsBlockState extends State<_DealsBlock> {
   }
 
   Future<void> _loadClaimed() async {
-    final auth = AppDataScope.of(context).authRepository;
-    final uid = auth.currentUserId;
+    final auth = ref.read(authNotifierProvider).valueOrNull;
+    final uid = auth?.id;
     if (uid == null) {
       if (mounted) setState(() => _claimedLoaded = true);
       return;
     }
-    final list = await UserDealsRepository(authRepository: auth).listForUser(uid);
+    final list = await ref.read(userDealsRepositoryProvider).listForUser(uid);
     if (mounted) {
       setState(() {
-      _userDealsByDealId = {for (var e in list) e.dealId: e};
-      _claimedLoaded = true;
-    });
+        _userDealsByDealId = {for (var e in list) e.dealId: e};
+        _claimedLoaded = true;
+      });
     }
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final scope = AppDataScope.of(context);
-    final auth = scope.authRepository;
-    final uid = auth.currentUserId;
-    final canClaimDeals = uid != null && (scope.userTierService.value?.canClaimDeals ?? false);
-    final userDealsRepo = UserDealsRepository(authRepository: auth);
+    final userId = ref.watch(authNotifierProvider).valueOrNull?.id;
+    final userTierService = ref.watch(userTierServiceProvider);
+    final canClaimDeals = userId != null && (userTierService.value?.canClaimDeals ?? false);
+    final userDealsRepo = ref.read(userDealsRepositoryProvider);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -2749,40 +2446,42 @@ class _DealsBlockState extends State<_DealsBlock> {
                     usedAt: ud?.usedAt,
                     onClaim: canClaimDeals
                         ? () async {
-                            await userDealsRepo.claim(uid, deal.id);
-                            final claimerProfile = await AuthRepository().getProfileForAdmin(uid);
-                            final ownerUserId = await BusinessManagersRepository().getFirstManagerUserId(deal.listingId) ??
-                                await BusinessRepository().getCreatedBy(deal.listingId);
+                            await userDealsRepo.claim(userId, deal.id);
+                            final authRepo = ref.read(profilesRepositoryProvider);
+                            final ownerUserId =
+                                await ref
+                                    .read(businessManagersRepositoryProvider)
+                                    .listBusinessIdsForUser(userId)
+                                    .then((ids) => ids.contains(deal.listingId) ? userId : null) ??
+                                await ref.read(businessRepositoryProvider).getCreatedBy(deal.listingId);
                             if (ownerUserId != null) {
-                              final ownerProfile = await AuthRepository().getProfileForAdmin(ownerUserId);
+                              final ownerProfile = await authRepo.getProfile(ownerUserId);
                               final to = ownerProfile?.email?.trim();
                               if (to != null && to.isNotEmpty) {
-                                await SendEmailService().send(
+                                /* await SendEmailService().send(
                                   to: to,
                                   template: 'deal_claimed',
                                   variables: {
-                                    'display_name': claimerProfile?.displayName ?? 'A customer',
+                                    'display_name': 'A customer',
                                     'deal_title': deal.title,
                                     'business_name': widget.listingName ?? deal.listingId,
                                   },
-                                );
+                                ); // TODO: Implement backend email notification */
                               }
                             }
                             if (mounted) {
                               setState(() {
-                              _userDealsByDealId[deal.id] = UserDeal(
-                                userId: uid,
-                                dealId: deal.id,
-                                claimedAt: DateTime.now(),
-                                usedAt: null,
-                              );
-                            });
+                                _userDealsByDealId[deal.id] = UserDeal(
+                                  userId: userId,
+                                  dealId: deal.id,
+                                  claimedAt: DateTime.now(),
+                                  usedAt: null,
+                                );
+                              });
                             }
                           }
                         : null,
-                    onClaimUpsell: uid != null && !canClaimDeals
-                        ? () => presentSubscriptionPaywall(context)
-                        : null,
+                    onClaimUpsell: userId != null && !canClaimDeals ? () => presentSubscriptionPaywall(context) : null,
                   );
                 },
                 borderRadius: BorderRadius.circular(14),
@@ -2791,9 +2490,7 @@ class _DealsBlockState extends State<_DealsBlock> {
                   decoration: BoxDecoration(
                     color: AppTheme.specNavy.withValues(alpha: 0.06),
                     borderRadius: BorderRadius.circular(14),
-                    border: Border.all(
-                      color: AppTheme.specNavy.withValues(alpha: 0.12),
-                    ),
+                    border: Border.all(color: AppTheme.specNavy.withValues(alpha: 0.12)),
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -2806,11 +2503,7 @@ class _DealsBlockState extends State<_DealsBlock> {
                               color: AppTheme.specGold.withValues(alpha: 0.25),
                               borderRadius: BorderRadius.circular(8),
                             ),
-                            child: Icon(
-                              DealTypeIcons.iconFor(deal.dealType),
-                              size: 18,
-                              color: AppTheme.specNavy,
-                            ),
+                            child: Icon(DealTypeIcons.iconFor(deal.dealType), size: 18, color: AppTheme.specNavy),
                           ),
                           const SizedBox(width: 10),
                           Expanded(
@@ -2822,19 +2515,13 @@ class _DealsBlockState extends State<_DealsBlock> {
                               ),
                             ),
                           ),
-                          Icon(
-                            Icons.arrow_forward_ios_rounded,
-                            size: 12,
-                            color: AppTheme.specGold,
-                          ),
+                          Icon(Icons.arrow_forward_ios_rounded, size: 12, color: AppTheme.specGold),
                         ],
                       ),
                       const SizedBox(height: 6),
                       Text(
                         deal.description,
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: theme.colorScheme.onSurfaceVariant,
-                        ),
+                        style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -2861,11 +2548,7 @@ class _DealsBlockState extends State<_DealsBlock> {
 }
 
 class _PunchCardsBlock extends StatelessWidget {
-  const _PunchCardsBlock({
-    required this.cards,
-    required this.isSignedIn,
-    required this.onEnroll,
-  });
+  const _PunchCardsBlock({required this.cards, required this.isSignedIn, required this.onEnroll});
 
   final List<MockPunchCard> cards;
   final bool isSignedIn;
@@ -2879,50 +2562,38 @@ class _PunchCardsBlock extends StatelessWidget {
         for (final card in cards)
           Padding(
             padding: const EdgeInsets.only(bottom: 12),
-            child: _PunchCardTile(
-              card: card,
-              isSignedIn: isSignedIn,
-              onEnroll: onEnroll,
-            ),
+            child: _PunchCardTile(card: card, isSignedIn: isSignedIn, onEnroll: onEnroll),
           ),
       ],
     );
   }
 }
 
-class _PunchCardTile extends StatefulWidget {
-  const _PunchCardTile({
-    required this.card,
-    required this.isSignedIn,
-    required this.onEnroll,
-  });
+class _PunchCardTile extends ConsumerStatefulWidget {
+  const _PunchCardTile({required this.card, required this.isSignedIn, required this.onEnroll});
 
   final MockPunchCard card;
   final bool isSignedIn;
   final VoidCallback onEnroll;
 
   @override
-  State<_PunchCardTile> createState() => _PunchCardTileState();
+  ConsumerState<_PunchCardTile> createState() => _PunchCardTileState();
 }
 
-class _PunchCardTileState extends State<_PunchCardTile> {
+class _PunchCardTileState extends ConsumerState<_PunchCardTile> {
   bool _enrolling = false;
 
   Future<void> _enroll() async {
     setState(() => _enrolling = true);
     try {
-      await UserPunchCardsRepository().enroll(widget.card.id);
+      await ref.read(userPunchCardsRepositoryProvider).enroll(widget.card.id);
       if (mounted) {
         widget.onEnroll();
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('You\'re enrolled!')),
-        );
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('You\'re enrolled!')));
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Could not enroll: $e')),
-        );
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Could not enroll: $e')));
       }
     } finally {
       if (mounted) setState(() => _enrolling = false);
@@ -2939,9 +2610,7 @@ class _PunchCardTileState extends State<_PunchCardTile> {
       decoration: BoxDecoration(
         color: AppTheme.specOffWhite,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(
-          color: AppTheme.specNavy.withValues(alpha: 0.12),
-        ),
+        border: Border.all(color: AppTheme.specNavy.withValues(alpha: 0.12)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -2951,10 +2620,7 @@ class _PunchCardTileState extends State<_PunchCardTile> {
               Expanded(
                 child: Text(
                   card.title,
-                  style: theme.textTheme.titleSmall?.copyWith(
-                    fontWeight: FontWeight.w600,
-                    color: AppTheme.specNavy,
-                  ),
+                  style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600, color: AppTheme.specNavy),
                 ),
               ),
               if (card.isRedeemed)
@@ -2966,10 +2632,7 @@ class _PunchCardTileState extends State<_PunchCardTile> {
                   ),
                   child: Text(
                     'Redeemed',
-                    style: theme.textTheme.labelSmall?.copyWith(
-                      fontWeight: FontWeight.w600,
-                      color: AppTheme.specNavy,
-                    ),
+                    style: theme.textTheme.labelSmall?.copyWith(fontWeight: FontWeight.w600, color: AppTheme.specNavy),
                   ),
                 ),
             ],
@@ -2977,9 +2640,7 @@ class _PunchCardTileState extends State<_PunchCardTile> {
           const SizedBox(height: 4),
           Text(
             card.rewardDescription,
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
-            ),
+            style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
           ),
           const SizedBox(height: 10),
           Row(
@@ -2992,13 +2653,9 @@ class _PunchCardTileState extends State<_PunchCardTile> {
                     height: 24,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      color: i < card.punchesEarned
-                          ? AppTheme.specNavy
-                          : AppTheme.specNavy.withValues(alpha: 0.12),
+                      color: i < card.punchesEarned ? AppTheme.specNavy : AppTheme.specNavy.withValues(alpha: 0.12),
                       border: Border.all(
-                        color: i < card.punchesEarned
-                            ? AppTheme.specNavy
-                            : AppTheme.specNavy.withValues(alpha: 0.25),
+                        color: i < card.punchesEarned ? AppTheme.specNavy : AppTheme.specNavy.withValues(alpha: 0.25),
                       ),
                     ),
                     child: i < card.punchesEarned
@@ -3009,9 +2666,7 @@ class _PunchCardTileState extends State<_PunchCardTile> {
               const SizedBox(width: 8),
               Text(
                 '${card.punchesEarned}/${card.punchesRequired} punches',
-                style: theme.textTheme.labelMedium?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
-                ),
+                style: theme.textTheme.labelMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant),
               ),
             ],
           ),
@@ -3021,7 +2676,11 @@ class _PunchCardTileState extends State<_PunchCardTile> {
               onPressed: _enrolling ? null : _enroll,
               expanded: true,
               child: _enrolling
-                  ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                  ? const SizedBox(
+                      height: 20,
+                      width: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                    )
                   : const Text('Enroll'),
             ),
           ],
@@ -3030,7 +2689,7 @@ class _PunchCardTileState extends State<_PunchCardTile> {
             SizedBox(
               width: double.infinity,
               child: AppOutlinedButton(
-                onPressed: () => showPunchQrSheet(context, userPunchCardId: card.userPunchCardId!, cardTitle: card.title),
+                onPressed: () => showPunchQrSheet(context, programId: card.id, cardTitle: card.title),
                 icon: const Icon(Icons.qr_code_2_rounded, size: 20, color: AppTheme.specNavy),
                 label: Text(
                   'Show QR for punch',

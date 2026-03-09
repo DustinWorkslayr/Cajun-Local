@@ -1,13 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:my_app/core/auth/auth_repository.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:my_app/core/auth/providers/auth_provider.dart';
+import 'package:my_app/core/data/providers/app_data_providers.dart';
 import 'package:my_app/core/data/deal_type_icons.dart';
-import 'package:my_app/core/data/app_data_scope.dart';
 import 'package:my_app/core/data/mock_data.dart';
 import 'package:my_app/core/data/models/user_deal.dart';
 import 'package:my_app/core/data/repositories/business_managers_repository.dart';
-import 'package:my_app/core/data/repositories/business_repository.dart';
-import 'package:my_app/core/data/repositories/user_deals_repository.dart';
-import 'package:my_app/core/data/services/send_email_service.dart';
 import 'package:my_app/core/preferences/user_parish_preferences.dart';
 import 'package:my_app/core/theme/app_layout.dart';
 import 'package:my_app/core/theme/theme.dart';
@@ -18,6 +16,7 @@ import 'package:my_app/shared/widgets/animated_entrance.dart';
 import 'package:my_app/shared/widgets/deal_detail_popup.dart';
 import 'package:my_app/shared/widgets/app_buttons.dart';
 import 'package:my_app/core/revenuecat/present_subscription_paywall.dart';
+import 'package:my_app/core/data/repositories/profiles_repository.dart';
 
 /// Deal type filter options: value (null = all) and label.
 const List<({String? value, String label})> _dealTypeFilterOptions = [
@@ -32,14 +31,14 @@ const List<({String? value, String label})> _dealTypeFilterOptions = [
 ];
 
 /// Deals tab — Discounts and Loyalty. Uses new theme: specOffWhite, specNavy, specGold.
-class DealsScreen extends StatefulWidget {
+class DealsScreen extends ConsumerStatefulWidget {
   const DealsScreen({super.key});
 
   @override
-  State<DealsScreen> createState() => _DealsScreenState();
+  ConsumerState<DealsScreen> createState() => _DealsScreenState();
 }
 
-class _DealsScreenState extends State<DealsScreen> with SingleTickerProviderStateMixin {
+class _DealsScreenState extends ConsumerState<DealsScreen> with SingleTickerProviderStateMixin {
   late TabController _tabController;
 
   @override
@@ -68,26 +67,20 @@ class _DealsScreenState extends State<DealsScreen> with SingleTickerProviderStat
             child: Material(
               color: AppTheme.specOffWhite,
               child: TabBar(
-              controller: _tabController,
-              labelColor: AppTheme.specNavy,
-              unselectedLabelColor: theme.colorScheme.onSurfaceVariant,
-              indicatorColor: AppTheme.specGold,
-              indicatorWeight: 3,
-              tabs: const [
-                Tab(icon: Icon(Icons.local_offer_rounded, size: 20), text: 'Discounts'),
-                Tab(icon: Icon(Icons.loyalty_rounded, size: 20), text: 'Loyalty'),
-              ],
-            ),
+                controller: _tabController,
+                labelColor: AppTheme.specNavy,
+                unselectedLabelColor: theme.colorScheme.onSurfaceVariant,
+                indicatorColor: AppTheme.specGold,
+                indicatorWeight: 3,
+                tabs: const [
+                  Tab(icon: Icon(Icons.local_offer_rounded, size: 20), text: 'Discounts'),
+                  Tab(icon: Icon(Icons.loyalty_rounded, size: 20), text: 'Loyalty'),
+                ],
+              ),
             ),
           ),
           Expanded(
-            child: TabBarView(
-              controller: _tabController,
-              children: [
-                const _DiscountsTab(),
-                const _LoyaltyTab(),
-              ],
-            ),
+            child: TabBarView(controller: _tabController, children: [const _DiscountsTab(), const _LoyaltyTab()]),
           ),
         ],
       ),
@@ -99,11 +92,7 @@ const double _cardRadius = 14;
 
 /// Section header with icon badge + title + optional subtitle (e.g. "Deals", "My deals").
 class _SectionTitleBadge extends StatelessWidget {
-  const _SectionTitleBadge({
-    required this.icon,
-    required this.label,
-    this.subtitle,
-  });
+  const _SectionTitleBadge({required this.icon, required this.label, this.subtitle});
 
   final IconData icon;
   final String label;
@@ -131,18 +120,13 @@ class _SectionTitleBadge extends StatelessWidget {
             children: [
               Text(
                 label,
-                style: theme.textTheme.headlineSmall?.copyWith(
-                  fontWeight: FontWeight.w800,
-                  color: AppTheme.specNavy,
-                ),
+                style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w800, color: AppTheme.specNavy),
               ),
               if (subtitle != null) ...[
                 const SizedBox(height: 2),
                 Text(
                   subtitle!,
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    color: AppTheme.specNavy.withValues(alpha: 0.7),
-                  ),
+                  style: theme.textTheme.bodyMedium?.copyWith(color: AppTheme.specNavy.withValues(alpha: 0.7)),
                 ),
               ],
             ],
@@ -170,24 +154,21 @@ Widget _redeemedBadge(BuildContext context) {
         const SizedBox(width: 6),
         Text(
           'Redeemed',
-          style: theme.textTheme.labelLarge?.copyWith(
-            fontWeight: FontWeight.w700,
-            color: const Color(0xFF1B5E20),
-          ),
+          style: theme.textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w700, color: const Color(0xFF1B5E20)),
         ),
       ],
     ),
   );
 }
 
-class _DiscountsTab extends StatefulWidget {
+class _DiscountsTab extends ConsumerStatefulWidget {
   const _DiscountsTab();
 
   @override
-  State<_DiscountsTab> createState() => _DiscountsTabState();
+  ConsumerState<_DiscountsTab> createState() => _DiscountsTabState();
 }
 
-class _DiscountsTabState extends State<_DiscountsTab> {
+class _DiscountsTabState extends ConsumerState<_DiscountsTab> {
   List<MockDeal>? _deals;
   Map<String, UserDeal> _userDealsByDealId = {};
   bool _loading = true;
@@ -203,27 +184,26 @@ class _DiscountsTabState extends State<_DiscountsTab> {
     super.didChangeDependencies();
     if (!_parishIdsInitialized) {
       _parishIdsInitialized = true;
-      final ds = AppDataScope.of(context).dataSource;
-      Future.wait([
-        UserParishPreferences.getPreferredParishIds(),
-        ds.getParishes(),
-      ]).then((results) {
-        if (mounted) {
-          setState(() {
-            _parishIds = results[0] as Set<String>;
-            _parishes = results[1] as List<MockParish>;
-            _load();
+      final ds = ref.read(listingDataSourceProvider);
+      Future.wait<dynamic>([UserParishPreferences.getPreferredParishIds(), ds.getParishes()])
+          .then((results) {
+            if (mounted) {
+              setState(() {
+                _parishIds = results[0] as Set<String>;
+                _parishes = results[1] as List<MockParish>;
+                _load();
+              });
+            }
+          })
+          .catchError((_) {
+            if (mounted) {
+              setState(() {
+                _parishIds = {};
+                _parishes = [];
+                _load();
+              });
+            }
           });
-        }
-      }).catchError((_) {
-        if (mounted) {
-          setState(() {
-            _parishIds = {};
-            _parishes = [];
-            _load();
-          });
-        }
-      });
       return;
     }
     if (_deals == null && _loading && _parishIdsInitialized) {
@@ -233,18 +213,13 @@ class _DiscountsTabState extends State<_DiscountsTab> {
 
   Future<void> _load() async {
     setState(() => _loading = true);
-    final dataSource = AppDataScope.of(context).dataSource;
-    final auth = AppDataScope.of(context).authRepository;
-    final repo = UserDealsRepository(authRepository: auth);
-    final uid = auth.currentUserId;
+    final dataSource = ref.read(listingDataSourceProvider);
+    final uid = ref.read(authNotifierProvider).valueOrNull?.id;
+    final repo = ref.read(userDealsRepositoryProvider);
 
     final categories = await dataSource.getCategories();
-    final results = await Future.wait([
-      dataSource.getActiveDealsFiltered(
-        parishIds: _parishIds,
-        categoryId: _categoryId,
-        dealType: _dealType,
-      ),
+    final results = await Future.wait<dynamic>([
+      dataSource.getActiveDealsFiltered(parishIds: _parishIds, categoryId: _categoryId, dealType: _dealType),
       uid != null ? repo.listForUser(uid) : Future<List<UserDeal>>.value([]),
     ]);
     if (mounted) {
@@ -263,9 +238,7 @@ class _DiscountsTabState extends State<_DiscountsTab> {
     showModalBottomSheet<void>(
       context: context,
       backgroundColor: theme.colorScheme.surface,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-      ),
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(16))),
       builder: (ctx) {
         Set<String> selected = Set.from(_parishIds);
         return StatefulBuilder(
@@ -278,17 +251,12 @@ class _DiscountsTabState extends State<_DiscountsTab> {
                 children: [
                   Text(
                     'Filter by parish',
-                    style: theme.textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w700,
-                      color: AppTheme.specNavy,
-                    ),
+                    style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700, color: AppTheme.specNavy),
                   ),
                   const SizedBox(height: 8),
                   Text(
                     'Your deals default to your preferred parishes — change them here.',
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant,
-                    ),
+                    style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
                   ),
                   const SizedBox(height: 16),
                   Wrap(
@@ -359,27 +327,19 @@ class _DiscountsTabState extends State<_DiscountsTab> {
             children: [
               Container(
                 padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  color: AppTheme.specGold.withValues(alpha: 0.15),
-                  shape: BoxShape.circle,
-                ),
+                decoration: BoxDecoration(color: AppTheme.specGold.withValues(alpha: 0.15), shape: BoxShape.circle),
                 child: Icon(Icons.local_offer_outlined, size: 56, color: AppTheme.specRed),
               ),
               const SizedBox(height: 24),
               Text(
                 'No deals here — yet',
-                style: theme.textTheme.titleLarge?.copyWith(
-                  fontWeight: FontWeight.w700,
-                  color: AppTheme.specNavy,
-                ),
+                style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700, color: AppTheme.specNavy),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 8),
               Text(
                 'Try a different category or parish, or check back soon. Don\'t leave money on the table.',
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
-                ),
+                style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant),
                 textAlign: TextAlign.center,
               ),
             ],
@@ -392,13 +352,12 @@ class _DiscountsTabState extends State<_DiscountsTab> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final scope = AppDataScope.of(context);
-    final dataSource = scope.dataSource;
-    final auth = scope.authRepository;
-    final userDealsRepo = UserDealsRepository(authRepository: auth);
-    final uid = auth.currentUserId;
-    final canClaimDeals = uid != null && (scope.userTierService.value?.canClaimDeals ?? false);
-    final canSeeExclusiveDeals = scope.userTierService.value?.canSeeExclusiveDeals ?? false;
+    final dataSource = ref.watch(listingDataSourceProvider);
+    final userDealsRepo = ref.watch(userDealsRepositoryProvider);
+    final uid = ref.watch(authNotifierProvider).valueOrNull?.id;
+    final userTierService = ref.watch(userTierServiceProvider);
+    final canClaimDeals = uid != null && (userTierService.value?.canClaimDeals ?? false);
+    final canSeeExclusiveDeals = userTierService.value?.canSeeExclusiveDeals ?? false;
     final padding = AppLayout.horizontalPadding(context);
 
     return CustomScrollView(
@@ -426,8 +385,16 @@ class _DiscountsTabState extends State<_DiscountsTab> {
                           contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                         ),
                         items: [
-                          DropdownMenuItem<String?>(value: null, child: Text('All categories', style: theme.textTheme.bodyMedium)),
-                          ..._categories.map((c) => DropdownMenuItem<String?>(value: c.id, child: Text(c.name, style: theme.textTheme.bodyMedium))),
+                          DropdownMenuItem<String?>(
+                            value: null,
+                            child: Text('All categories', style: theme.textTheme.bodyMedium),
+                          ),
+                          ..._categories.map(
+                            (c) => DropdownMenuItem<String?>(
+                              value: c.id,
+                              child: Text(c.name, style: theme.textTheme.bodyMedium),
+                            ),
+                          ),
                         ],
                         onChanged: (v) {
                           setState(() {
@@ -480,9 +447,7 @@ class _DiscountsTabState extends State<_DiscountsTab> {
                   ),
                   child: InkWell(
                     onTap: () {
-                      Navigator.of(context).push(
-                        MaterialPageRoute<void>(builder: (_) => const MyDealsScreen()),
-                      );
+                      Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const MyDealsScreen()));
                     },
                     borderRadius: BorderRadius.circular(_cardRadius),
                     child: Padding(
@@ -530,7 +495,11 @@ class _DiscountsTabState extends State<_DiscountsTab> {
                               ],
                             ),
                           ),
-                          Icon(Icons.arrow_forward_ios_rounded, size: 14, color: AppTheme.specNavy.withValues(alpha: 0.5)),
+                          Icon(
+                            Icons.arrow_forward_ios_rounded,
+                            size: 14,
+                            color: AppTheme.specNavy.withValues(alpha: 0.5),
+                          ),
                         ],
                       ),
                     ),
@@ -549,146 +518,145 @@ class _DiscountsTabState extends State<_DiscountsTab> {
           SliverPadding(
             padding: EdgeInsets.fromLTRB(padding.left, 0, padding.right, 16),
             sliver: SliverList(
-              delegate: SliverChildBuilderDelegate(
-                (context, index) {
-                  final deals = _deals!;
-                  if (!canSeeExclusiveDeals && index == 0) {
-                    return Padding(
-                      padding: const EdgeInsets.only(bottom: 6),
-                      child: Material(
-                        color: Colors.transparent,
-                        child: InkWell(
-                          onTap: () => presentSubscriptionPaywall(context),
-                          borderRadius: BorderRadius.circular(_cardRadius),
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                            decoration: BoxDecoration(
-                              color: AppTheme.specNavy.withValues(alpha: 0.08),
-                              borderRadius: BorderRadius.circular(_cardRadius),
-                              border: Border.all(
-                                color: AppTheme.specGold.withValues(alpha: 0.5),
-                                width: 1.5,
-                              ),
-                            ),
-                            child: Row(
-                              children: [
-                                Icon(Icons.lock_rounded, size: 28, color: AppTheme.specGold),
-                                const SizedBox(width: 14),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        'Exclusive deals',
-                                        style: theme.textTheme.titleMedium?.copyWith(
-                                          fontWeight: FontWeight.w700,
-                                          color: AppTheme.specNavy,
-                                        ),
+              delegate: SliverChildBuilderDelegate((context, index) {
+                final deals = _deals!;
+                if (!canSeeExclusiveDeals && index == 0) {
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 6),
+                    child: Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        onTap: () => presentSubscriptionPaywall(context),
+                        borderRadius: BorderRadius.circular(_cardRadius),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                          decoration: BoxDecoration(
+                            color: AppTheme.specNavy.withValues(alpha: 0.08),
+                            borderRadius: BorderRadius.circular(_cardRadius),
+                            border: Border.all(color: AppTheme.specGold.withValues(alpha: 0.5), width: 1.5),
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(Icons.lock_rounded, size: 28, color: AppTheme.specGold),
+                              const SizedBox(width: 14),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'Exclusive deals',
+                                      style: theme.textTheme.titleMedium?.copyWith(
+                                        fontWeight: FontWeight.w700,
+                                        color: AppTheme.specNavy,
                                       ),
-                                      const SizedBox(height: 4),
-                                      Text(
-                                        'Get Cajun+ to unlock member-only & flash deals. Worth every penny.',
-                                        style: theme.textTheme.bodySmall?.copyWith(
-                                          color: AppTheme.specNavy.withValues(alpha: 0.75),
-                                        ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      'Get Cajun+ to unlock member-only & flash deals. Worth every penny.',
+                                      style: theme.textTheme.bodySmall?.copyWith(
+                                        color: AppTheme.specNavy.withValues(alpha: 0.75),
                                       ),
-                                    ],
-                                  ),
+                                    ),
+                                  ],
                                 ),
-                                Icon(Icons.arrow_forward_ios_rounded, size: 14, color: AppTheme.specNavy.withValues(alpha: 0.5)),
-                              ],
-                            ),
+                              ),
+                              Icon(
+                                Icons.arrow_forward_ios_rounded,
+                                size: 14,
+                                color: AppTheme.specNavy.withValues(alpha: 0.5),
+                              ),
+                            ],
                           ),
                         ),
                       ),
-                    );
-                  }
-                  final dealIndex = canSeeExclusiveDeals ? index : index - 1;
-                  final deal = deals[dealIndex];
-                  final ud = _userDealsByDealId[deal.id];
-                  final isClaimed = ud != null;
-                  final isUsed = ud?.usedAt != null;
-                  final isMemberOnlyLocked = deal.dealType == 'member_only' && !canSeeExclusiveDeals;
-                  return Padding(
-                    padding: const EdgeInsets.only(bottom: 6),
-                    child: AnimatedEntrance(
-                      delay: Duration(milliseconds: 60 * (index + 1)),
-                      child: isMemberOnlyLocked
-                          ? _LockedDealCard(
-                              deal: deal,
-                              onTap: () => presentSubscriptionPaywall(context),
-                            )
-                          : FutureBuilder<MockListing?>(
-                              future: dataSource.getListingById(deal.listingId),
-                              builder: (context, listSnap) {
-                                final listing = listSnap.data;
-                                return _DealCard(
-                                  deal: deal,
-                                  listingName: listing?.name,
-                                  isUsed: isUsed,
-                                  onTap: () {
-                                    DealDetailPopup.show(
-                                      context,
-                                      deal: deal,
-                                      listingName: listing?.name,
-                                      onGoToListing: listing != null
-                                          ? () {
-                                              Navigator.of(context).push(
-                                                MaterialPageRoute<void>(
-                                                  builder: (_) => ListingDetailScreen(listingId: deal.listingId),
-                                                ),
-                                              );
-                                            }
-                                          : null,
-                                      isClaimed: isClaimed,
-                                      isUsed: isUsed,
-                                      usedAt: ud?.usedAt,
-                                      onClaim: canClaimDeals
-                                          ? () async {
-                                              await userDealsRepo.claim(uid, deal.id);
-                                              final claimerProfile = await AuthRepository().getProfileForAdmin(uid);
-                                              final ownerUserId = await BusinessManagersRepository().getFirstManagerUserId(deal.listingId) ??
-                                                  await BusinessRepository().getCreatedBy(deal.listingId);
-                                              if (ownerUserId != null) {
-                                                final ownerProfile = await AuthRepository().getProfileForAdmin(ownerUserId);
-                                                final to = ownerProfile?.email?.trim();
-                                                if (to != null && to.isNotEmpty) {
-                                                  await SendEmailService().send(
-                                                    to: to,
-                                                    template: 'deal_claimed',
-                                                    variables: {
-                                                      'display_name': claimerProfile?.displayName ?? 'A customer',
-                                                      'deal_title': deal.title,
-                                                      'business_name': listing?.name ?? deal.listingId,
-                                                    },
-                                                  );
-                                                }
-                                              }
-                                              if (mounted) {
-                                                setState(() {
-                                                  _userDealsByDealId[deal.id] = UserDeal(
-                                                    userId: uid,
-                                                    dealId: deal.id,
-                                                    claimedAt: DateTime.now(),
-                                                    usedAt: null,
-                                                  );
-                                                });
-                                              }
-                                            }
-                                          : null,
-                                      onClaimUpsell: uid != null && !canClaimDeals
-                                          ? () => presentSubscriptionPaywall(context)
-                                          : null,
-                                    );
-                                  },
-                                );
-                              },
-                            ),
                     ),
                   );
-                },
-                childCount: (canSeeExclusiveDeals ? 0 : 1) + (_deals!.length),
-              ),
+                }
+                final dealIndex = canSeeExclusiveDeals ? index : index - 1;
+                final deal = deals[dealIndex];
+                final ud = _userDealsByDealId[deal.id];
+                final isClaimed = ud != null;
+                final isUsed = ud?.usedAt != null;
+                final isMemberOnlyLocked = deal.dealType == 'member_only' && !canSeeExclusiveDeals;
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 6),
+                  child: AnimatedEntrance(
+                    delay: Duration(milliseconds: 60 * (index + 1)),
+                    child: isMemberOnlyLocked
+                        ? _LockedDealCard(deal: deal, onTap: () => presentSubscriptionPaywall(context))
+                        : FutureBuilder<MockListing?>(
+                            future: dataSource.getListingById(deal.listingId),
+                            builder: (context, listSnap) {
+                              final listing = listSnap.data;
+                              return _DealCard(
+                                deal: deal,
+                                listingName: listing?.name,
+                                isUsed: isUsed,
+                                onTap: () {
+                                  DealDetailPopup.show(
+                                    context,
+                                    deal: deal,
+                                    listingName: listing?.name,
+                                    onGoToListing: listing != null
+                                        ? () {
+                                            Navigator.of(context).push(
+                                              MaterialPageRoute<void>(
+                                                builder: (_) => ListingDetailScreen(listingId: deal.listingId),
+                                              ),
+                                            );
+                                          }
+                                        : null,
+                                    isClaimed: isClaimed,
+                                    isUsed: isUsed,
+                                    usedAt: ud?.usedAt,
+                                    onClaim: canClaimDeals
+                                        ? () async {
+                                            await userDealsRepo.claim(uid, deal.id);
+                                            final authRepoInternal = ref.read(profilesRepositoryProvider);
+                                            final claimerProfile = await authRepoInternal.getProfile(uid);
+                                            final ownerUserId =
+                                                await BusinessManagersRepository().getFirstManagerUserId(
+                                                  deal.listingId,
+                                                ) ??
+                                                await ref.read(businessRepositoryProvider).getCreatedBy(deal.listingId);
+                                            if (ownerUserId != null) {
+                                              final ownerProfile = await authRepoInternal.getProfile(ownerUserId);
+                                              final to = ownerProfile?.email?.trim();
+                                              if (to != null && to.isNotEmpty) {
+                                                /* await SendEmailService().send(
+                                                  to: to,
+                                                  template: 'deal_claimed',
+                                                  variables: {
+                                                    'display_name': claimerProfile?.displayName ?? 'A customer',
+                                                    'deal_title': deal.title,
+                                                    'business_name': listing?.name ?? deal.listingId,
+                                                  },
+                                                ); // TODO: Implement backend email notification */
+                                              }
+                                            }
+                                            if (mounted) {
+                                              setState(() {
+                                                _userDealsByDealId[deal.id] = UserDeal(
+                                                  userId: uid,
+                                                  dealId: deal.id,
+                                                  claimedAt: DateTime.now(),
+                                                  usedAt: null,
+                                                );
+                                              });
+                                            }
+                                          }
+                                        : null,
+                                    onClaimUpsell: uid != null && !canClaimDeals
+                                        ? () => presentSubscriptionPaywall(context)
+                                        : null,
+                                  );
+                                },
+                              );
+                            },
+                          ),
+                  ),
+                );
+              }, childCount: (canSeeExclusiveDeals ? 0 : 1) + (_deals!.length)),
             ),
           ),
       ],
@@ -733,11 +701,7 @@ class _LockedDealCard extends StatelessWidget {
                             color: AppTheme.specGold.withValues(alpha: 0.25),
                             borderRadius: BorderRadius.circular(10),
                           ),
-                          child: Icon(
-                            DealTypeIcons.iconFor(deal.dealType),
-                            size: 20,
-                            color: AppTheme.specNavy,
-                          ),
+                          child: Icon(DealTypeIcons.iconFor(deal.dealType), size: 20, color: AppTheme.specNavy),
                         ),
                         const SizedBox(width: 12),
                         Expanded(
@@ -754,9 +718,7 @@ class _LockedDealCard extends StatelessWidget {
                     const SizedBox(height: 6),
                     Text(
                       deal.description,
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: theme.colorScheme.onSurfaceVariant,
-                      ),
+                      style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -771,10 +733,7 @@ class _LockedDealCard extends StatelessWidget {
               child: Center(
                 child: Container(
                   padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    color: AppTheme.specGold.withValues(alpha: 0.9),
-                    shape: BoxShape.circle,
-                  ),
+                  decoration: BoxDecoration(color: AppTheme.specGold.withValues(alpha: 0.9), shape: BoxShape.circle),
                   child: const Icon(Icons.lock_rounded, color: AppTheme.specNavy, size: 24),
                 ),
               ),
@@ -787,12 +746,7 @@ class _LockedDealCard extends StatelessWidget {
 }
 
 class _DealCard extends StatelessWidget {
-  const _DealCard({
-    required this.deal,
-    required this.onTap,
-    this.listingName,
-    this.isUsed = false,
-  });
+  const _DealCard({required this.deal, required this.onTap, this.listingName, this.isUsed = false});
 
   final MockDeal deal;
   final String? listingName;
@@ -814,17 +768,11 @@ class _DealCard extends StatelessWidget {
             color: isUsed ? AppTheme.specWhite.withValues(alpha: 0.95) : AppTheme.specWhite,
             borderRadius: BorderRadius.circular(_cardRadius),
             border: Border.all(
-              color: isUsed
-                  ? AppTheme.specNavy.withValues(alpha: 0.12)
-                  : AppTheme.specGold.withValues(alpha: 0.4),
+              color: isUsed ? AppTheme.specNavy.withValues(alpha: 0.12) : AppTheme.specGold.withValues(alpha: 0.4),
               width: isUsed ? 1 : 1.5,
             ),
             boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.06),
-                blurRadius: 12,
-                offset: const Offset(0, 4),
-              ),
+              BoxShadow(color: Colors.black.withValues(alpha: 0.06), blurRadius: 12, offset: const Offset(0, 4)),
             ],
           ),
           child: Column(
@@ -840,11 +788,7 @@ class _DealCard extends StatelessWidget {
                       borderRadius: BorderRadius.circular(10),
                       border: Border.all(color: AppTheme.specGold.withValues(alpha: 0.5)),
                     ),
-                    child: Icon(
-                      DealTypeIcons.iconFor(deal.dealType),
-                      size: 24,
-                      color: AppTheme.specNavy,
-                    ),
+                    child: Icon(DealTypeIcons.iconFor(deal.dealType), size: 24, color: AppTheme.specNavy),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
@@ -877,10 +821,7 @@ class _DealCard extends StatelessWidget {
               const SizedBox(height: 10),
               Text(
                 deal.description,
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
-                  height: 1.35,
-                ),
+                style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant, height: 1.35),
               ),
               if (deal.code != null) ...[
                 const SizedBox(height: 10),
@@ -888,9 +829,7 @@ class _DealCard extends StatelessWidget {
                   children: [
                     Text(
                       'Code: ',
-                      style: theme.textTheme.labelMedium?.copyWith(
-                        color: theme.colorScheme.onSurfaceVariant,
-                      ),
+                      style: theme.textTheme.labelMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant),
                     ),
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
@@ -919,14 +858,14 @@ class _DealCard extends StatelessWidget {
   }
 }
 
-class _LoyaltyTab extends StatefulWidget {
+class _LoyaltyTab extends ConsumerStatefulWidget {
   const _LoyaltyTab();
 
   @override
-  State<_LoyaltyTab> createState() => _LoyaltyTabState();
+  ConsumerState<_LoyaltyTab> createState() => _LoyaltyTabState();
 }
 
-class _LoyaltyTabState extends State<_LoyaltyTab> {
+class _LoyaltyTabState extends ConsumerState<_LoyaltyTab> {
   List<MockPunchCard>? _punchCards;
   bool _loading = true;
   Set<String> _parishIds = {};
@@ -940,27 +879,26 @@ class _LoyaltyTabState extends State<_LoyaltyTab> {
     super.didChangeDependencies();
     if (!_parishIdsInitialized) {
       _parishIdsInitialized = true;
-      final ds = AppDataScope.of(context).dataSource;
-      Future.wait([
-        UserParishPreferences.getPreferredParishIds(),
-        ds.getParishes(),
-      ]).then((results) {
-        if (mounted) {
-          setState(() {
-            _parishIds = results[0] as Set<String>;
-            _parishes = results[1] as List<MockParish>;
-            _load();
+      final ds = ref.read(listingDataSourceProvider);
+      Future.wait<dynamic>([UserParishPreferences.getPreferredParishIds(), ds.getParishes()])
+          .then((results) {
+            if (mounted) {
+              setState(() {
+                _parishIds = results[0] as Set<String>;
+                _parishes = results[1] as List<MockParish>;
+                _load();
+              });
+            }
+          })
+          .catchError((_) {
+            if (mounted) {
+              setState(() {
+                _parishIds = {};
+                _parishes = [];
+                _load();
+              });
+            }
           });
-        }
-      }).catchError((_) {
-        if (mounted) {
-          setState(() {
-            _parishIds = {};
-            _parishes = [];
-            _load();
-          });
-        }
-      });
       return;
     }
     if (_punchCards == null && _loading && _parishIdsInitialized) {
@@ -970,12 +908,9 @@ class _LoyaltyTabState extends State<_LoyaltyTab> {
 
   Future<void> _load() async {
     setState(() => _loading = true);
-    final dataSource = AppDataScope.of(context).dataSource;
+    final dataSource = ref.read(listingDataSourceProvider);
     final categories = await dataSource.getCategories();
-    final cards = await dataSource.getActivePunchCardsFiltered(
-      parishIds: _parishIds,
-      categoryId: _categoryId,
-    );
+    final cards = await dataSource.getActivePunchCardsFiltered(parishIds: _parishIds, categoryId: _categoryId);
     if (mounted) {
       setState(() {
         _categories = categories;
@@ -990,9 +925,7 @@ class _LoyaltyTabState extends State<_LoyaltyTab> {
     showModalBottomSheet<void>(
       context: context,
       backgroundColor: theme.colorScheme.surface,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-      ),
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(16))),
       builder: (ctx) {
         Set<String> selected = Set.from(_parishIds);
         return StatefulBuilder(
@@ -1005,17 +938,12 @@ class _LoyaltyTabState extends State<_LoyaltyTab> {
                 children: [
                   Text(
                     'Filter by parish',
-                    style: theme.textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w700,
-                      color: AppTheme.specNavy,
-                    ),
+                    style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700, color: AppTheme.specNavy),
                   ),
                   const SizedBox(height: 8),
                   Text(
                     'Show loyalty programs from businesses in these parishes.',
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant,
-                    ),
+                    style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
                   ),
                   const SizedBox(height: 16),
                   Wrap(
@@ -1086,27 +1014,19 @@ class _LoyaltyTabState extends State<_LoyaltyTab> {
             children: [
               Container(
                 padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  color: AppTheme.specGold.withValues(alpha: 0.15),
-                  shape: BoxShape.circle,
-                ),
+                decoration: BoxDecoration(color: AppTheme.specGold.withValues(alpha: 0.15), shape: BoxShape.circle),
                 child: Icon(Icons.loyalty_outlined, size: 56, color: AppTheme.specRed),
               ),
               const SizedBox(height: 24),
               Text(
                 'No loyalty cards here',
-                style: theme.textTheme.titleLarge?.copyWith(
-                  fontWeight: FontWeight.w700,
-                  color: AppTheme.specNavy,
-                ),
+                style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700, color: AppTheme.specNavy),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 8),
               Text(
                 'Try a different category or parish, or check back soon. Earn punches at participating local spots.',
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
-                ),
+                style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant),
                 textAlign: TextAlign.center,
               ),
             ],
@@ -1119,7 +1039,7 @@ class _LoyaltyTabState extends State<_LoyaltyTab> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final dataSource = AppDataScope.of(context).dataSource;
+    final dataSource = ref.watch(listingDataSourceProvider);
     final padding = AppLayout.horizontalPadding(context);
     final punchCards = _punchCards ?? const [];
 
@@ -1148,8 +1068,16 @@ class _LoyaltyTabState extends State<_LoyaltyTab> {
                           contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                         ),
                         items: [
-                          DropdownMenuItem<String?>(value: null, child: Text('All categories', style: theme.textTheme.bodyMedium)),
-                          ..._categories.map((c) => DropdownMenuItem<String?>(value: c.id, child: Text(c.name, style: theme.textTheme.bodyMedium))),
+                          DropdownMenuItem<String?>(
+                            value: null,
+                            child: Text('All categories', style: theme.textTheme.bodyMedium),
+                          ),
+                          ..._categories.map(
+                            (c) => DropdownMenuItem<String?>(
+                              value: c.id,
+                              child: Text(c.name, style: theme.textTheme.bodyMedium),
+                            ),
+                          ),
                         ],
                         onChanged: (v) {
                           setState(() {
@@ -1177,9 +1105,7 @@ class _LoyaltyTabState extends State<_LoyaltyTab> {
                   ),
                   child: InkWell(
                     onTap: () {
-                      Navigator.of(context).push(
-                        MaterialPageRoute<void>(builder: (_) => const MyPunchCardsScreen()),
-                      );
+                      Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const MyPunchCardsScreen()));
                     },
                     borderRadius: BorderRadius.circular(_cardRadius),
                     child: Padding(
@@ -1223,7 +1149,11 @@ class _LoyaltyTabState extends State<_LoyaltyTab> {
                               ],
                             ),
                           ),
-                          Icon(Icons.arrow_forward_ios_rounded, size: 14, color: AppTheme.specNavy.withValues(alpha: 0.5)),
+                          Icon(
+                            Icons.arrow_forward_ios_rounded,
+                            size: 14,
+                            color: AppTheme.specNavy.withValues(alpha: 0.5),
+                          ),
                         ],
                       ),
                     ),
@@ -1235,42 +1165,39 @@ class _LoyaltyTabState extends State<_LoyaltyTab> {
           ),
         ),
         if (!_parishIdsInitialized || _loading)
-          const SliverFillRemaining(child: Center(child: CircularProgressIndicator(color: AppTheme.specNavy)))
+          const SliverFillRemaining(
+            child: Center(child: CircularProgressIndicator(color: AppTheme.specNavy)),
+          )
         else if (punchCards.isEmpty)
           SliverFillRemaining(child: _emptyState(context, theme))
         else
           SliverPadding(
             padding: EdgeInsets.fromLTRB(padding.left, 0, padding.right, 28),
             sliver: SliverList(
-              delegate: SliverChildBuilderDelegate(
-                (context, index) {
-                  final card = punchCards[index];
-                  return FutureBuilder<MockListing?>(
-                    future: dataSource.getListingById(card.listingId),
-                    builder: (context, listSnap) {
-                      final listing = listSnap.data;
-                      return Padding(
-                        padding: const EdgeInsets.only(bottom: 14),
-                        child: AnimatedEntrance(
-                          delay: Duration(milliseconds: 60 * (index + 1)),
-                          child: _LoyaltyCard(
-                            punchCard: card,
-                            listingName: listing?.name,
-                            onTap: () {
-                              Navigator.of(context).push(
-                                MaterialPageRoute<void>(
-                                  builder: (_) => ListingDetailScreen(listingId: card.listingId),
-                                ),
-                              );
-                            },
-                          ),
+              delegate: SliverChildBuilderDelegate((context, index) {
+                final card = punchCards[index];
+                return FutureBuilder<MockListing?>(
+                  future: dataSource.getListingById(card.listingId),
+                  builder: (context, listSnap) {
+                    final listing = listSnap.data;
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 14),
+                      child: AnimatedEntrance(
+                        delay: Duration(milliseconds: 60 * (index + 1)),
+                        child: _LoyaltyCard(
+                          punchCard: card,
+                          listingName: listing?.name,
+                          onTap: () {
+                            Navigator.of(context).push(
+                              MaterialPageRoute<void>(builder: (_) => ListingDetailScreen(listingId: card.listingId)),
+                            );
+                          },
                         ),
-                      );
-                    },
-                  );
-                },
-                childCount: punchCards.length,
-              ),
+                      ),
+                    );
+                  },
+                );
+              }, childCount: punchCards.length),
             ),
           ),
       ],
@@ -1279,11 +1206,7 @@ class _LoyaltyTabState extends State<_LoyaltyTab> {
 }
 
 class _LoyaltyCard extends StatelessWidget {
-  const _LoyaltyCard({
-    required this.punchCard,
-    required this.onTap,
-    this.listingName,
-  });
+  const _LoyaltyCard({required this.punchCard, required this.onTap, this.listingName});
 
   final MockPunchCard punchCard;
   final VoidCallback? onTap;
@@ -1305,11 +1228,7 @@ class _LoyaltyCard extends StatelessWidget {
             borderRadius: BorderRadius.circular(_cardRadius),
             border: Border.all(color: AppTheme.specGold.withValues(alpha: 0.3), width: 1),
             boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.06),
-                blurRadius: 12,
-                offset: const Offset(0, 4),
-              ),
+              BoxShadow(color: Colors.black.withValues(alpha: 0.06), blurRadius: 12, offset: const Offset(0, 4)),
             ],
           ),
           child: Column(
@@ -1333,18 +1252,13 @@ class _LoyaltyCard extends StatelessWidget {
                 const SizedBox(height: 4),
                 Text(
                   listingName!,
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: AppTheme.specRed,
-                    fontWeight: FontWeight.w500,
-                  ),
+                  style: theme.textTheme.bodySmall?.copyWith(color: AppTheme.specRed, fontWeight: FontWeight.w500),
                 ),
               ],
               const SizedBox(height: 10),
               Text(
                 punchCard.rewardDescription,
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
-                ),
+                style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
               ),
               const SizedBox(height: 14),
               Row(
@@ -1374,10 +1288,7 @@ class _LoyaltyCard extends StatelessWidget {
                   const SizedBox(width: 8),
                   Text(
                     '${punchCard.punchesEarned}/${punchCard.punchesRequired}',
-                    style: theme.textTheme.labelLarge?.copyWith(
-                      fontWeight: FontWeight.w600,
-                      color: AppTheme.specNavy,
-                    ),
+                    style: theme.textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w600, color: AppTheme.specNavy),
                   ),
                 ],
               ),

@@ -1,38 +1,33 @@
+import 'package:my_app/core/api/api_client.dart';
+import 'package:my_app/core/api/email_templates_api.dart';
 import 'package:my_app/core/data/models/email_template.dart';
-import 'package:my_app/core/supabase/supabase_config.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:riverpod_annotation/riverpod_annotation.dart';
+
+part 'email_templates_repository.g.dart';
 
 /// Email templates (backend-cheatsheet §2). Admin only.
 class EmailTemplatesRepository {
-  EmailTemplatesRepository();
-
-  SupabaseClient? get _client =>
-      SupabaseConfig.isConfigured ? Supabase.instance.client : null;
+  EmailTemplatesRepository({EmailTemplatesApi? api}) : _api = api ?? EmailTemplatesApi(ApiClient.instance);
+  final EmailTemplatesApi _api;
 
   Future<List<EmailTemplate>> list() async {
-    final client = _client;
-    if (client == null) return [];
-    final list = await client.from('email_templates').select();
-    return (list as List).map((e) => EmailTemplate.fromJson(e as Map<String, dynamic>)).toList();
+    return _api.list();
   }
 
   Future<EmailTemplate?> getByName(String name) async {
-    final client = _client;
-    if (client == null) return null;
-    final res = await client.from('email_templates').select().eq('name', name).maybeSingle();
-    if (res == null) return null;
-    return EmailTemplate.fromJson(Map<String, dynamic>.from(res));
+    return _api.getByName(name);
   }
 
   Future<void> upsert(EmailTemplate t) async {
-    final client = _client;
-    if (client == null) return;
-    await client.from('email_templates').upsert(t.toJson());
+    await _api.upsert(t);
   }
 
   Future<void> delete(String name) async {
-    final client = _client;
-    if (client == null) return;
-    await client.from('email_templates').delete().eq('name', name);
+    await _api.delete(name);
   }
+}
+
+@riverpod
+EmailTemplatesRepository emailTemplatesRepository(EmailTemplatesRepositoryRef ref) {
+  return EmailTemplatesRepository(api: ref.watch(emailTemplatesApiProvider));
 }

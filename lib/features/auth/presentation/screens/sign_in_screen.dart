@@ -1,30 +1,27 @@
 import 'package:flutter/material.dart';
-import 'package:my_app/core/data/app_data_scope.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:my_app/core/auth/providers/auth_provider.dart';
 import 'package:my_app/core/preferences/sign_in_preferences.dart';
 import 'package:my_app/core/theme/theme.dart';
 import 'package:my_app/features/auth/presentation/screens/forgot_password_request_screen.dart';
 import 'package:my_app/features/auth/presentation/screens/privacy_policy_agreement_screen.dart';
 import 'package:my_app/shared/widgets/app_buttons.dart';
 import 'package:my_app/shared/widgets/app_logo.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
 /// Branded sign-in/sign-up screen. Uses Supabase Auth when configured
 /// (backend-cheatsheet §9: handle_new_user creates profile + user role on signup).
-class SignInScreen extends StatefulWidget {
-  const SignInScreen({
-    super.key,
-    this.initialMode = AuthMode.signIn,
-  });
+class SignInScreen extends ConsumerStatefulWidget {
+  const SignInScreen({super.key, this.initialMode = AuthMode.signIn});
 
   final AuthMode initialMode;
 
   @override
-  State<SignInScreen> createState() => _SignInScreenState();
+  ConsumerState<SignInScreen> createState() => _SignInScreenState();
 }
 
 enum AuthMode { signIn, signUp }
 
-class _SignInScreenState extends State<SignInScreen> {
+class _SignInScreenState extends ConsumerState<SignInScreen> {
   late AuthMode _mode;
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
@@ -34,6 +31,7 @@ class _SignInScreenState extends State<SignInScreen> {
   bool _loading = false;
   String? _errorMessage;
   bool _rememberMe = false;
+
   /// Sign-up only: user must scroll to bottom of privacy policy and tap "I agree".
   bool _privacyAgreed = false;
 
@@ -70,39 +68,23 @@ class _SignInScreenState extends State<SignInScreen> {
       _loading = true;
     });
 
-    final auth = AppDataScope.of(context).authRepository;
-    if (!auth.isConfigured) {
-      setState(() {
-        _errorMessage = 'Sign-in is not configured.';
-        _loading = false;
-      });
-      return;
-    }
-
     final email = _emailController.text.trim();
     final password = _passwordController.text;
-    final displayName = _displayNameController.text.trim().isEmpty
-        ? null
-        : _displayNameController.text.trim();
+    final displayName = _displayNameController.text.trim().isEmpty ? null : _displayNameController.text.trim();
 
     try {
       if (_mode == AuthMode.signUp) {
-        await auth.signUp(
-          email: email,
-          password: password,
-          displayName: displayName,
-        );
+        await ref
+            .read(authNotifierProvider.notifier)
+            .signUp(email: email, password: password, displayName: displayName);
         // Confirmation email is sent by Supabase Auth using your project's custom SMTP.
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Check your email to confirm your account.'),
-            ),
-          );
-          setState(() => _mode = AuthMode.signIn);
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(const SnackBar(content: Text('Account created. You are now logged in.')));
         }
       } else {
-        await auth.signIn(email: email, password: password);
+        await ref.read(authNotifierProvider.notifier).signIn(email: email, password: password);
         if (mounted) {
           if (_rememberMe) {
             await SignInPreferences.setRememberMe(true);
@@ -112,26 +94,24 @@ class _SignInScreenState extends State<SignInScreen> {
             await SignInPreferences.clear();
           }
         }
-        // Do not pop: home is StreamBuilder; auth state change will switch to MainShell.
-        if (mounted) setState(() => _loading = false);
       }
-    } on AuthException catch (e) {
+      // Check for errors
+      final state = ref.read(authNotifierProvider);
+      if (state.hasError) {
+        throw state.error!;
+      }
+
+      if (mounted) setState(() => _loading = false);
+    } catch (e) {
       if (mounted) {
-        final msg = e.message.toLowerCase();
-        final isConfirmationEmailError = (msg.contains('confirmation') && msg.contains('email')) ||
-            msg.contains('error sending');
+        final msg = e.toString().toLowerCase();
+        final isConfirmationEmailError =
+            (msg.contains('confirmation') && msg.contains('email')) || msg.contains('error sending');
         setState(() {
           _errorMessage = isConfirmationEmailError
               ? 'Your account may have been created, but we couldn\'t send the confirmation email. '
-                'Try signing in below, or use "Forgot password?" to receive an email.'
-              : e.message;
-          _loading = false;
-        });
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() {
-          _errorMessage = e.toString();
+                    'Try signing in below, or use "Forgot password?" to receive an email.'
+              : e.toString().replaceAll('Exception: ', '');
           _loading = false;
         });
       }
@@ -139,27 +119,13 @@ class _SignInScreenState extends State<SignInScreen> {
   }
 
   Future<void> _signInWithGoogle() async {
-    final auth = AppDataScope.of(context).authRepository;
-    if (!auth.isConfigured) {
-      setState(() {
-        _errorMessage = 'Sign-in is not configured.';
-      });
-      return;
-    }
     setState(() {
       _errorMessage = null;
       _loading = true;
     });
     try {
-      await auth.signInWithGoogle();
+      await ref.read(authNotifierProvider.notifier).signInWithGoogle();
       if (mounted) setState(() => _loading = false);
-    } on AuthException catch (e) {
-      if (mounted) {
-        setState(() {
-          _errorMessage = e.message;
-          _loading = false;
-        });
-      }
     } catch (e) {
       if (mounted) {
         setState(() {
@@ -183,9 +149,7 @@ class _SignInScreenState extends State<SignInScreen> {
     final cardBorderColor = isDark
         ? colorScheme.outlineVariant.withValues(alpha: 0.5)
         : AppTheme.specNavy.withValues(alpha: 0.12);
-    final cardShadowColor = isDark
-        ? Colors.black26
-        : AppTheme.specNavy.withValues(alpha: 0.08);
+    final cardShadowColor = isDark ? Colors.black26 : AppTheme.specNavy.withValues(alpha: 0.08);
 
     return Scaffold(
       backgroundColor: isDark ? colorScheme.surface : AppTheme.specOffWhite,
@@ -204,18 +168,14 @@ class _SignInScreenState extends State<SignInScreen> {
                         builder: (context, formConstraints) {
                           return SingleChildScrollView(
                             child: ConstrainedBox(
-                              constraints: BoxConstraints(
-                                minHeight: formConstraints.maxHeight,
-                              ),
+                              constraints: BoxConstraints(minHeight: formConstraints.maxHeight),
                               child: IntrinsicHeight(
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.stretch,
                                   mainAxisAlignment: MainAxisAlignment.center,
                                   children: [
                                     const SizedBox(height: 16),
-                                    Center(
-                                      child: AppLogo(height: 88),
-                                    ),
+                                    Center(child: AppLogo(height: 88)),
                                     const SizedBox(height: 10),
                                     Center(
                                       child: Container(
@@ -230,9 +190,7 @@ class _SignInScreenState extends State<SignInScreen> {
                                     const SizedBox(height: 24),
                                     Center(
                                       child: Text(
-                                        _mode == AuthMode.signIn
-                                            ? 'Sign in to your account'
-                                            : 'Create an account',
+                                        _mode == AuthMode.signIn ? 'Sign in to your account' : 'Create an account',
                                         style: theme.textTheme.headlineSmall?.copyWith(
                                           color: AppTheme.specNavy,
                                           fontWeight: FontWeight.w700,
@@ -284,9 +242,7 @@ class _SignInScreenState extends State<SignInScreen> {
                                         },
                                         onToggleMode: () {
                                           setState(() {
-                                            _mode = _mode == AuthMode.signIn
-                                                ? AuthMode.signUp
-                                                : AuthMode.signIn;
+                                            _mode = _mode == AuthMode.signIn ? AuthMode.signUp : AuthMode.signIn;
                                             _errorMessage = null;
                                             if (_mode == AuthMode.signIn) _privacyAgreed = false;
                                           });
@@ -298,20 +254,11 @@ class _SignInScreenState extends State<SignInScreen> {
                                     if (Navigator.of(context).canPop())
                                       Center(
                                         child: TextButton.icon(
-                                          onPressed: _loading
-                                              ? null
-                                              : () => Navigator.of(context).pop(),
-                                          icon: Icon(
-                                            Icons.arrow_back_rounded,
-                                            size: 20,
-                                            color: AppTheme.specNavy,
-                                          ),
+                                          onPressed: _loading ? null : () => Navigator.of(context).pop(),
+                                          icon: Icon(Icons.arrow_back_rounded, size: 20, color: AppTheme.specNavy),
                                           label: Text(
                                             'Back',
-                                            style: TextStyle(
-                                              color: AppTheme.specNavy,
-                                              fontWeight: FontWeight.w600,
-                                            ),
+                                            style: TextStyle(color: AppTheme.specNavy, fontWeight: FontWeight.w600),
                                           ),
                                         ),
                                       ),
@@ -329,11 +276,7 @@ class _SignInScreenState extends State<SignInScreen> {
               SizedBox(
                 height: skylineHeight,
                 width: double.infinity,
-                child: Image.asset(
-                  'assets/images/skyline-2.png',
-                  fit: BoxFit.cover,
-                  alignment: Alignment.bottomCenter,
-                ),
+                child: Image.asset('assets/images/skyline-2.png', fit: BoxFit.cover, alignment: Alignment.bottomCenter),
               ),
             ],
           );
@@ -394,22 +337,14 @@ class _SignInFormCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ConstrainedBox(
-      constraints: BoxConstraints(
-        maxWidth: isTablet ? 400 : double.infinity,
-      ),
+      constraints: BoxConstraints(maxWidth: isTablet ? 400 : double.infinity),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 28),
         decoration: BoxDecoration(
           color: surfaceColor,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(color: cardBorderColor, width: 1),
-          boxShadow: [
-            BoxShadow(
-              color: cardShadowColor,
-              blurRadius: 24,
-              offset: const Offset(0, 8),
-            ),
-          ],
+          boxShadow: [BoxShadow(color: cardShadowColor, blurRadius: 24, offset: const Offset(0, 8))],
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -493,10 +428,7 @@ class _SignInFormCard extends StatelessWidget {
                   const SizedBox(width: 10),
                   GestureDetector(
                     onTap: loading ? null : () => onRememberMeChanged(!rememberMe),
-                    child: Text(
-                      'Remember me',
-                      style: theme.textTheme.bodyMedium?.copyWith(color: AppTheme.specNavy),
-                    ),
+                    child: Text('Remember me', style: theme.textTheme.bodyMedium?.copyWith(color: AppTheme.specNavy)),
                   ),
                   const Spacer(),
                   TextButton(
@@ -513,10 +445,7 @@ class _SignInFormCard extends StatelessWidget {
               const SizedBox(height: 18),
               Container(
                 padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: colorScheme.errorContainer,
-                  borderRadius: BorderRadius.circular(12),
-                ),
+                decoration: BoxDecoration(color: colorScheme.errorContainer, borderRadius: BorderRadius.circular(12)),
                 child: Text(
                   errorMessage!,
                   style: theme.textTheme.bodySmall?.copyWith(color: colorScheme.onErrorContainer),
@@ -572,16 +501,12 @@ class _SignInFormCard extends StatelessWidget {
                     width: 22,
                     height: 22,
                     fit: BoxFit.contain,
-                    errorBuilder: (_, __, ___) =>
-                        Icon(Icons.g_mobiledata_rounded, size: 22, color: AppTheme.specNavy),
+                    errorBuilder: (_, __, ___) => Icon(Icons.g_mobiledata_rounded, size: 22, color: AppTheme.specNavy),
                   ),
                   const SizedBox(width: 12),
                   Text(
                     'Sign in with Google',
-                    style: theme.textTheme.labelLarge?.copyWith(
-                      color: AppTheme.specNavy,
-                      fontWeight: FontWeight.w600,
-                    ),
+                    style: theme.textTheme.labelLarge?.copyWith(color: AppTheme.specNavy, fontWeight: FontWeight.w600),
                   ),
                 ],
               ),

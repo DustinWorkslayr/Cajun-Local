@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:my_app/core/data/app_data_scope.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:my_app/core/auth/providers/auth_provider.dart';
 import 'package:my_app/core/data/models/business_category.dart';
 import 'package:my_app/core/data/models/category_banner.dart';
 import 'package:my_app/core/data/repositories/audit_log_repository.dart';
@@ -11,40 +12,33 @@ import 'package:my_app/features/admin/presentation/screens/admin_add_category_ba
 import 'package:my_app/features/admin/presentation/widgets/admin_shared.dart';
 import 'package:my_app/shared/widgets/app_buttons.dart';
 
-class AdminCategoryBannersScreen extends StatefulWidget {
-  const AdminCategoryBannersScreen({
-    super.key,
-    this.status,
-    this.embeddedInShell = false,
-    this.hideFab = false,
-  });
+class AdminCategoryBannersScreen extends ConsumerStatefulWidget {
+  const AdminCategoryBannersScreen({super.key, this.status, this.embeddedInShell = false, this.hideFab = false});
 
   final String? status;
   final bool embeddedInShell;
+
   /// When true and [embeddedInShell] is true, the FAB is not shown (e.g. when used inside Manage banners tabs).
   final bool hideFab;
 
   @override
-  State<AdminCategoryBannersScreen> createState() => _AdminCategoryBannersScreenState();
+  ConsumerState<AdminCategoryBannersScreen> createState() => _AdminCategoryBannersScreenState();
 }
 
-class _AdminCategoryBannersScreenState extends State<AdminCategoryBannersScreen> {
+class _AdminCategoryBannersScreenState extends ConsumerState<AdminCategoryBannersScreen> {
   int _refreshKey = 0;
 
   void _openAddBanner() {
-    Navigator.of(context).push(
-      MaterialPageRoute<void>(builder: (_) => const AdminAddCategoryBannerScreen()),
-    ).then((_) => setState(() => _refreshKey++));
+    Navigator.of(context)
+        .push(MaterialPageRoute<void>(builder: (_) => const AdminAddCategoryBannerScreen()))
+        .then((_) => setState(() => _refreshKey++));
   }
 
   void _openDetail(CategoryBanner b, [String? categoryName]) {
     AdminDetailPanel.show(
       context: context,
       title: categoryName != null ? 'Banner · $categoryName' : 'Category banner',
-      child: _CategoryBannerPanelContent(
-        banner: b,
-        onUpdated: () => setState(() => _refreshKey++),
-      ),
+      child: _CategoryBannerPanelContent(banner: b, onUpdated: () => setState(() => _refreshKey++)),
     ).then((_) => setState(() => _refreshKey++));
   }
 
@@ -55,10 +49,7 @@ class _AdminCategoryBannersScreenState extends State<AdminCategoryBannersScreen>
       categoriesRepo.listCategories(),
       bannersRepo.listForAdmin(status: widget.status),
     ]);
-    return (
-      categories: results[0] as List<BusinessCategory>,
-      banners: results[1] as List<CategoryBanner>,
-    );
+    return (categories: results[0] as List<BusinessCategory>, banners: results[1] as List<CategoryBanner>);
   }
 
   @override
@@ -142,9 +133,7 @@ class _AdminCategoryBannersScreenState extends State<AdminCategoryBannersScreen>
                       const SizedBox(height: 4),
                       Text(
                         '${list.length} banner${list.length == 1 ? '' : 's'} in ${sortedCategoryIds.length} categor${sortedCategoryIds.length == 1 ? 'y' : 'ies'}',
-                        style: theme.textTheme.bodyMedium?.copyWith(
-                          color: AppTheme.specNavy.withValues(alpha: 0.7),
-                        ),
+                        style: theme.textTheme.bodyMedium?.copyWith(color: AppTheme.specNavy.withValues(alpha: 0.7)),
                       ),
                     ],
                   ),
@@ -200,12 +189,14 @@ class _AdminCategoryBannersScreenState extends State<AdminCategoryBannersScreen>
                               ],
                             ),
                           ),
-                          ...banners.map((b) => _BannerCard(
-                                banner: b,
-                                categoryLabel: categoryLabel,
-                                onTap: () => _openDetail(b, categoryLabel),
-                                onStatusUpdated: () => setState(() => _refreshKey++),
-                              )),
+                          ...banners.map(
+                            (b) => _BannerCard(
+                              banner: b,
+                              categoryLabel: categoryLabel,
+                              onTap: () => _openDetail(b, categoryLabel),
+                              onStatusUpdated: () => setState(() => _refreshKey++),
+                            ),
+                          ),
                         ],
                       ),
                     );
@@ -243,11 +234,7 @@ class _AdminCategoryBannersScreenState extends State<AdminCategoryBannersScreen>
         backgroundColor: AppTheme.specOffWhite,
         foregroundColor: AppTheme.specNavy,
         actions: [
-          IconButton(
-            icon: const Icon(Icons.add_rounded),
-            tooltip: 'Add category banner',
-            onPressed: _openAddBanner,
-          ),
+          IconButton(icon: const Icon(Icons.add_rounded), tooltip: 'Add category banner', onPressed: _openAddBanner),
         ],
       ),
       body: body,
@@ -256,7 +243,7 @@ class _AdminCategoryBannersScreenState extends State<AdminCategoryBannersScreen>
 }
 
 /// Single banner card: image, status, date, quick actions when pending.
-class _BannerCard extends StatefulWidget {
+class _BannerCard extends ConsumerStatefulWidget {
   const _BannerCard({
     required this.banner,
     required this.categoryLabel,
@@ -270,10 +257,10 @@ class _BannerCard extends StatefulWidget {
   final VoidCallback onStatusUpdated;
 
   @override
-  State<_BannerCard> createState() => _BannerCardState();
+  ConsumerState<_BannerCard> createState() => _BannerCardState();
 }
 
-class _BannerCardState extends State<_BannerCard> {
+class _BannerCardState extends ConsumerState<_BannerCard> {
   bool _updating = false;
 
   Future<void> _setStatus(String status) async {
@@ -281,7 +268,7 @@ class _BannerCardState extends State<_BannerCard> {
     setState(() => _updating = true);
     try {
       final repo = CategoryBannersRepository();
-      final uid = AppDataScope.of(context).authRepository.currentUserId;
+      final uid = ref.read(authNotifierProvider).valueOrNull?.id;
       await repo.updateStatus(widget.banner.id, status, approvedBy: uid);
       AuditLogRepository().insert(
         action: status == 'approved' ? 'banner_approved' : 'banner_rejected',
@@ -291,15 +278,13 @@ class _BannerCardState extends State<_BannerCard> {
       );
       if (mounted) {
         widget.onStatusUpdated();
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Banner ${status == 'approved' ? 'approved' : 'rejected'}')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Banner ${status == 'approved' ? 'approved' : 'rejected'}')));
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed: $e')),
-        );
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed: $e')));
       }
     } finally {
       if (mounted) setState(() => _updating = false);
@@ -310,14 +295,12 @@ class _BannerCardState extends State<_BannerCard> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final b = widget.banner;
-    final dateStr = b.createdAt != null
-        ? '${b.createdAt!.month}/${b.createdAt!.day}/${b.createdAt!.year}'
-        : null;
+    final dateStr = b.createdAt != null ? '${b.createdAt!.month}/${b.createdAt!.day}/${b.createdAt!.year}' : null;
     final statusColor = b.status == 'pending'
         ? AppTheme.specGold
         : b.status == 'approved'
-            ? Colors.green.shade700
-            : AppTheme.specRed;
+        ? Colors.green.shade700
+        : AppTheme.specRed;
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
@@ -397,7 +380,10 @@ class _BannerCardState extends State<_BannerCard> {
                                     ? SizedBox(
                                         width: 16,
                                         height: 16,
-                                        child: CircularProgressIndicator(strokeWidth: 2, color: theme.colorScheme.primary),
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                          color: theme.colorScheme.primary,
+                                        ),
                                       )
                                     : const Icon(Icons.check_rounded, size: 18),
                                 label: const Text('Approve'),
@@ -429,20 +415,17 @@ class _BannerCardState extends State<_BannerCard> {
 }
 
 /// Slide-out panel content: user-friendly info, status badge, image preview, inline edit.
-class _CategoryBannerPanelContent extends StatefulWidget {
-  const _CategoryBannerPanelContent({
-    required this.banner,
-    required this.onUpdated,
-  });
+class _CategoryBannerPanelContent extends ConsumerStatefulWidget {
+  const _CategoryBannerPanelContent({required this.banner, required this.onUpdated});
 
   final CategoryBanner banner;
   final VoidCallback onUpdated;
 
   @override
-  State<_CategoryBannerPanelContent> createState() => _CategoryBannerPanelContentState();
+  ConsumerState<_CategoryBannerPanelContent> createState() => _CategoryBannerPanelContentState();
 }
 
-class _CategoryBannerPanelContentState extends State<_CategoryBannerPanelContent> {
+class _CategoryBannerPanelContentState extends ConsumerState<_CategoryBannerPanelContent> {
   late TextEditingController _categoryIdController;
   late TextEditingController _imageUrlController;
   bool _saving = false;
@@ -487,7 +470,7 @@ class _CategoryBannerPanelContentState extends State<_CategoryBannerPanelContent
 
   Future<void> _updateStatus(String status) async {
     final repo = CategoryBannersRepository();
-    final uid = AppDataScope.of(context).authRepository.currentUserId;
+    final uid = ref.read(authNotifierProvider).valueOrNull?.id;
     await repo.updateStatus(widget.banner.id, status, approvedBy: uid);
     AuditLogRepository().insert(
       action: status == 'approved' ? 'banner_approved' : 'banner_rejected',
@@ -507,15 +490,10 @@ class _CategoryBannerPanelContentState extends State<_CategoryBannerPanelContent
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Delete banner?'),
-        content: const Text(
-          'This category banner will be removed. This cannot be undone.',
-        ),
+        content: const Text('This category banner will be removed. This cannot be undone.'),
         actions: [
           TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Cancel')),
-          AppDangerButton(
-            onPressed: () => Navigator.of(ctx).pop(true),
-            child: const Text('Delete'),
-          ),
+          AppDangerButton(onPressed: () => Navigator.of(ctx).pop(true), child: const Text('Delete')),
         ],
       ),
     );
@@ -555,9 +533,7 @@ class _CategoryBannerPanelContentState extends State<_CategoryBannerPanelContent
                 color: b.status == 'pending' ? AppTheme.specRed : (b.status == 'rejected' ? AppTheme.specRed : null),
               ),
               if (b.createdAt != null)
-                AdminBadge(
-                  label: 'Added ${b.createdAt!.month}/${b.createdAt!.day}/${b.createdAt!.year}',
-                ),
+                AdminBadge(label: 'Added ${b.createdAt!.month}/${b.createdAt!.day}/${b.createdAt!.year}'),
             ],
           ),
           const SizedBox(height: 20),
@@ -586,10 +562,7 @@ class _CategoryBannerPanelContentState extends State<_CategoryBannerPanelContent
               hintText: 'e.g. restaurants',
               filled: true,
               fillColor: colorScheme.surfaceContainerLowest,
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide.none,
-              ),
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
               contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             ),
             style: theme.textTheme.bodyLarge,
@@ -605,10 +578,7 @@ class _CategoryBannerPanelContentState extends State<_CategoryBannerPanelContent
               hintText: 'https://…',
               filled: true,
               fillColor: colorScheme.surfaceContainerLowest,
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide.none,
-              ),
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
               contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             ),
             style: theme.textTheme.bodyLarge,
@@ -617,10 +587,7 @@ class _CategoryBannerPanelContentState extends State<_CategoryBannerPanelContent
           ),
           if (_saveError != null) ...[
             const SizedBox(height: 8),
-            Text(
-              _saveError!,
-              style: theme.textTheme.bodySmall?.copyWith(color: colorScheme.error),
-            ),
+            Text(_saveError!, style: theme.textTheme.bodySmall?.copyWith(color: colorScheme.error)),
           ],
           const SizedBox(height: 20),
           AppSecondaryButton(
@@ -699,9 +666,7 @@ class _PreviewPlaceholder extends StatelessWidget {
             const SizedBox(height: 8),
             Text(
               message,
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: AppTheme.specNavy.withValues(alpha: 0.7),
-              ),
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppTheme.specNavy.withValues(alpha: 0.7)),
             ),
           ],
         ),

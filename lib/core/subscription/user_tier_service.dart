@@ -1,5 +1,4 @@
 import 'package:flutter/foundation.dart';
-import 'package:my_app/core/auth/auth_repository.dart';
 import 'package:my_app/core/data/models/user_plan.dart';
 import 'package:my_app/core/data/repositories/user_plans_repository.dart';
 import 'package:my_app/core/data/repositories/user_subscriptions_repository.dart';
@@ -9,31 +8,24 @@ import 'package:my_app/core/subscription/resolved_permissions.dart';
 /// overridden by plan.features), and exposes them to the app.
 class UserTierService {
   UserTierService({
-    required AuthRepository authRepository,
     required UserSubscriptionsRepository subscriptionsRepository,
     required UserPlansRepository plansRepository,
-  })  : _auth = authRepository,
-        _subRepo = subscriptionsRepository,
-        _planRepo = plansRepository {
-    _auth.authStateChanges.listen((_) => _refresh());
-  }
+  }) : _subRepo = subscriptionsRepository,
+       _planRepo = plansRepository;
 
-  final AuthRepository _auth;
   final UserSubscriptionsRepository _subRepo;
   final UserPlansRepository _planRepo;
 
-  final ValueNotifier<ResolvedPermissions?> permissions =
-      ValueNotifier<ResolvedPermissions?>(null);
+  final ValueNotifier<ResolvedPermissions?> permissions = ValueNotifier<ResolvedPermissions?>(null);
 
   /// Current resolved permissions. Null until first load; use [ResolvedPermissions.free]
   /// for logged-out or no-subscription when you need a non-null value.
   ResolvedPermissions? get value => permissions.value;
 
   /// Call after auth or subscription changes to refresh cached permissions.
-  Future<void> refresh() => _refresh();
+  Future<void> refresh(String? userId) => _refresh(userId);
 
-  Future<void> _refresh() async {
-    final userId = _auth.currentUserId;
+  Future<void> _refresh(String? userId) async {
     if (userId == null) {
       permissions.value = ResolvedPermissions.free;
       return;

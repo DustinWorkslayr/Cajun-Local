@@ -1,71 +1,68 @@
+import 'package:my_app/core/api/api_client.dart';
+import 'package:my_app/core/api/business_claims_api.dart';
 import 'package:my_app/core/data/models/business_claim.dart';
-import 'package:my_app/core/supabase/supabase_config.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:riverpod_annotation/riverpod_annotation.dart';
+
+part 'business_claims_repository.g.dart';
 
 /// Business ownership claims (backend-cheatsheet §2). Admin can list and update status.
 class BusinessClaimsRepository {
-  BusinessClaimsRepository();
+  BusinessClaimsRepository({BusinessClaimsApi? api}) : _api = api ?? BusinessClaimsApi(ApiClient.instance);
 
-  SupabaseClient? get _client =>
-      SupabaseConfig.isConfigured ? Supabase.instance.client : null;
+  final BusinessClaimsApi _api;
 
   static const _limit = 500;
 
   Future<List<BusinessClaim>> listForAdmin({String? status}) async {
-    final client = _client;
-    if (client == null) return [];
-    var q = client.from('business_claims').select();
-    if (status != null) q = q.eq('status', status);
-    final list = await q.order('created_at', ascending: false).limit(_limit);
-    return (list as List).map((e) => BusinessClaim.fromJson(e as Map<String, dynamic>)).toList();
+    final list = await _api.listClaims(limit: _limit);
+    // Filtering on client side if status is provided, or update backend to support it
+    var claims = list.map((e) => BusinessClaim.fromJson(e)).toList();
+    if (status != null) {
+      claims = claims.where((c) => c.status == status).toList();
+    }
+    return claims;
   }
 
   Future<BusinessClaim?> getById(String id) async {
-    final client = _client;
-    if (client == null) return null;
-    final res = await client.from('business_claims').select().eq('id', id).maybeSingle();
-    if (res == null) return null;
-    return BusinessClaim.fromJson(Map<String, dynamic>.from(res));
+    try {
+      final res = await _api.getClaimById(id);
+      return BusinessClaim.fromJson(res);
+    } catch (_) {
+      return null;
+    }
   }
 
   Future<void> updateStatus(String id, String status) async {
-    final client = _client;
-    if (client == null) return;
-    await client.from('business_claims').update({'status': status}).eq('id', id);
+    if (status == 'approved') {
+      await _api.approveClaim(id);
+    } else if (status == 'rejected') {
+      await _api.rejectClaim(id);
+    }
   }
 
-  /// User submits a claim (RLS: user_id = auth.uid()). Returns new claim id or null on failure.
-  Future<String?> insert({
-    required String userId,
-    required String businessId,
-    required String claimDetails,
-  }) async {
-    final client = _client;
-    if (client == null) return null;
-    final res = await client.from('business_claims').insert({
-      'user_id': userId,
-      'business_id': businessId,
-      'claim_details': claimDetails,
-      'status': 'pending',
-    }).select('id').maybeSingle();
-    if (res == null) return null;
+  /// User submits a claim. Returns new claim id or null on failure.
+  Future<String?> insert({required String userId, required String businessId, required String claimDetails}) async {
+    final res = await _api.createClaim({'business_id': businessId, 'claim_details': claimDetails});
     return res['id'] as String?;
   }
 
-  /// Get the current user's claim for this business (pending or approved). Used to show "Under review" or hide claim CTA.
+  /// Get the current user's claim for this business (pending or approved).
   Future<BusinessClaim?> getForUserAndBusiness(String userId, String businessId) async {
-    final client = _client;
-    if (client == null) return null;
-    final list = await client
-        .from('business_claims')
-        .select()
-        .eq('user_id', userId)
-        .eq('business_id', businessId)
-        .inFilter('status', ['pending', 'approved'])
-        .order('created_at', ascending: false)
-        .limit(1);
-    final items = list as List;
+    // We can fetch from a new endpoint or filter. Let's filter for now.
+    // Actually better to have a dedicated endpoint in future.
+    final list = await _api.listClaims(limit: _limit);
+    final items = list
+        .map((e) => BusinessClaim.fromJson(e))
+        .where(
+          (c) => c.userId == userId && c.businessId == businessId && (c.status == 'pending' || c.status == 'approved'),
+        )
+        .toList();
     if (items.isEmpty) return null;
-    return BusinessClaim.fromJson(Map<String, dynamic>.from(items.first as Map));
+    return items.first;
   }
+}
+
+@riverpod
+BusinessClaimsRepository businessClaimsRepository(BusinessClaimsRepositoryRef ref) {
+  return BusinessClaimsRepository(api: ref.watch(businessClaimsApiProvider));
 }

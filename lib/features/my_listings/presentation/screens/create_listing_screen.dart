@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:my_app/core/data/app_data_scope.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:my_app/core/auth/providers/auth_provider.dart';
+import 'package:my_app/core/data/providers/app_data_providers.dart';
 import 'package:my_app/core/data/mock_data.dart';
 import 'package:my_app/core/data/models/business_category.dart';
 import 'package:my_app/core/data/models/subcategory.dart';
@@ -15,14 +17,14 @@ const String _kStateLouisiana = 'LA';
 
 /// User/business owner: create a single listing. Brand theme (specOffWhite, specNavy, specGold).
 /// No CSV; that is admin-only on AdminAddBusinessScreen.
-class CreateListingScreen extends StatefulWidget {
+class CreateListingScreen extends ConsumerStatefulWidget {
   const CreateListingScreen({super.key});
 
   @override
-  State<CreateListingScreen> createState() => _CreateListingScreenState();
+  ConsumerState<CreateListingScreen> createState() => _CreateListingScreenState();
 }
 
-class _CreateListingScreenState extends State<CreateListingScreen> {
+class _CreateListingScreenState extends ConsumerState<CreateListingScreen> {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
   final _addressController = TextEditingController();
@@ -53,7 +55,7 @@ class _CreateListingScreenState extends State<CreateListingScreen> {
 
   Future<void> _loadParishes() async {
     try {
-      final ds = AppDataScope.of(context).dataSource;
+      final ds = ref.read(listingDataSourceProvider);
       final list = await ds.getParishes();
       if (mounted) {
         setState(() {
@@ -159,7 +161,7 @@ class _CreateListingScreenState extends State<CreateListingScreen> {
       });
       return;
     }
-    final uid = AppDataScope.of(context).authRepository.currentUserId;
+    final uid = ref.read(authNotifierProvider).valueOrNull?.id;
     if (uid == null) {
       setState(() {
         _message = 'You must be signed in.';
@@ -230,10 +232,7 @@ class _CreateListingScreenState extends State<CreateListingScreen> {
         ),
         title: Text(
           'Create listing',
-          style: theme.textTheme.titleLarge?.copyWith(
-            fontWeight: FontWeight.w700,
-            color: AppTheme.specNavy,
-          ),
+          style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700, color: AppTheme.specNavy),
         ),
       ),
       body: SingleChildScrollView(
@@ -266,10 +265,7 @@ class _CreateListingScreenState extends State<CreateListingScreen> {
                   Container(
                     height: 4,
                     width: 56,
-                    decoration: BoxDecoration(
-                      color: AppTheme.specGold,
-                      borderRadius: BorderRadius.circular(2),
-                    ),
+                    decoration: BoxDecoration(color: AppTheme.specGold, borderRadius: BorderRadius.circular(2)),
                   ),
                 ],
               ),
@@ -282,11 +278,7 @@ class _CreateListingScreenState extends State<CreateListingScreen> {
                 color: AppTheme.specWhite,
                 borderRadius: BorderRadius.circular(cardRadius),
                 boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.06),
-                    blurRadius: 12,
-                    offset: const Offset(0, 4),
-                  ),
+                  BoxShadow(color: Colors.black.withValues(alpha: 0.06), blurRadius: 12, offset: const Offset(0, 4)),
                 ],
               ),
               child: Form(
@@ -344,9 +336,7 @@ class _CreateListingScreenState extends State<CreateListingScreen> {
                               labelStyle: TextStyle(color: AppTheme.specNavy),
                             ),
                             hint: const Text('Select parish'),
-                            items: _parishes
-                                .map((p) => DropdownMenuItem(value: p, child: Text(p.name)))
-                                .toList(),
+                            items: _parishes.map((p) => DropdownMenuItem(value: p, child: Text(p.name))).toList(),
                             onChanged: (p) => setState(() => _selectedParish = p),
                             validator: (v) => v == null ? 'Please select a parish' : null,
                           ),
@@ -401,12 +391,7 @@ class _CreateListingScreenState extends State<CreateListingScreen> {
                           ),
                           labelStyle: TextStyle(color: AppTheme.specNavy),
                         ),
-                        items: _categories
-                            .map((c) => DropdownMenuItem(
-                                  value: c,
-                                  child: Text(c.name),
-                                ))
-                            .toList(),
+                        items: _categories.map((c) => DropdownMenuItem(value: c, child: Text(c.name))).toList(),
                         onChanged: _onCategoryChanged,
                         validator: (v) => v == null ? 'Please select a category' : null,
                       ),
@@ -414,9 +399,7 @@ class _CreateListingScreenState extends State<CreateListingScreen> {
                       const SizedBox(height: 16),
                       Text(
                         'Tags (optional)',
-                        style: theme.textTheme.labelLarge?.copyWith(
-                          color: AppTheme.specNavy.withValues(alpha: 0.85),
-                        ),
+                        style: theme.textTheme.labelLarge?.copyWith(color: AppTheme.specNavy.withValues(alpha: 0.85)),
                       ),
                       const SizedBox(height: 8),
                       if (_subcategoriesLoading)
@@ -437,9 +420,7 @@ class _CreateListingScreenState extends State<CreateListingScreen> {
                               selectedColor: AppTheme.specGold.withValues(alpha: 0.35),
                               checkmarkColor: AppTheme.specNavy,
                               side: BorderSide(
-                                color: selected
-                                    ? AppTheme.specGold
-                                    : AppTheme.specNavy.withValues(alpha: 0.3),
+                                color: selected ? AppTheme.specGold : AppTheme.specNavy.withValues(alpha: 0.3),
                               ),
                             );
                           }).toList(),
@@ -447,9 +428,7 @@ class _CreateListingScreenState extends State<CreateListingScreen> {
                       else
                         Text(
                           'No tags for this category.',
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: AppTheme.specNavy.withValues(alpha: 0.6),
-                          ),
+                          style: theme.textTheme.bodySmall?.copyWith(color: AppTheme.specNavy.withValues(alpha: 0.6)),
                         ),
                     ],
                     const SizedBox(height: 20),
@@ -472,9 +451,9 @@ class _CreateListingScreenState extends State<CreateListingScreen> {
                         Expanded(
                           child: GestureDetector(
                             onTap: () {
-                              Navigator.of(context).push(
-                                MaterialPageRoute<void>(builder: (_) => const PrivacyPolicyScreen()),
-                              );
+                              Navigator.of(
+                                context,
+                              ).push(MaterialPageRoute<void>(builder: (_) => const PrivacyPolicyScreen()));
                             },
                             child: RichText(
                               text: TextSpan(

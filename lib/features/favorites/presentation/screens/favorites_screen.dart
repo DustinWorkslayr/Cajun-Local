@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:my_app/core/data/app_data_scope.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:my_app/core/data/providers/app_data_providers.dart';
 import 'package:my_app/core/data/listing_data_source.dart';
 import 'package:my_app/core/data/mock_data.dart';
 import 'package:my_app/core/favorites/favorites_scope.dart';
@@ -9,19 +10,20 @@ import 'package:my_app/features/listing/presentation/screens/listing_detail_scre
 import 'package:my_app/shared/widgets/animated_entrance.dart';
 
 /// Favorites tab — saved listings grouped/filtered by category. Uses specOffWhite, specNavy, specGold.
-class FavoritesScreen extends StatefulWidget {
+class FavoritesScreen extends ConsumerStatefulWidget {
   const FavoritesScreen({super.key});
 
   @override
-  State<FavoritesScreen> createState() => _FavoritesScreenState();
+  ConsumerState<FavoritesScreen> createState() => _FavoritesScreenState();
 }
 
-class _FavoritesScreenState extends State<FavoritesScreen> {
+class _FavoritesScreenState extends ConsumerState<FavoritesScreen> {
   /// Selected category id; null = "All".
   String? _selectedCategoryId;
 
   /// Memoized future for the current set of favorite IDs. Only recreated when ids change.
   Future<List<MockListing>>? _favoritesListFuture;
+
   /// Last set of ids we loaded for; used to avoid creating a new Future on every rebuild.
   Set<String>? _lastFavoriteIds;
 
@@ -36,7 +38,7 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
       return _favoritesListFuture!;
     }
     _lastFavoriteIds = Set<String>.from(ids);
-    final ds = AppDataScope.of(context).dataSource;
+    final ds = ref.read(listingDataSourceProvider);
     final idList = ids.toList();
     _favoritesListFuture = _loadFavoritesInBatches(ds, idList);
     return _favoritesListFuture!;
@@ -46,9 +48,7 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
     final result = <MockListing>[];
     for (var i = 0; i < idList.length; i += _favoritesBatchSize) {
       final chunk = idList.skip(i).take(_favoritesBatchSize).toList();
-      final list = await Future.wait(
-        chunk.map((id) => ds.getListingById(id)),
-      );
+      final list = await Future.wait(chunk.map((id) => ds.getListingById(id)));
       for (final item in list) {
         if (item != null) result.add(item);
       }
@@ -134,86 +134,85 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
                 onRefresh: () => _refreshFavorites(ids),
                 color: AppTheme.specNavy,
                 child: CustomScrollView(
-                slivers: [
-                  // Category filter chips
-                  SliverToBoxAdapter(
-                    child: Padding(
-                      padding: EdgeInsets.fromLTRB(padding.left, 12, padding.right, 8),
-                      child: SingleChildScrollView(
-                        scrollDirection: Axis.horizontal,
-                        child: Row(
-                          children: [
-                            Padding(
-                              padding: const EdgeInsets.only(right: 8),
-                              child: FilterChip(
-                                label: const Text('All'),
-                                selected: _selectedCategoryId == null,
-                                onSelected: (_) => setState(() => _selectedCategoryId = null),
-                                selectedColor: AppTheme.specGold.withValues(alpha: 0.35),
-                                checkmarkColor: AppTheme.specNavy,
-                              ),
-                            ),
-                            ...categoryIds.map((cid) {
-                              final name = _categoryDisplayName(cid, grouped[cid]!);
-                              return Padding(
+                  slivers: [
+                    // Category filter chips
+                    SliverToBoxAdapter(
+                      child: Padding(
+                        padding: EdgeInsets.fromLTRB(padding.left, 12, padding.right, 8),
+                        child: SingleChildScrollView(
+                          scrollDirection: Axis.horizontal,
+                          child: Row(
+                            children: [
+                              Padding(
                                 padding: const EdgeInsets.only(right: 8),
                                 child: FilterChip(
-                                  label: Text(name),
-                                  selected: _selectedCategoryId == cid,
-                                  onSelected: (_) => setState(() => _selectedCategoryId = cid),
+                                  label: const Text('All'),
+                                  selected: _selectedCategoryId == null,
+                                  onSelected: (_) => setState(() => _selectedCategoryId = null),
                                   selectedColor: AppTheme.specGold.withValues(alpha: 0.35),
                                   checkmarkColor: AppTheme.specNavy,
                                 ),
-                              );
-                            }),
-                          ],
+                              ),
+                              ...categoryIds.map((cid) {
+                                final name = _categoryDisplayName(cid, grouped[cid]!);
+                                return Padding(
+                                  padding: const EdgeInsets.only(right: 8),
+                                  child: FilterChip(
+                                    label: Text(name),
+                                    selected: _selectedCategoryId == cid,
+                                    onSelected: (_) => setState(() => _selectedCategoryId = cid),
+                                    selectedColor: AppTheme.specGold.withValues(alpha: 0.35),
+                                    checkmarkColor: AppTheme.specNavy,
+                                  ),
+                                );
+                              }),
+                            ],
+                          ),
                         ),
                       ),
                     ),
-                  ),
-                  // Grouped list: when All, show sections; when one category, show only that list
-                  if (_selectedCategoryId == null) ...[
-                    ...categoryIds.expand((cid) {
-                      final list = grouped[cid]!;
-                      final name = _categoryDisplayName(cid, list);
-                      return [
-                        SliverToBoxAdapter(
-                          child: Padding(
-                            padding: EdgeInsets.fromLTRB(padding.left, 16, padding.right, 8),
-                            child: Row(
-                              children: [
-                                Container(
-                                  width: 4,
-                                  height: 20,
-                                  decoration: BoxDecoration(
-                                    color: AppTheme.specGold,
-                                    borderRadius: BorderRadius.circular(2),
+                    // Grouped list: when All, show sections; when one category, show only that list
+                    if (_selectedCategoryId == null) ...[
+                      ...categoryIds.expand((cid) {
+                        final list = grouped[cid]!;
+                        final name = _categoryDisplayName(cid, list);
+                        return [
+                          SliverToBoxAdapter(
+                            child: Padding(
+                              padding: EdgeInsets.fromLTRB(padding.left, 16, padding.right, 8),
+                              child: Row(
+                                children: [
+                                  Container(
+                                    width: 4,
+                                    height: 20,
+                                    decoration: BoxDecoration(
+                                      color: AppTheme.specGold,
+                                      borderRadius: BorderRadius.circular(2),
+                                    ),
                                   ),
-                                ),
-                                const SizedBox(width: 10),
-                                Text(
-                                  name,
-                                  style: theme.textTheme.titleMedium?.copyWith(
-                                    fontWeight: FontWeight.w700,
-                                    color: AppTheme.specNavy,
+                                  const SizedBox(width: 10),
+                                  Text(
+                                    name,
+                                    style: theme.textTheme.titleMedium?.copyWith(
+                                      fontWeight: FontWeight.w700,
+                                      color: AppTheme.specNavy,
+                                    ),
                                   ),
-                                ),
-                                const SizedBox(width: 8),
-                                Text(
-                                  '${list.length}',
-                                  style: theme.textTheme.bodySmall?.copyWith(
-                                    color: AppTheme.specNavy.withValues(alpha: 0.7),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    '${list.length}',
+                                    style: theme.textTheme.bodySmall?.copyWith(
+                                      color: AppTheme.specNavy.withValues(alpha: 0.7),
+                                    ),
                                   ),
-                                ),
-                              ],
+                                ],
+                              ),
                             ),
                           ),
-                        ),
-                        SliverPadding(
-                          padding: EdgeInsets.fromLTRB(padding.left, 0, padding.right, 8),
-                          sliver: SliverList(
-                            delegate: SliverChildBuilderDelegate(
-                              (context, index) {
+                          SliverPadding(
+                            padding: EdgeInsets.fromLTRB(padding.left, 0, padding.right, 8),
+                            sliver: SliverList(
+                              delegate: SliverChildBuilderDelegate((context, index) {
                                 final listing = list[index];
                                 return Padding(
                                   padding: const EdgeInsets.only(bottom: 14),
@@ -231,19 +230,16 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
                                     ),
                                   ),
                                 );
-                              },
-                              childCount: list.length,
+                              }, childCount: list.length),
                             ),
                           ),
-                        ),
-                      ];
-                    }),
-                  ] else ...[
-                    SliverPadding(
-                      padding: EdgeInsets.fromLTRB(padding.left, 8, padding.right, 28),
-                      sliver: SliverList(
-                        delegate: SliverChildBuilderDelegate(
-                          (context, index) {
+                        ];
+                      }),
+                    ] else ...[
+                      SliverPadding(
+                        padding: EdgeInsets.fromLTRB(padding.left, 8, padding.right, 28),
+                        sliver: SliverList(
+                          delegate: SliverChildBuilderDelegate((context, index) {
                             final list = grouped[_selectedCategoryId] ?? [];
                             if (index >= list.length) return const SizedBox.shrink();
                             final listing = list[index];
@@ -263,14 +259,12 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
                                 ),
                               ),
                             );
-                          },
-                          childCount: grouped[_selectedCategoryId]?.length ?? 0,
+                          }, childCount: grouped[_selectedCategoryId]?.length ?? 0),
                         ),
                       ),
-                    ),
+                    ],
+                    const SliverToBoxAdapter(child: SizedBox(height: 24)),
                   ],
-                  const SliverToBoxAdapter(child: SizedBox(height: 24)),
-                ],
                 ),
               );
             },
@@ -296,31 +290,19 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
             children: [
               Container(
                 padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  color: AppTheme.specGold.withValues(alpha: 0.15),
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(
-                  icon,
-                  size: 56,
-                  color: AppTheme.specRed,
-                ),
+                decoration: BoxDecoration(color: AppTheme.specGold.withValues(alpha: 0.15), shape: BoxShape.circle),
+                child: Icon(icon, size: 56, color: AppTheme.specRed),
               ),
               const SizedBox(height: 24),
               Text(
                 title,
-                style: theme.textTheme.titleLarge?.copyWith(
-                  fontWeight: FontWeight.w700,
-                  color: AppTheme.specNavy,
-                ),
+                style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700, color: AppTheme.specNavy),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 8),
               Text(
                 subtitle,
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
-                ),
+                style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant),
                 textAlign: TextAlign.center,
               ),
             ],
@@ -354,11 +336,7 @@ class _FavoriteCard extends StatelessWidget {
             color: AppTheme.specWhite,
             borderRadius: BorderRadius.circular(_cardRadius),
             boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.07),
-                blurRadius: 12,
-                offset: const Offset(0, 4),
-              ),
+              BoxShadow(color: Colors.black.withValues(alpha: 0.07), blurRadius: 12, offset: const Offset(0, 4)),
             ],
           ),
           child: Row(
@@ -370,11 +348,7 @@ class _FavoriteCard extends StatelessWidget {
                   borderRadius: BorderRadius.circular(12),
                   color: AppTheme.specGold.withValues(alpha: 0.2),
                 ),
-                child: Icon(
-                  Icons.store_rounded,
-                  size: 28,
-                  color: AppTheme.specNavy,
-                ),
+                child: Icon(Icons.store_rounded, size: 28, color: AppTheme.specNavy),
               ),
               const SizedBox(width: 16),
               Expanded(
@@ -394,9 +368,7 @@ class _FavoriteCard extends StatelessWidget {
                       const SizedBox(height: 4),
                       Text(
                         listing.tagline,
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: theme.colorScheme.onSurfaceVariant,
-                        ),
+                        style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -404,11 +376,7 @@ class _FavoriteCard extends StatelessWidget {
                   ],
                 ),
               ),
-              Icon(
-                Icons.arrow_forward_ios_rounded,
-                size: 14,
-                color: AppTheme.specNavy.withValues(alpha: 0.6),
-              ),
+              Icon(Icons.arrow_forward_ios_rounded, size: 14, color: AppTheme.specNavy.withValues(alpha: 0.6)),
             ],
           ),
         ),

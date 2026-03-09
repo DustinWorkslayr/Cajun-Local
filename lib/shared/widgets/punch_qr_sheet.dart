@@ -1,40 +1,33 @@
 import 'package:flutter/material.dart';
-import 'package:my_app/core/data/services/punch_edge_functions_service.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:my_app/core/data/services/punch_service.dart';
 import 'package:my_app/core/theme/theme.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 
 /// Shows a bottom sheet that generates a punch token and displays it as QR.
 /// Call from My punch cards or listing detail when user is enrolled.
-void showPunchQrSheet(BuildContext context, {required String userPunchCardId, required String cardTitle}) {
+void showPunchQrSheet(BuildContext context, {required String programId, required String cardTitle}) {
   showModalBottomSheet<void>(
     context: context,
     isScrollControlled: true,
     useSafeArea: true,
     backgroundColor: AppTheme.specWhite,
-    shape: const RoundedRectangleBorder(
-      borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-    ),
-    builder: (ctx) => _PunchQrSheet(
-      userPunchCardId: userPunchCardId,
-      cardTitle: cardTitle,
-    ),
+    shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+    builder: (ctx) => _PunchQrSheet(programId: programId, cardTitle: cardTitle),
   );
 }
 
-class _PunchQrSheet extends StatefulWidget {
-  const _PunchQrSheet({
-    required this.userPunchCardId,
-    required this.cardTitle,
-  });
+class _PunchQrSheet extends ConsumerStatefulWidget {
+  const _PunchQrSheet({required this.programId, required this.cardTitle});
 
-  final String userPunchCardId;
+  final String programId;
   final String cardTitle;
 
   @override
-  State<_PunchQrSheet> createState() => _PunchQrSheetState();
+  ConsumerState<_PunchQrSheet> createState() => _PunchQrSheetState();
 }
 
-class _PunchQrSheetState extends State<_PunchQrSheet> {
+class _PunchQrSheetState extends ConsumerState<_PunchQrSheet> {
   String? _token;
   String? _error;
   bool _loading = true;
@@ -47,10 +40,20 @@ class _PunchQrSheetState extends State<_PunchQrSheet> {
 
   Future<void> _load() async {
     try {
-      final token = await PunchEdgeFunctionsService().generatePunchToken(widget.userPunchCardId);
-      if (mounted) setState(() { _token = token; _loading = false; });
+      final token = await ref.read(punchServiceProvider).generatePunchToken(widget.programId);
+      if (mounted) {
+        setState(() {
+          _token = token;
+          _loading = false;
+        });
+      }
     } catch (e) {
-      if (mounted) setState(() { _error = e.toString(); _loading = false; });
+      if (mounted) {
+        setState(() {
+          _error = e.toString();
+          _loading = false;
+        });
+      }
     }
   }
 
@@ -62,7 +65,11 @@ class _PunchQrSheetState extends State<_PunchQrSheet> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(2))),
+          Container(
+            width: 40,
+            height: 4,
+            decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(2)),
+          ),
           const SizedBox(height: 20),
           Text(
             widget.cardTitle,
@@ -75,7 +82,11 @@ class _PunchQrSheetState extends State<_PunchQrSheet> {
           else if (_error != null)
             Padding(
               padding: const EdgeInsets.all(16),
-              child: Text(_error!, style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.error), textAlign: TextAlign.center),
+              child: Text(
+                _error!,
+                style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.error),
+                textAlign: TextAlign.center,
+              ),
             )
           else if (_token != null) ...[
             Container(
@@ -85,12 +96,7 @@ class _PunchQrSheetState extends State<_PunchQrSheet> {
                 borderRadius: BorderRadius.circular(16),
                 border: Border.all(color: AppTheme.specNavy.withValues(alpha: 0.2)),
               ),
-              child: QrImageView(
-                data: _token!,
-                version: QrVersions.auto,
-                size: 220,
-                backgroundColor: Colors.white,
-              ),
+              child: QrImageView(data: _token!, version: QrVersions.auto, size: 220, backgroundColor: Colors.white),
             ),
             const SizedBox(height: 16),
             Text(

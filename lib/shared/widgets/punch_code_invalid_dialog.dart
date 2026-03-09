@@ -5,11 +5,7 @@ import 'package:my_app/shared/widgets/app_buttons.dart';
 /// Themed dialog when a scanned punch QR code is already used or invalid.
 /// Uses spec navy/gold/offWhite styling.
 class PunchCodeInvalidDialog extends StatelessWidget {
-  const PunchCodeInvalidDialog({
-    super.key,
-    this.message,
-    this.title = 'This code is used or invalid',
-  });
+  const PunchCodeInvalidDialog({super.key, this.message, this.title = 'This code is used or invalid'});
 
   final String? message;
   final String title;
@@ -17,19 +13,12 @@ class PunchCodeInvalidDialog extends StatelessWidget {
   static const double _cardRadius = 24;
 
   /// Shows the dialog. [message] is optional (e.g. from punch-validate); defaults to a friendly explanation.
-  static Future<void> show(
-    BuildContext context, {
-    String? message,
-    String title = 'This code is used or invalid',
-  }) {
+  static Future<void> show(BuildContext context, {String? message, String title = 'This code is used or invalid'}) {
     return showDialog<void>(
       context: context,
       barrierColor: Colors.black54,
       barrierDismissible: false,
-      builder: (context) => PunchCodeInvalidDialog(
-        message: message,
-        title: title,
-      ),
+      builder: (context) => PunchCodeInvalidDialog(message: message, title: title),
     );
   }
 
@@ -38,9 +27,9 @@ class PunchCodeInvalidDialog extends StatelessWidget {
     final theme = Theme.of(context);
     final nav = AppTheme.specNavy;
     final sub = nav.withValues(alpha: 0.75);
-    final body = message?.trim().isNotEmpty == true
+    final body = (message != null && message!.trim().isNotEmpty)
         ? message!
-        : 'This QR code has already been used or is no longer valid. The customer will need to show a new code.';
+        : 'This loyalty code is no longer valid or has already been used. Please ask the business for a new one.';
 
     return Dialog(
       backgroundColor: Colors.transparent,
@@ -51,11 +40,7 @@ class PunchCodeInvalidDialog extends StatelessWidget {
           color: AppTheme.specOffWhite,
           borderRadius: BorderRadius.circular(_cardRadius),
           boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.15),
-              blurRadius: 24,
-              offset: const Offset(0, 8),
-            ),
+            BoxShadow(color: Colors.black.withValues(alpha: 0.15), blurRadius: 24, offset: const Offset(0, 8)),
           ],
         ),
         child: Stack(
@@ -68,27 +53,17 @@ class PunchCodeInvalidDialog extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   const SizedBox(height: 8),
-                  Icon(
-                    Icons.qr_code_2_rounded,
-                    size: 48,
-                    color: AppTheme.specGold,
-                  ),
+                  Icon(Icons.qr_code_2_rounded, size: 48, color: AppTheme.specGold),
                   const SizedBox(height: 16),
                   Text(
                     title,
-                    style: theme.textTheme.titleLarge?.copyWith(
-                      fontWeight: FontWeight.w700,
-                      color: nav,
-                    ),
+                    style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700, color: nav),
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 12),
                   Text(
                     body,
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      color: sub,
-                      height: 1.4,
-                    ),
+                    style: theme.textTheme.bodyMedium?.copyWith(color: sub, height: 1.4),
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 24),
@@ -97,10 +72,7 @@ class PunchCodeInvalidDialog extends StatelessWidget {
                     child: AppPrimaryButton(
                       onPressed: () => Navigator.of(context).pop(),
                       expanded: false,
-                      child: const Text(
-                        'OK',
-                        style: TextStyle(fontWeight: FontWeight.w700),
-                      ),
+                      child: const Text('OK', style: TextStyle(fontWeight: FontWeight.w700)),
                     ),
                   ),
                 ],
@@ -111,11 +83,7 @@ class PunchCodeInvalidDialog extends StatelessWidget {
               right: 12,
               child: IconButton(
                 onPressed: () => Navigator.of(context).pop(),
-                icon: Icon(
-                  Icons.close_rounded,
-                  size: 22,
-                  color: nav.withValues(alpha: 0.6),
-                ),
+                icon: Icon(Icons.close_rounded, size: 22, color: nav.withValues(alpha: 0.6)),
               ),
             ),
           ],

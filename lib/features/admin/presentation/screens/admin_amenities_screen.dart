@@ -64,9 +64,7 @@ class _AdminAmenitiesScreenState extends State<AdminAmenitiesScreen> {
     } catch (e) {
       if (mounted) {
         setState(() => _loading = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to load amenities: $e')),
-        );
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to load amenities: $e')));
       }
     }
   }
@@ -74,15 +72,12 @@ class _AdminAmenitiesScreenState extends State<AdminAmenitiesScreen> {
   static String _slugify(String name) {
     final s = name.trim().toLowerCase();
     if (s.isEmpty) return '';
-    return s
-        .replaceAll(RegExp(r'[^a-z0-9]+'), '-')
-        .replaceAll(RegExp(r'^-|-$'), '');
+    return s.replaceAll(RegExp(r'[^a-z0-9]+'), '-').replaceAll(RegExp(r'^-|-$'), '');
   }
 
   int get _nextSortOrder {
     if (_amenities.isEmpty) return 0;
-    final maxOrder =
-        _amenities.map((a) => a.sortOrder).reduce((a, b) => a > b ? a : b);
+    final maxOrder = _amenities.map((a) => a.sortOrder).reduce((a, b) => a > b ? a : b);
     return maxOrder + 1;
   }
 
@@ -94,7 +89,7 @@ class _AdminAmenitiesScreenState extends State<AdminAmenitiesScreen> {
     if (result == null || result.name.trim().isEmpty) return;
     setState(() => _loading = true);
     try {
-      final slug = result.slug?.trim().isNotEmpty == true
+      final slug = (result.slug != null && result.slug!.trim().isNotEmpty)
           ? result.slug!.trim()
           : _slugify(result.name);
       if (slug.isEmpty) throw StateError('Slug is required');
@@ -107,16 +102,12 @@ class _AdminAmenitiesScreenState extends State<AdminAmenitiesScreen> {
       });
       await _load();
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Amenity added')),
-        );
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Amenity added')));
       }
     } catch (e) {
       if (mounted) {
         setState(() => _loading = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to add: $e')),
-        );
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to add: $e')));
       }
     }
   }
@@ -145,30 +136,20 @@ class _AdminAmenitiesScreenState extends State<AdminAmenitiesScreen> {
     final name = nameC.text.trim();
     final slug = slugC.text.trim();
     if (name.isEmpty || slug.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Name and slug are required')),
-      );
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Name and slug are required')));
       return;
     }
     setState(() => _loading = true);
     try {
-      await _repo.updateAmenity(a.id, {
-        'name': name,
-        'slug': slug,
-        'bucket': _editingBucket,
-      });
+      await _repo.updateAmenity(a.id, {'name': name, 'slug': slug, 'bucket': _editingBucket});
       await _load();
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Amenity updated')),
-        );
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Amenity updated')));
       }
     } catch (e) {
       if (mounted) {
         setState(() => _loading = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to update: $e')),
-        );
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to update: $e')));
       }
     }
   }
@@ -178,18 +159,10 @@ class _AdminAmenitiesScreenState extends State<AdminAmenitiesScreen> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Delete amenity?'),
-        content: Text(
-          'Delete "${a.name}"? Businesses that selected this amenity will have it removed.',
-        ),
+        content: Text('Delete "${a.name}"? Businesses that selected this amenity will have it removed.'),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Cancel'),
-          ),
-          AppDangerButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Delete'),
-          ),
+          TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Cancel')),
+          AppDangerButton(onPressed: () => Navigator.of(context).pop(true), child: const Text('Delete')),
         ],
       ),
     );
@@ -198,15 +171,11 @@ class _AdminAmenitiesScreenState extends State<AdminAmenitiesScreen> {
       await _repo.deleteAmenity(a.id);
       await _load();
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Amenity deleted')),
-        );
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Amenity deleted')));
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to delete: $e')),
-        );
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to delete: $e')));
       }
     }
   }
@@ -228,9 +197,7 @@ class _AdminAmenitiesScreenState extends State<AdminAmenitiesScreen> {
             _filterBucket != null
                 ? 'No amenities in "$_filterBucket".'
                 : 'No amenities. Add one to define options for businesses.',
-            style: theme.textTheme.bodyLarge?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
-            ),
+            style: theme.textTheme.bodyLarge?.copyWith(color: theme.colorScheme.onSurfaceVariant),
             textAlign: TextAlign.center,
           ),
         ),
@@ -246,26 +213,21 @@ class _AdminAmenitiesScreenState extends State<AdminAmenitiesScreen> {
           final item = copy.removeAt(oldIndex);
           copy.insert(newIndex, item);
           setState(() => _amenities = copy);
-          final orders = copy
-              .asMap()
-              .entries
-              .map((e) => {'id': e.value.id, 'sort_order': e.key})
-              .toList();
+          final orders = copy.asMap().entries.map((e) => {'id': e.value.id, 'sort_order': e.key}).toList();
           final messenger = ScaffoldMessenger.of(context);
-          _repo.updateAmenitiesSortOrder(orders).then((_) {
-            if (mounted) {
-              messenger.showSnackBar(
-                const SnackBar(content: Text('Order saved')),
-              );
-            }
-          }).catchError((e) {
-            if (mounted) {
-              setState(() => _load());
-              messenger.showSnackBar(
-                SnackBar(content: Text('Failed to save order: $e')),
-              );
-            }
-          });
+          _repo
+              .updateAmenitiesSortOrder(orders)
+              .then((_) {
+                if (mounted) {
+                  messenger.showSnackBar(const SnackBar(content: Text('Order saved')));
+                }
+              })
+              .catchError((e) {
+                if (mounted) {
+                  setState(() => _load());
+                  messenger.showSnackBar(SnackBar(content: Text('Failed to save order: $e')));
+                }
+              });
         },
         itemBuilder: (context, index) {
           final a = _amenities[index];
@@ -298,9 +260,7 @@ class _AdminAmenitiesScreenState extends State<AdminAmenitiesScreen> {
                 padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
                 child: Text(
                   'Manage master list of amenities (global + per-bucket). Businesses pick from these.',
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: theme.colorScheme.onSurfaceVariant,
-                  ),
+                  style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
                 ),
               ),
             Padding(
@@ -314,8 +274,7 @@ class _AdminAmenitiesScreenState extends State<AdminAmenitiesScreen> {
                     hint: const Text('All buckets'),
                     items: [
                       const DropdownMenuItem(value: null, child: Text('All buckets')),
-                      for (final o in _kBucketOptions)
-                        DropdownMenuItem(value: o.$1, child: Text(o.$2)),
+                      for (final o in _kBucketOptions) DropdownMenuItem(value: o.$1, child: Text(o.$2)),
                     ],
                     onChanged: (v) {
                       setState(() => _filterBucket = v);
@@ -343,12 +302,7 @@ class _AdminAmenitiesScreenState extends State<AdminAmenitiesScreen> {
 }
 
 class _AmenityFormData {
-  const _AmenityFormData({
-    required this.name,
-    required this.bucket,
-    this.slug,
-    this.sortOrder = 0,
-  });
+  const _AmenityFormData({required this.name, required this.bucket, this.slug, this.sortOrder = 0});
   final String name;
   final String bucket;
   final String? slug;
@@ -387,9 +341,7 @@ class _AmenityTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    if (isEditing &&
-        nameController != null &&
-        slugController != null) {
+    if (isEditing && nameController != null && slugController != null) {
       return Card(
         margin: const EdgeInsets.only(bottom: 8),
         child: Padding(
@@ -400,34 +352,19 @@ class _AmenityTile extends StatelessWidget {
             children: [
               TextField(
                 controller: nameController,
-                decoration: const InputDecoration(
-                  labelText: 'Name',
-                  border: OutlineInputBorder(),
-                  isDense: true,
-                ),
+                decoration: const InputDecoration(labelText: 'Name', border: OutlineInputBorder(), isDense: true),
                 textCapitalization: TextCapitalization.words,
               ),
               const SizedBox(height: 12),
               TextField(
                 controller: slugController,
-                decoration: const InputDecoration(
-                  labelText: 'Slug',
-                  border: OutlineInputBorder(),
-                  isDense: true,
-                ),
+                decoration: const InputDecoration(labelText: 'Slug', border: OutlineInputBorder(), isDense: true),
               ),
               const SizedBox(height: 12),
               DropdownButtonFormField<String>(
                 initialValue: editingBucket,
-                decoration: const InputDecoration(
-                  labelText: 'Bucket',
-                  border: OutlineInputBorder(),
-                  isDense: true,
-                ),
-                items: [
-                  for (final o in _kBucketOptions)
-                    DropdownMenuItem(value: o.$1, child: Text(o.$2)),
-                ],
+                decoration: const InputDecoration(labelText: 'Bucket', border: OutlineInputBorder(), isDense: true),
+                items: [for (final o in _kBucketOptions) DropdownMenuItem(value: o.$1, child: Text(o.$2))],
                 onChanged: (v) {
                   if (v != null) onBucketChanged(v);
                 },
@@ -436,15 +373,9 @@ class _AmenityTile extends StatelessWidget {
               Row(
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
-                  TextButton(
-                    onPressed: onCancelEdit,
-                    child: const Text('Cancel'),
-                  ),
+                  TextButton(onPressed: onCancelEdit, child: const Text('Cancel')),
                   const SizedBox(width: 8),
-                  FilledButton(
-                    onPressed: onSaveEdit,
-                    child: const Text('Save'),
-                  ),
+                  FilledButton(onPressed: onSaveEdit, child: const Text('Save')),
                 ],
               ),
             ],
@@ -458,29 +389,15 @@ class _AmenityTile extends StatelessWidget {
       child: ListTile(
         leading: ReorderableDragStartListener(
           index: index,
-          child: Icon(
-            Icons.drag_handle_rounded,
-            color: theme.colorScheme.onSurfaceVariant,
-          ),
+          child: Icon(Icons.drag_handle_rounded, color: theme.colorScheme.onSurfaceVariant),
         ),
         title: Text(amenity.name),
-        subtitle: Text(
-          '${amenity.slug} · ${amenity.bucket}',
-          style: theme.textTheme.bodySmall,
-        ),
+        subtitle: Text('${amenity.slug} · ${amenity.bucket}', style: theme.textTheme.bodySmall),
         trailing: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            IconButton(
-              icon: const Icon(Icons.edit_rounded),
-              onPressed: onStartEdit,
-              tooltip: 'Edit',
-            ),
-            IconButton(
-              icon: const Icon(Icons.delete_outline_rounded),
-              onPressed: onDelete,
-              tooltip: 'Delete',
-            ),
+            IconButton(icon: const Icon(Icons.edit_rounded), onPressed: onStartEdit, tooltip: 'Edit'),
+            IconButton(icon: const Icon(Icons.delete_outline_rounded), onPressed: onDelete, tooltip: 'Delete'),
           ],
         ),
       ),
@@ -512,9 +429,7 @@ class _AddAmenityDialogState extends State<_AddAmenityDialog> {
   static String _slugify(String name) {
     final s = name.trim().toLowerCase();
     if (s.isEmpty) return '';
-    return s
-        .replaceAll(RegExp(r'[^a-z0-9]+'), '-')
-        .replaceAll(RegExp(r'^-|-$'), '');
+    return s.replaceAll(RegExp(r'[^a-z0-9]+'), '-').replaceAll(RegExp(r'^-|-$'), '');
   }
 
   void _syncSlug() {
@@ -528,12 +443,14 @@ class _AddAmenityDialogState extends State<_AddAmenityDialog> {
     final name = _nameController.text.trim();
     final slug = _slugController.text.trim();
     if (name.isEmpty) return;
-    Navigator.of(context).pop(_AmenityFormData(
-      name: name,
-      bucket: _bucket,
-      slug: slug.isNotEmpty ? slug : _slugify(name),
-      sortOrder: widget.nextSortOrder,
-    ));
+    Navigator.of(context).pop(
+      _AmenityFormData(
+        name: name,
+        bucket: _bucket,
+        slug: slug.isNotEmpty ? slug : _slugify(name),
+        sortOrder: widget.nextSortOrder,
+      ),
+    );
   }
 
   @override
@@ -569,28 +486,16 @@ class _AddAmenityDialogState extends State<_AddAmenityDialog> {
             const SizedBox(height: 16),
             DropdownButtonFormField<String>(
               initialValue: _bucket,
-              decoration: const InputDecoration(
-                labelText: 'Bucket',
-                border: OutlineInputBorder(),
-              ),
-              items: [
-                for (final o in _kBucketOptions)
-                  DropdownMenuItem(value: o.$1, child: Text(o.$2)),
-              ],
+              decoration: const InputDecoration(labelText: 'Bucket', border: OutlineInputBorder()),
+              items: [for (final o in _kBucketOptions) DropdownMenuItem(value: o.$1, child: Text(o.$2))],
               onChanged: (v) => setState(() => _bucket = v ?? 'global'),
             ),
           ],
         ),
       ),
       actions: [
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Cancel'),
-        ),
-        FilledButton(
-          onPressed: _submit,
-          child: const Text('Add'),
-        ),
+        TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Cancel')),
+        FilledButton(onPressed: _submit, child: const Text('Add')),
       ],
     );
   }

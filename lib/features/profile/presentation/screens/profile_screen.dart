@@ -2,7 +2,8 @@ import 'dart:async';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
-import 'package:my_app/core/auth/auth_repository.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:my_app/core/auth/providers/auth_provider.dart';
 import 'package:my_app/core/data/services/app_storage_service.dart';
 import 'package:my_app/core/data/services/storage_upload_constants.dart';
 import 'package:my_app/core/data/app_data_scope.dart';
@@ -35,7 +36,7 @@ import 'package:url_launcher/url_launcher.dart';
 /// Placeholder user when profile load fails; UI shows loadError instead of fake data.
 const _anonymousUser = MockUser(displayName: '', email: null, avatarUrl: null, ownedListingIds: []);
 
-class ProfileScreen extends StatefulWidget {
+class ProfileScreen extends ConsumerStatefulWidget {
   const ProfileScreen({super.key, this.onMyListings, this.onNavigateToHome, this.onHandleNotificationActionUrl});
 
   /// When set (e.g. from MainShell), opens My Listings in-shell instead of pushing a route.
@@ -48,10 +49,10 @@ class ProfileScreen extends StatefulWidget {
   final bool Function(String actionUrl)? onHandleNotificationActionUrl;
 
   @override
-  State<ProfileScreen> createState() => _ProfileScreenState();
+  ConsumerState<ProfileScreen> createState() => _ProfileScreenState();
 }
 
-class _ProfileScreenState extends State<ProfileScreen> {
+class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   Future<_ProfilePageData>? _dataFuture;
   bool _loadStarted = false;
 
@@ -68,21 +69,23 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Future<_ProfilePageData> _loadProfileData() async {
     try {
       final scope = AppDataScope.of(context);
-      final auth = scope.authRepository;
       final dataSource = scope.dataSource;
-      final useSupabase = dataSource.useSupabase;
+      final useBackend = dataSource.useBackend;
 
       final userFuture = dataSource.getCurrentUser();
-      final isAdminFuture =
-          (useSupabase && auth.currentUserId != null) ? auth.isAdmin() : Future.value(false);
-      final uid = auth.currentUserId;
-      final businessIdsFuture = (useSupabase && uid != null)
+      final uid = ref.read(authNotifierProvider).valueOrNull?.id;
+      final isAdminFuture = (useBackend && uid != null)
+          ? ref.read(authNotifierProvider.notifier).isAdmin()
+          : Future.value(false);
+      final businessIdsFuture = (useBackend && uid != null)
           ? BusinessManagersRepository().listBusinessIdsForUser(uid)
           : Future.value(<String>[]);
-      final results = await Future.wait([userFuture, isAdminFuture, businessIdsFuture])
-          .timeout(const Duration(seconds: 15), onTimeout: () {
-        throw TimeoutException('Profile load timed out');
-      });
+      final results = await Future.wait<dynamic>([userFuture, isAdminFuture, businessIdsFuture]).timeout(
+        const Duration(seconds: 15),
+        onTimeout: () {
+          throw TimeoutException('Profile load timed out');
+        },
+      );
       if (!mounted) return _ProfilePageData(user: _anonymousUser, isAdmin: false, isBusinessManager: false);
       final businessIds = results[2] as List<String>;
       final isBusinessManager = businessIds.isNotEmpty;
@@ -99,7 +102,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
     } on TimeoutException catch (e) {
       debugPrint('Profile load timeout: $e');
       if (!mounted) return _ProfilePageData(user: _anonymousUser, isAdmin: false, isBusinessManager: false);
-      return _ProfilePageData(user: _anonymousUser, isAdmin: false, isBusinessManager: false, loadError: 'Loading data failed.');
+      return _ProfilePageData(
+        user: _anonymousUser,
+        isAdmin: false,
+        isBusinessManager: false,
+        loadError: 'Loading data failed.',
+      );
     } catch (e, st) {
       debugPrint('Profile load error: $e');
       debugPrintStack(stackTrace: st);
@@ -117,9 +125,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Future<void> _startStripeCheckout() async {
     if (!mounted) return;
     final scope = AppDataScope.of(context);
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Opening checkout…')),
-    );
+    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Opening checkout…')));
     try {
       final plans = await UserPlansRepository().list();
       if (!mounted) return;
@@ -127,9 +133,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
       final plan = plans.where((p) => p.tier.toLowerCase() == tier).firstOrNull;
       if (plan == null) {
         if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('No subscription plan available. Please try again later.')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('No subscription plan available. Please try again later.')));
         return;
       }
       final planId = plan.id;
@@ -165,72 +171,59 @@ class _ProfileScreenState extends State<ProfileScreen> {
         mode: 'subscription',
         successUrl: StripeCheckoutService.successUrl(),
         cancelUrl: StripeCheckoutService.cancelUrl(),
-        metadata: {
-          'type': 'user_subscription',
-          'reference_id': planId,
-        },
+        metadata: {'type': 'user_subscription', 'reference_id': planId},
       );
       if (!mounted) return;
       final uri = Uri.parse(url);
       if (await canLaunchUrl(uri)) {
         await launchUrl(uri, mode: LaunchMode.externalApplication);
         if (!mounted) return;
-        scope.userTierService.refresh();
+        final uid = ref.read(authNotifierProvider).valueOrNull?.id;
+        if (uid != null) {
+          scope.userTierService.refresh(uid);
+        }
       } else {
         if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Could not open browser. URL: $url')),
-        );
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Could not open browser. URL: $url')));
       }
     } on StripeCheckoutException catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Checkout: ${e.message}')),
-      );
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Checkout: ${e.message}')));
     } catch (e, st) {
       if (!mounted) return;
       debugPrint('Stripe checkout error: $e');
       debugPrintStack(stackTrace: st);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Checkout failed: $e')),
-      );
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Checkout failed: $e')));
     }
   }
 
   /// Opens Stripe Customer Portal (manage subscription, payment method, billing).
   Future<void> _openCustomerPortal() async {
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Opening billing portal…')),
-    );
+    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Opening billing portal…')));
     try {
       final stripe = StripeCheckoutService();
-      final url = await stripe.createCustomerPortalSession(
-        returnUrl: StripeCheckoutService.portalReturnUrl(),
-      );
+      final url = await stripe.createCustomerPortalSession(returnUrl: StripeCheckoutService.portalReturnUrl());
       if (!mounted) return;
       final uri = Uri.parse(url);
       if (await canLaunchUrl(uri)) {
         await launchUrl(uri, mode: LaunchMode.externalApplication);
         if (!mounted) return;
         final scope = AppDataScope.of(context);
-        scope.userTierService.refresh();
+        final uid = ref.read(authNotifierProvider).valueOrNull?.id;
+        if (uid != null) {
+          scope.userTierService.refresh(uid);
+        }
       } else {
         if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Could not open portal: $url')),
-        );
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Could not open portal: $url')));
       }
     } on StripeCheckoutException catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(e.message)),
-      );
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Portal failed: $e')),
-      );
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Portal failed: $e')));
     }
   }
 
@@ -313,18 +306,13 @@ class _ProfileLoadError extends StatelessWidget {
               const SizedBox(height: 16),
               Text(
                 'Could not load profile',
-                style: theme.textTheme.titleMedium?.copyWith(
-                  color: AppTheme.specNavy,
-                  fontWeight: FontWeight.w600,
-                ),
+                style: theme.textTheme.titleMedium?.copyWith(color: AppTheme.specNavy, fontWeight: FontWeight.w600),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 8),
               Text(
                 message,
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: AppTheme.specNavy.withValues(alpha: 0.8),
-                ),
+                style: theme.textTheme.bodySmall?.copyWith(color: AppTheme.specNavy.withValues(alpha: 0.8)),
                 textAlign: TextAlign.center,
                 maxLines: 3,
                 overflow: TextOverflow.ellipsis,
@@ -343,7 +331,7 @@ class _ProfileLoadError extends StatelessWidget {
   }
 }
 
-class _ProfileContent extends StatefulWidget {
+class _ProfileContent extends ConsumerStatefulWidget {
   const _ProfileContent({
     required this.user,
     required this.isAdmin,
@@ -371,7 +359,7 @@ class _ProfileContent extends StatefulWidget {
   final Future<void> Function()? onOpenCustomerPortal;
 
   @override
-  State<_ProfileContent> createState() => _ProfileContentState();
+  ConsumerState<_ProfileContent> createState() => _ProfileContentState();
 }
 
 /// Section indices for profile shell (tablet rail / mobile tabs).
@@ -382,8 +370,7 @@ const int _kAccountTab = 3;
 const int _kAdminTab = 4;
 const int _kMyListingsTab = 5;
 
-class _ProfileContentState extends State<_ProfileContent>
-    with SingleTickerProviderStateMixin {
+class _ProfileContentState extends ConsumerState<_ProfileContent> with SingleTickerProviderStateMixin {
   late String _displayName;
   late String? _email;
   bool _profileEditing = false;
@@ -439,7 +426,7 @@ class _ProfileContentState extends State<_ProfileContent>
   void didChangeDependencies() {
     super.didChangeDependencies();
     if (!_notificationPrefsLoaded) {
-      final uid = AppDataScope.of(context).authRepository.currentUserId;
+      final uid = ref.watch(authNotifierProvider).valueOrNull?.id;
       if (uid != null) {
         _notificationPrefsLoaded = true;
         _loadNotificationPrefs(uid);
@@ -461,15 +448,18 @@ class _ProfileContentState extends State<_ProfileContent>
   }
 
   Future<void> _saveNotificationPrefs() async {
-    final uid = AppDataScope.of(context).authRepository.currentUserId;
+    final uid = ref.read(authNotifierProvider).valueOrNull?.id;
     if (uid == null) return;
-    await _notificationPrefsRepo.save(uid, UserNotificationPreferences(
-      dealsEnabled: _notificationsDeals,
-      listingsEnabled: _notificationsListings,
-      remindersEnabled: _notificationsReminders,
-      newsEnabled: _notificationsNews,
-      eventsEnabled: _notificationsEvents,
-    ));
+    await _notificationPrefsRepo.save(
+      uid,
+      UserNotificationPreferences(
+        dealsEnabled: _notificationsDeals,
+        listingsEnabled: _notificationsListings,
+        remindersEnabled: _notificationsReminders,
+        newsEnabled: _notificationsNews,
+        eventsEnabled: _notificationsEvents,
+      ),
+    );
   }
 
   @override
@@ -508,24 +498,22 @@ class _ProfileContentState extends State<_ProfileContent>
       _displayName = displayName;
       _email = email;
     });
-    final auth = AppDataScope.of(context).authRepository;
-    if (auth.currentUserId != null && displayName.isNotEmpty) {
+    final uid = ref.read(authNotifierProvider).valueOrNull?.id;
+    if (uid != null && displayName.isNotEmpty) {
       try {
-        await auth.updateOwnProfile(displayName: displayName);
+        await ref.read(authNotifierProvider.notifier).updateProfile(displayName: displayName);
         if (mounted) widget.onRefresh();
       } catch (e) {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Could not save profile: $e'), backgroundColor: Colors.red),
-          );
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text('Could not save profile: $e'), backgroundColor: Colors.red));
         }
         return;
       }
     }
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Profile saved')),
-      );
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Profile saved')));
     }
   }
 
@@ -545,9 +533,7 @@ class _ProfileContentState extends State<_ProfileContent>
     final sectionKey = index < _sectionKeys.length ? _sectionKeys[index] : index;
     // Admin: go straight to Admin shell (no intermediate card).
     if (sectionKey == _kAdminTab) {
-      Navigator.of(context).push(
-        MaterialPageRoute<void>(builder: (_) => const AdminShell()),
-      );
+      Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const AdminShell()));
       return;
     }
     // My Listings: open directly (in-shell or pushed) — shows no-listings/create flow when empty.
@@ -555,9 +541,7 @@ class _ProfileContentState extends State<_ProfileContent>
       if (widget.onMyListings != null) {
         widget.onMyListings!();
       } else {
-        Navigator.of(context).push(
-          MaterialPageRoute<void>(builder: (_) => const MyListingsScreen()),
-        );
+        Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const MyListingsScreen()));
       }
       return;
     }
@@ -566,24 +550,18 @@ class _ProfileContentState extends State<_ProfileContent>
   }
 
   Future<void> _signOut() async {
-    final auth = AppDataScope.of(context).authRepository;
-    await auth.signOut();
+    await ref.read(authNotifierProvider.notifier).signOut();
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Signed out')),
-      );
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Signed out')));
     }
   }
 
   Future<void> _pickAndSetProfilePhoto() async {
     final scope = AppDataScope.of(context);
-    final auth = scope.authRepository;
-    final uid = auth.currentUserId;
-    final useSupabase = scope.dataSource.useSupabase;
-    if (!useSupabase || uid == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Sign in to add a profile picture')),
-      );
+    final uid = ref.read(authNotifierProvider).valueOrNull?.id;
+    final useBackend = scope.dataSource.useBackend;
+    if (!useBackend || uid == null) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Sign in to add a profile picture')));
       return;
     }
     if (_uploadingAvatar) return;
@@ -598,23 +576,15 @@ class _ProfileContentState extends State<_ProfileContent>
       final bytes = result.files.single.bytes!;
       final name = result.files.single.name;
       final ext = name.contains('.') ? name.split('.').last : 'jpg';
-      final url = await AppStorageService().uploadAvatar(
-        userId: uid,
-        bytes: bytes,
-        extension: ext,
-      );
-      await auth.updateOwnProfile(avatarUrl: url);
+      final url = await AppStorageService().uploadAvatar(userId: uid, bytes: bytes, extension: ext);
+      await ref.read(authNotifierProvider.notifier).updateProfile(avatarUrl: url);
       widget.onRefresh();
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Profile picture updated')),
-        );
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Profile picture updated')));
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Upload failed: $e')),
-        );
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Upload failed: $e')));
       }
     } finally {
       if (mounted) setState(() => _uploadingAvatar = false);
@@ -624,10 +594,10 @@ class _ProfileContentState extends State<_ProfileContent>
   @override
   Widget build(BuildContext context) {
     final scope = AppDataScope.of(context);
-    final auth = scope.authRepository;
     final dataSource = scope.dataSource;
-    final useSupabase = dataSource.useSupabase;
-    final signedIn = useSupabase && auth.currentUserId != null;
+    final useBackend = dataSource.useBackend;
+    final uid = ref.watch(authNotifierProvider).valueOrNull?.id;
+    final signedIn = useBackend && uid != null;
     final hasListings = widget.user.ownedListingIds.isNotEmpty || widget.isBusinessManager;
     final padding = AppLayout.horizontalPadding(context);
     final isTablet = AppLayout.isTablet(context);
@@ -670,11 +640,7 @@ class _ProfileContentState extends State<_ProfileContent>
                                 child: Column(
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
-                                    Icon(
-                                      Icons.home_rounded,
-                                      size: 24,
-                                      color: AppTheme.specNavy.withValues(alpha: 0.8),
-                                    ),
+                                    Icon(Icons.home_rounded, size: 24, color: AppTheme.specNavy.withValues(alpha: 0.8)),
                                     const SizedBox(height: 4),
                                     Text(
                                       'Home',
@@ -726,11 +692,7 @@ class _ProfileContentState extends State<_ProfileContent>
                     )
                   : const SizedBox(height: 8),
               destinations: [
-                for (final s in _sections)
-                  NavigationRailDestination(
-                    icon: Icon(s.icon),
-                    label: Text(s.label),
-                  ),
+                for (final s in _sections) NavigationRailDestination(icon: Icon(s.icon), label: Text(s.label)),
               ],
             ),
             Expanded(
@@ -761,16 +723,10 @@ class _ProfileContentState extends State<_ProfileContent>
                   ),
                   Expanded(
                     child: SingleChildScrollView(
-                      padding: EdgeInsets.fromLTRB(
-                        padding.left,
-                        20,
-                        padding.right,
-                        24,
-                      ),
+                      padding: EdgeInsets.fromLTRB(padding.left, 20, padding.right, 24),
                       child: _buildTabContent(
                         context,
                         _sectionKeys[_selectedIndex],
-                        auth: auth,
                         signedIn: signedIn,
                         hasListings: hasListings,
                         padding: padding,
@@ -799,10 +755,7 @@ class _ProfileContentState extends State<_ProfileContent>
               labelColor: AppTheme.specNavy,
               unselectedLabelColor: AppTheme.specNavy.withValues(alpha: 0.6),
               indicatorColor: AppTheme.specGold,
-              tabs: [
-                for (final s in _sections)
-                  Tab(icon: Icon(s.icon, size: 20), text: s.label),
-              ],
+              tabs: [for (final s in _sections) Tab(icon: Icon(s.icon, size: 20), text: s.label)],
               onTap: _onDestinationSelected,
             ),
           ),
@@ -812,16 +765,10 @@ class _ProfileContentState extends State<_ProfileContent>
               children: [
                 for (var i = 0; i < _sections.length; i++)
                   SingleChildScrollView(
-                    padding: EdgeInsets.fromLTRB(
-                      padding.left,
-                      16,
-                      padding.right,
-                      24,
-                    ),
+                    padding: EdgeInsets.fromLTRB(padding.left, 16, padding.right, 24),
                     child: _buildTabContent(
                       context,
                       _sectionKeys[i],
-                      auth: auth,
                       signedIn: signedIn,
                       hasListings: hasListings,
                       padding: padding,
@@ -838,7 +785,6 @@ class _ProfileContentState extends State<_ProfileContent>
   Widget _buildTabContent(
     BuildContext context,
     int sectionKey, {
-    required AuthRepository auth,
     required bool signedIn,
     required bool hasListings,
     required EdgeInsets padding,
@@ -851,7 +797,7 @@ class _ProfileContentState extends State<_ProfileContent>
       case _kPreferencesTab:
         return _buildPreferencesTab(context, padding);
       case _kAccountTab:
-        return _buildAccountTab(context, auth, signedIn, hasListings, padding, widget.inboxUnreadCount);
+        return _buildAccountTab(context, signedIn, hasListings, padding, widget.inboxUnreadCount);
       case _kAdminTab:
         return _buildAdminTab(context, padding);
       case _kMyListingsTab:
@@ -868,10 +814,7 @@ class _ProfileContentState extends State<_ProfileContent>
       children: [
         Text(
           'Admin',
-          style: theme.textTheme.titleSmall?.copyWith(
-            color: AppTheme.specNavy,
-            fontWeight: FontWeight.w600,
-          ),
+          style: theme.textTheme.titleSmall?.copyWith(color: AppTheme.specNavy, fontWeight: FontWeight.w600),
         ),
         const SizedBox(height: 12),
         _SpecCard(
@@ -885,26 +828,19 @@ class _ProfileContentState extends State<_ProfileContent>
                   const SizedBox(width: 12),
                   Text(
                     'Admin dashboard',
-                    style: theme.textTheme.titleMedium?.copyWith(
-                      color: AppTheme.specNavy,
-                      fontWeight: FontWeight.w600,
-                    ),
+                    style: theme.textTheme.titleMedium?.copyWith(color: AppTheme.specNavy, fontWeight: FontWeight.w600),
                   ),
                 ],
               ),
               const SizedBox(height: 8),
               Text(
                 'Manage businesses, claims, plans, and app content.',
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  color: AppTheme.specNavy.withValues(alpha: 0.85),
-                ),
+                style: theme.textTheme.bodyMedium?.copyWith(color: AppTheme.specNavy.withValues(alpha: 0.85)),
               ),
               const SizedBox(height: 16),
               AppSecondaryButton(
                 onPressed: () {
-                  Navigator.of(context).push(
-                    MaterialPageRoute<void>(builder: (_) => const AdminShell()),
-                  );
+                  Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const AdminShell()));
                 },
                 icon: const Icon(Icons.open_in_new_rounded, size: 20),
                 label: const Text('Open Admin'),
@@ -923,10 +859,7 @@ class _ProfileContentState extends State<_ProfileContent>
       children: [
         Text(
           'My Listings',
-          style: theme.textTheme.titleSmall?.copyWith(
-            color: AppTheme.specNavy,
-            fontWeight: FontWeight.w600,
-          ),
+          style: theme.textTheme.titleSmall?.copyWith(color: AppTheme.specNavy, fontWeight: FontWeight.w600),
         ),
         const SizedBox(height: 12),
         _SpecCard(
@@ -940,19 +873,14 @@ class _ProfileContentState extends State<_ProfileContent>
                   const SizedBox(width: 12),
                   Text(
                     'Your businesses',
-                    style: theme.textTheme.titleMedium?.copyWith(
-                      color: AppTheme.specNavy,
-                      fontWeight: FontWeight.w600,
-                    ),
+                    style: theme.textTheme.titleMedium?.copyWith(color: AppTheme.specNavy, fontWeight: FontWeight.w600),
                   ),
                 ],
               ),
               const SizedBox(height: 8),
               Text(
                 'Manage your business listings, hours, menu, deals, and punch cards.',
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  color: AppTheme.specNavy.withValues(alpha: 0.85),
-                ),
+                style: theme.textTheme.bodyMedium?.copyWith(color: AppTheme.specNavy.withValues(alpha: 0.85)),
               ),
               const SizedBox(height: 16),
               AppSecondaryButton(
@@ -960,9 +888,7 @@ class _ProfileContentState extends State<_ProfileContent>
                   if (widget.onMyListings != null) {
                     widget.onMyListings!();
                   } else {
-                    Navigator.of(context).push(
-                      MaterialPageRoute<void>(builder: (_) => const MyListingsScreen()),
-                    );
+                    Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const MyListingsScreen()));
                   }
                 },
                 icon: const Icon(Icons.list_rounded, size: 20),
@@ -1021,14 +947,14 @@ class _ProfileContentState extends State<_ProfileContent>
                               child: CircularProgressIndicator(color: AppTheme.specNavy, strokeWidth: 2),
                             )
                           : (widget.user.avatarUrl == null || widget.user.avatarUrl!.isEmpty)
-                              ? Text(
-                                  _displayName.isNotEmpty ? _displayName[0].toUpperCase() : '?',
-                                  style: theme.textTheme.headlineMedium?.copyWith(
-                                    color: AppTheme.specNavy,
-                                    fontWeight: FontWeight.w700,
-                                  ),
-                                )
-                              : null,
+                          ? Text(
+                              _displayName.isNotEmpty ? _displayName[0].toUpperCase() : '?',
+                              style: theme.textTheme.headlineMedium?.copyWith(
+                                color: AppTheme.specNavy,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            )
+                          : null,
                     ),
                     if (!_uploadingAvatar)
                       Positioned(
@@ -1056,25 +982,18 @@ class _ProfileContentState extends State<_ProfileContent>
               const SizedBox(height: 8),
               Text(
                 'Tap to change photo',
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: AppTheme.specNavy.withValues(alpha: 0.6),
-                ),
+                style: theme.textTheme.bodySmall?.copyWith(color: AppTheme.specNavy.withValues(alpha: 0.6)),
               ),
               const SizedBox(height: 16),
               Text(
                 _displayName,
-                style: theme.textTheme.titleLarge?.copyWith(
-                  fontWeight: FontWeight.w700,
-                  color: AppTheme.specNavy,
-                ),
+                style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700, color: AppTheme.specNavy),
               ),
               if (_email != null && _email!.isNotEmpty) ...[
                 const SizedBox(height: 4),
                 Text(
                   _email!,
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    color: AppTheme.specNavy.withValues(alpha: 0.8),
-                  ),
+                  style: theme.textTheme.bodyMedium?.copyWith(color: AppTheme.specNavy.withValues(alpha: 0.8)),
                 ),
               ],
             ],
@@ -1083,10 +1002,7 @@ class _ProfileContentState extends State<_ProfileContent>
         const SizedBox(height: 20),
         Text(
           'Personal information',
-          style: theme.textTheme.titleSmall?.copyWith(
-            color: AppTheme.specNavy,
-            fontWeight: FontWeight.w600,
-          ),
+          style: theme.textTheme.titleSmall?.copyWith(color: AppTheme.specNavy, fontWeight: FontWeight.w600),
         ),
         const SizedBox(height: 8),
         _ProfileSettingsCard(
@@ -1120,10 +1036,7 @@ class _ProfileContentState extends State<_ProfileContent>
           children: [
             Text(
               'Billing & subscription',
-              style: theme.textTheme.titleSmall?.copyWith(
-                color: AppTheme.specNavy,
-                fontWeight: FontWeight.w600,
-              ),
+              style: theme.textTheme.titleSmall?.copyWith(color: AppTheme.specNavy, fontWeight: FontWeight.w600),
             ),
             const SizedBox(height: 12),
             _SpecCard(
@@ -1148,9 +1061,7 @@ class _ProfileContentState extends State<_ProfileContent>
                               ? AppTheme.specGold.withValues(alpha: 0.25)
                               : AppTheme.specNavy.withValues(alpha: 0.08),
                           borderRadius: BorderRadius.circular(20),
-                          border: isPaid
-                              ? Border.all(color: AppTheme.specGold.withValues(alpha: 0.6))
-                              : null,
+                          border: isPaid ? Border.all(color: AppTheme.specGold.withValues(alpha: 0.6)) : null,
                         ),
                         child: Text(
                           planLabel,
@@ -1168,9 +1079,7 @@ class _ProfileContentState extends State<_ProfileContent>
                     isPaid
                         ? 'You have access to Ask Local, exclusive deals, and more.'
                         : 'Enjoy discovering local businesses and deals. Get Cajun+ Membership for Ask Local and exclusive perks.',
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      color: AppTheme.specNavy.withValues(alpha: 0.85),
-                    ),
+                    style: theme.textTheme.bodyMedium?.copyWith(color: AppTheme.specNavy.withValues(alpha: 0.85)),
                   ),
                   const SizedBox(height: 20),
                   if (!isPaid) _buildUpgradeCta(context) else _buildDowngradeMinimal(context),
@@ -1185,17 +1094,12 @@ class _ProfileContentState extends State<_ProfileContent>
                 children: [
                   Text(
                     'Payment method',
-                    style: theme.textTheme.titleSmall?.copyWith(
-                      color: AppTheme.specNavy,
-                      fontWeight: FontWeight.w600,
-                    ),
+                    style: theme.textTheme.titleSmall?.copyWith(color: AppTheme.specNavy, fontWeight: FontWeight.w600),
                   ),
                   const SizedBox(height: 6),
                   Text(
                     isPaid ? 'Manage in billing portal.' : 'No payment method on file.',
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      color: AppTheme.specNavy.withValues(alpha: 0.75),
-                    ),
+                    style: theme.textTheme.bodyMedium?.copyWith(color: AppTheme.specNavy.withValues(alpha: 0.75)),
                   ),
                   if (isPaid) ...[
                     const SizedBox(height: 10),
@@ -1205,9 +1109,9 @@ class _ProfileContentState extends State<_ProfileContent>
                               await scope.revenueCatService!.presentCustomerCenter(
                                 onRestoreCompleted: (info) {
                                   if (context.mounted) {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(content: Text('Purchases restored')),
-                                    );
+                                    ScaffoldMessenger.of(
+                                      context,
+                                    ).showSnackBar(const SnackBar(content: Text('Purchases restored')));
                                   }
                                 },
                                 onRestoreFailed: (error) {
@@ -1229,11 +1133,7 @@ class _ProfileContentState extends State<_ProfileContent>
                         minimumSize: Size.zero,
                         tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                       ),
-                      child: Text(
-                        scope.revenueCatService != null
-                            ? 'Manage subscription'
-                            : 'Open billing portal',
-                      ),
+                      child: Text(scope.revenueCatService != null ? 'Manage subscription' : 'Open billing portal'),
                     ),
                   ],
                 ],
@@ -1247,17 +1147,12 @@ class _ProfileContentState extends State<_ProfileContent>
                 children: [
                   Text(
                     'Billing history',
-                    style: theme.textTheme.titleSmall?.copyWith(
-                      color: AppTheme.specNavy,
-                      fontWeight: FontWeight.w600,
-                    ),
+                    style: theme.textTheme.titleSmall?.copyWith(color: AppTheme.specNavy, fontWeight: FontWeight.w600),
                   ),
                   const SizedBox(height: 6),
                   Text(
                     'No billing history yet.',
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      color: AppTheme.specNavy.withValues(alpha: 0.75),
-                    ),
+                    style: theme.textTheme.bodyMedium?.copyWith(color: AppTheme.specNavy.withValues(alpha: 0.75)),
                   ),
                 ],
               ),
@@ -1276,10 +1171,7 @@ class _ProfileContentState extends State<_ProfileContent>
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: [
-            AppTheme.specGold.withValues(alpha: 0.2),
-            AppTheme.specGold.withValues(alpha: 0.08),
-          ],
+          colors: [AppTheme.specGold.withValues(alpha: 0.2), AppTheme.specGold.withValues(alpha: 0.08)],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
@@ -1291,18 +1183,12 @@ class _ProfileContentState extends State<_ProfileContent>
         children: [
           Text(
             'Cajun+ Membership',
-            style: theme.textTheme.titleLarge?.copyWith(
-              fontWeight: FontWeight.w800,
-              color: nav,
-              letterSpacing: -0.3,
-            ),
+            style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800, color: nav, letterSpacing: -0.3),
           ),
           const SizedBox(height: 4),
           Text(
             'Ask Local, exclusive deals, and support Cajun Local — \$2.99/mo.',
-            style: theme.textTheme.bodyMedium?.copyWith(
-              color: nav.withValues(alpha: 0.8),
-            ),
+            style: theme.textTheme.bodyMedium?.copyWith(color: nav.withValues(alpha: 0.8)),
           ),
           const SizedBox(height: 16),
           AppPrimaryButton(
@@ -1369,10 +1255,9 @@ class _ProfileContentState extends State<_ProfileContent>
       children: [
         Text(
           'Notifications',
-          style: Theme.of(context).textTheme.titleSmall?.copyWith(
-            color: AppTheme.specNavy,
-            fontWeight: FontWeight.w600,
-          ),
+          style: Theme.of(
+            context,
+          ).textTheme.titleSmall?.copyWith(color: AppTheme.specNavy, fontWeight: FontWeight.w600),
         ),
         const SizedBox(height: 8),
         _NotificationsCard(
@@ -1404,9 +1289,7 @@ class _ProfileContentState extends State<_ProfileContent>
           onManageTap: () {
             Navigator.of(context).push(
               MaterialPageRoute<void>(
-                builder: (_) => NotificationsScreen(
-                  onHandleActionUrl: widget.onHandleNotificationActionUrl,
-                ),
+                builder: (_) => NotificationsScreen(onHandleActionUrl: widget.onHandleNotificationActionUrl),
               ),
             );
           },
@@ -1418,7 +1301,6 @@ class _ProfileContentState extends State<_ProfileContent>
 
   Widget _buildAccountTab(
     BuildContext context,
-    AuthRepository auth,
     bool signedIn,
     bool hasListings,
     EdgeInsets padding,
@@ -1429,10 +1311,9 @@ class _ProfileContentState extends State<_ProfileContent>
       children: [
         Text(
           'Account',
-          style: Theme.of(context).textTheme.titleSmall?.copyWith(
-            color: AppTheme.specNavy,
-            fontWeight: FontWeight.w600,
-          ),
+          style: Theme.of(
+            context,
+          ).textTheme.titleSmall?.copyWith(color: AppTheme.specNavy, fontWeight: FontWeight.w600),
         ),
         const SizedBox(height: 8),
         _AccountCard(
@@ -1440,69 +1321,57 @@ class _ProfileContentState extends State<_ProfileContent>
           hasListings: hasListings,
           canScanPunch: widget.isBusinessManager,
           onSignOut: () async {
-            await auth.signOut();
+            await ref.read(authNotifierProvider.notifier).signOut();
             if (context.mounted) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Signed out')),
-              );
+              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Signed out')));
             }
           },
           onScanPunch: () {
-            Navigator.of(context).push(
-              MaterialPageRoute<void>(builder: (_) => const ScanPunchScreen()),
-            );
+            Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const ScanPunchScreen()));
           },
           onMyDeals: signedIn
               ? () {
-                  Navigator.of(context).push(
-                    MaterialPageRoute<void>(builder: (_) => const MyDealsScreen()),
-                  );
+                  Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const MyDealsScreen()));
                 }
               : null,
           onMyLoyaltyCards: signedIn
               ? () {
-                  Navigator.of(context).push(
-                    MaterialPageRoute<void>(builder: (_) => const MyPunchCardsScreen()),
-                  );
+                  Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const MyPunchCardsScreen()));
                 }
               : null,
           onMessages: hasListings && signedIn
               ? () {
-                  Navigator.of(context).push(
-                    MaterialPageRoute<void>(builder: (_) => const FormSubmissionsInboxScreen()),
-                  );
+                  Navigator.of(
+                    context,
+                  ).push(MaterialPageRoute<void>(builder: (_) => const FormSubmissionsInboxScreen()));
                 }
               : null,
           messagesBadge: hasListings ? inboxUnreadCount : null,
-          onMyConversations: !hasListings && auth.currentUserId != null
+          onMyConversations: !hasListings && ref.read(authNotifierProvider).valueOrNull?.id != null
               ? () {
-                  Navigator.of(context).push(
-                    MaterialPageRoute<void>(
-                      builder: (_) => MyConversationsScreen(userId: auth.currentUserId!),
-                    ),
-                  );
+                  final uid = ref.read(authNotifierProvider).valueOrNull?.id;
+                  if (uid != null) {
+                    Navigator.of(
+                      context,
+                    ).push(MaterialPageRoute<void>(builder: (_) => MyConversationsScreen(userId: uid)));
+                  }
                 }
               : null,
         ),
         const SizedBox(height: 16),
         Text(
           'About & legal',
-          style: Theme.of(context).textTheme.titleSmall?.copyWith(
-            color: AppTheme.specNavy,
-            fontWeight: FontWeight.w600,
-          ),
+          style: Theme.of(
+            context,
+          ).textTheme.titleSmall?.copyWith(color: AppTheme.specNavy, fontWeight: FontWeight.w600),
         ),
         const SizedBox(height: 8),
         _AboutCard(
           onAbout: () {
-            Navigator.of(context).push(
-              MaterialPageRoute<void>(builder: (_) => const AboutScreen()),
-            );
+            Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const AboutScreen()));
           },
           onPrivacy: () {
-            Navigator.of(context).push(
-              MaterialPageRoute<void>(builder: (_) => const PrivacyPolicyScreen()),
-            );
+            Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const PrivacyPolicyScreen()));
           },
         ),
         const SizedBox(height: 32),
@@ -1511,35 +1380,29 @@ class _ProfileContentState extends State<_ProfileContent>
           child: signedIn
               ? TextButton(
                   onPressed: () async {
-                    await auth.signOut();
+                    await ref.read(authNotifierProvider.notifier).signOut();
                     if (context.mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Signed out')),
-                      );
+                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Signed out')));
                     }
                   },
                   style: TextButton.styleFrom(foregroundColor: AppTheme.specRed),
                   child: Text(
                     'Sign out',
-                    style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                      fontWeight: FontWeight.w600,
-                      color: AppTheme.specRed,
-                    ),
+                    style: Theme.of(
+                      context,
+                    ).textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w600, color: AppTheme.specRed),
                   ),
                 )
               : TextButton(
                   onPressed: () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute<void>(builder: (_) => const SignInScreen()),
-                    );
+                    Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const SignInScreen()));
                   },
                   style: TextButton.styleFrom(foregroundColor: AppTheme.specRed),
                   child: Text(
                     'Sign in',
-                    style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                      fontWeight: FontWeight.w600,
-                      color: AppTheme.specRed,
-                    ),
+                    style: Theme.of(
+                      context,
+                    ).textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w600, color: AppTheme.specRed),
                   ),
                 ),
         ),
@@ -1553,11 +1416,7 @@ const double _profileCardRadius = 16;
 
 /// White card with home-theme shadow (specWhite, 16 radius).
 class _SpecCard extends StatelessWidget {
-  const _SpecCard({
-    required this.child,
-    this.padding,
-    this.onTap,
-  });
+  const _SpecCard({required this.child, this.padding, this.onTap});
 
   final Widget child;
   final EdgeInsetsGeometry? padding;
@@ -1565,9 +1424,7 @@ class _SpecCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final content = padding != null
-        ? Padding(padding: padding!, child: child)
-        : child;
+    final content = padding != null ? Padding(padding: padding!, child: child) : child;
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: Container(
@@ -1575,21 +1432,13 @@ class _SpecCard extends StatelessWidget {
           color: AppTheme.specWhite,
           borderRadius: BorderRadius.circular(_profileCardRadius),
           boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.06),
-              blurRadius: 12,
-              offset: const Offset(0, 4),
-            ),
+            BoxShadow(color: Colors.black.withValues(alpha: 0.06), blurRadius: 12, offset: const Offset(0, 4)),
           ],
         ),
         child: Material(
           color: Colors.transparent,
           borderRadius: BorderRadius.circular(_profileCardRadius),
-          child: InkWell(
-            onTap: onTap,
-            borderRadius: BorderRadius.circular(_profileCardRadius),
-            child: content,
-          ),
+          child: InkWell(onTap: onTap, borderRadius: BorderRadius.circular(_profileCardRadius), child: content),
         ),
       ),
     );
@@ -1598,10 +1447,7 @@ class _SpecCard extends StatelessWidget {
 
 /// "We hate to see you go" — asks why they wish to cancel, then confirm or keep plan.
 class _DowngradeConfirmDialog extends StatefulWidget {
-  const _DowngradeConfirmDialog({
-    required this.onCancelSubscription,
-    required this.onKeepPlan,
-  });
+  const _DowngradeConfirmDialog({required this.onCancelSubscription, required this.onKeepPlan});
 
   final VoidCallback onCancelSubscription;
   final VoidCallback onKeepPlan;
@@ -1641,18 +1487,13 @@ class _DowngradeConfirmDialogState extends State<_DowngradeConfirmDialog> {
             const SizedBox(height: 16),
             Text(
               'We hate to see you go',
-              style: theme.textTheme.titleLarge?.copyWith(
-                fontWeight: FontWeight.w700,
-                color: nav,
-              ),
+              style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700, color: nav),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 8),
             Text(
               'Before you cancel, would you tell us why? Your feedback helps us improve.',
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: sub,
-              ),
+              style: theme.textTheme.bodyMedium?.copyWith(color: sub),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 20),
@@ -1721,32 +1562,24 @@ class _AccountCard extends StatelessWidget {
     final children = <Widget>[];
     // Sign out is shown near bottom of Account tab in red, not in this list.
     if (signedIn && onMyDeals != null) {
-      children.add(_SettingsRow(
-        icon: Icons.bookmark_rounded,
-        label: 'My deals',
-        onTap: onMyDeals!,
-      ));
+      children.add(_SettingsRow(icon: Icons.bookmark_rounded, label: 'My deals', onTap: onMyDeals!));
     }
     if (signedIn && onMyLoyaltyCards != null) {
-      children.add(_SettingsRow(
-        icon: Icons.loyalty_rounded,
-        label: 'My loyalty cards',
-        onTap: onMyLoyaltyCards!,
-      ));
+      children.add(_SettingsRow(icon: Icons.loyalty_rounded, label: 'My loyalty cards', onTap: onMyLoyaltyCards!));
     }
     if (signedIn && onMessages != null) {
-      children.add(_SettingsRow(
-        icon: Icons.chat_bubble_outline_rounded,
-        label: 'Messages',
-        onTap: onMessages!,
-        badge: messagesBadge != null && messagesBadge! > 0 ? messagesBadge : null,
-      ));
+      children.add(
+        _SettingsRow(
+          icon: Icons.chat_bubble_outline_rounded,
+          label: 'Messages',
+          onTap: onMessages!,
+          badge: messagesBadge != null && messagesBadge! > 0 ? messagesBadge : null,
+        ),
+      );
     } else if (signedIn && onMyConversations != null) {
-      children.add(_SettingsRow(
-        icon: Icons.chat_bubble_outline_rounded,
-        label: 'My conversations',
-        onTap: onMyConversations!,
-      ));
+      children.add(
+        _SettingsRow(icon: Icons.chat_bubble_outline_rounded, label: 'My conversations', onTap: onMyConversations!),
+      );
     }
     if (canScanPunch) {
       children.add(_SettingsRow(icon: Icons.qr_code_scanner_rounded, label: 'Scan punch', onTap: onScanPunch));
@@ -1791,12 +1624,7 @@ class _AboutCard extends StatelessWidget {
 }
 
 class _SettingsRow extends StatelessWidget {
-  const _SettingsRow({
-    required this.icon,
-    required this.label,
-    required this.onTap,
-    this.badge,
-  });
+  const _SettingsRow({required this.icon, required this.label, required this.onTap, this.badge});
 
   final IconData icon;
   final String label;
@@ -1817,10 +1645,7 @@ class _SettingsRow extends StatelessWidget {
             Expanded(
               child: Text(
                 label,
-                style: theme.textTheme.bodyLarge?.copyWith(
-                  color: AppTheme.specNavy,
-                  fontWeight: FontWeight.w500,
-                ),
+                style: theme.textTheme.bodyLarge?.copyWith(color: AppTheme.specNavy, fontWeight: FontWeight.w500),
               ),
             ),
             if (badge != null && badge! > 0)
@@ -1828,16 +1653,10 @@ class _SettingsRow extends StatelessWidget {
                 padding: const EdgeInsets.only(right: 8),
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                  decoration: BoxDecoration(
-                    color: AppTheme.specGold,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
+                  decoration: BoxDecoration(color: AppTheme.specGold, borderRadius: BorderRadius.circular(12)),
                   child: Text(
                     badge! > 99 ? '99+' : '$badge',
-                    style: theme.textTheme.labelSmall?.copyWith(
-                      color: AppTheme.specNavy,
-                      fontWeight: FontWeight.w700,
-                    ),
+                    style: theme.textTheme.labelSmall?.copyWith(color: AppTheme.specNavy, fontWeight: FontWeight.w700),
                   ),
                 ),
               ),
@@ -1886,10 +1705,7 @@ class _ProfileSettingsCard extends StatelessWidget {
           if (isEditing) ...[
             Text(
               'Display name',
-              style: theme.textTheme.labelMedium?.copyWith(
-                color: AppTheme.specNavy,
-                fontWeight: FontWeight.w600,
-              ),
+              style: theme.textTheme.labelMedium?.copyWith(color: AppTheme.specNavy, fontWeight: FontWeight.w600),
             ),
             const SizedBox(height: 6),
             TextField(
@@ -1901,9 +1717,7 @@ class _ProfileSettingsCard extends StatelessWidget {
                 hintStyle: TextStyle(color: AppTheme.specNavy.withValues(alpha: 0.5)),
                 border: border,
                 enabledBorder: border,
-                focusedBorder: border.copyWith(
-                  borderSide: BorderSide(color: AppTheme.specGold, width: 1.5),
-                ),
+                focusedBorder: border.copyWith(borderSide: BorderSide(color: AppTheme.specGold, width: 1.5)),
                 isDense: true,
                 contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
               ),
@@ -1912,10 +1726,7 @@ class _ProfileSettingsCard extends StatelessWidget {
               const SizedBox(height: 12),
               Text(
                 'Email',
-                style: theme.textTheme.labelMedium?.copyWith(
-                  color: AppTheme.specNavy,
-                  fontWeight: FontWeight.w600,
-                ),
+                style: theme.textTheme.labelMedium?.copyWith(color: AppTheme.specNavy, fontWeight: FontWeight.w600),
               ),
               const SizedBox(height: 6),
               TextField(
@@ -1926,9 +1737,7 @@ class _ProfileSettingsCard extends StatelessWidget {
                   hintStyle: TextStyle(color: AppTheme.specNavy.withValues(alpha: 0.5)),
                   border: border,
                   enabledBorder: border,
-                  focusedBorder: border.copyWith(
-                    borderSide: BorderSide(color: AppTheme.specGold, width: 1.5),
-                  ),
+                  focusedBorder: border.copyWith(borderSide: BorderSide(color: AppTheme.specGold, width: 1.5)),
                   isDense: true,
                   contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                 ),
@@ -1944,10 +1753,7 @@ class _ProfileSettingsCard extends StatelessWidget {
                   child: Text('Cancel', style: TextStyle(color: AppTheme.specNavy)),
                 ),
                 const SizedBox(width: 8),
-                AppSecondaryButton(
-                  onPressed: onSavePressed,
-                  child: const Text('Save'),
-                ),
+                AppSecondaryButton(onPressed: onSavePressed, child: const Text('Save')),
               ],
             ),
           ] else ...[
@@ -1959,9 +1765,7 @@ class _ProfileSettingsCard extends StatelessWidget {
                     children: [
                       Text(
                         'Display name',
-                        style: theme.textTheme.labelMedium?.copyWith(
-                          color: AppTheme.specNavy.withValues(alpha: 0.8),
-                        ),
+                        style: theme.textTheme.labelMedium?.copyWith(color: AppTheme.specNavy.withValues(alpha: 0.8)),
                       ),
                       const SizedBox(height: 2),
                       Text(
@@ -1975,9 +1779,7 @@ class _ProfileSettingsCard extends StatelessWidget {
                         const SizedBox(height: 10),
                         Text(
                           'Email',
-                          style: theme.textTheme.labelMedium?.copyWith(
-                            color: AppTheme.specNavy.withValues(alpha: 0.8),
-                          ),
+                          style: theme.textTheme.labelMedium?.copyWith(color: AppTheme.specNavy.withValues(alpha: 0.8)),
                         ),
                         const SizedBox(height: 2),
                         Text(
@@ -2106,12 +1908,7 @@ class _NotificationsCard extends StatelessWidget {
 }
 
 class _NotificationRow extends StatelessWidget {
-  const _NotificationRow({
-    required this.label,
-    this.subtitle,
-    required this.value,
-    required this.onChanged,
-  });
+  const _NotificationRow({required this.label, this.subtitle, required this.value, required this.onChanged});
 
   final String label;
   final String? subtitle;
@@ -2131,18 +1928,13 @@ class _NotificationRow extends StatelessWidget {
               children: [
                 Text(
                   label,
-                  style: theme.textTheme.bodyLarge?.copyWith(
-                    color: AppTheme.specNavy,
-                    fontWeight: FontWeight.w500,
-                  ),
+                  style: theme.textTheme.bodyLarge?.copyWith(color: AppTheme.specNavy, fontWeight: FontWeight.w500),
                 ),
                 if (subtitle != null) ...[
                   const SizedBox(height: 2),
                   Text(
                     subtitle!,
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: AppTheme.specNavy.withValues(alpha: 0.7),
-                    ),
+                    style: theme.textTheme.bodySmall?.copyWith(color: AppTheme.specNavy.withValues(alpha: 0.7)),
                   ),
                 ],
               ],
@@ -2159,4 +1951,3 @@ class _NotificationRow extends StatelessWidget {
     );
   }
 }
-

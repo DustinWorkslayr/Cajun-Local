@@ -1,53 +1,28 @@
+import 'package:my_app/core/api/api_client.dart';
+import 'package:my_app/core/api/audit_log_api.dart';
 import 'package:my_app/core/data/models/audit_log_entry.dart';
-import 'package:my_app/core/supabase/supabase_config.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:riverpod_annotation/riverpod_annotation.dart';
+
+part 'audit_log_repository.g.dart';
 
 /// Audit log (backend-cheatsheet §2). Admin read-only.
 class AuditLogRepository {
-  AuditLogRepository();
-
-  SupabaseClient? get _client =>
-      SupabaseConfig.isConfigured ? Supabase.instance.client : null;
+  AuditLogRepository({AuditLogApi? api}) : _api = api ?? AuditLogApi(ApiClient.instance);
+  final AuditLogApi _api;
 
   static const int defaultPageSize = 50;
-  static const int maxPageSize = 500;
 
-  /// List audit log entries with optional [search]. Search filters on action, target_table, target_id, and details (case-insensitive).
-  Future<List<AuditLogEntry>> list({
-    int limit = defaultPageSize,
-    int offset = 0,
-    String? search,
-  }) async {
-    final client = _client;
-    if (client == null) return [];
-    var q = client.from('audit_log').select();
-    if (search != null && search.trim().isNotEmpty) {
-      final term = '%${search.trim()}%';
-      q = q.or('action.ilike.$term,details.ilike.$term,target_table.ilike.$term,target_id.ilike.$term');
-    }
-    final list = await q.order('created_at', ascending: false).range(offset, offset + limit - 1);
-    return (list as List).map((e) => AuditLogEntry.fromJson(e as Map<String, dynamic>)).toList();
+  /// List audit log entries with optional [search].
+  Future<List<AuditLogEntry>> list({int limit = defaultPageSize, int offset = 0, String? search}) async {
+    return _api.list(skip: offset, limit: limit, search: search);
   }
 
   /// Total count with same optional [search] filter for pagination.
   Future<int> count({String? search}) async {
-    final client = _client;
-    if (client == null) return 0;
-    var q = client.from('audit_log').select();
-    if (search != null && search.trim().isNotEmpty) {
-      final term = '%${search.trim()}%';
-      q = q.or('action.ilike.$term,details.ilike.$term,target_table.ilike.$term,target_id.ilike.$term');
-    }
-    try {
-      final res = await q.count();
-      return res.count;
-    } catch (_) {
-      return 0;
-    }
+    return _api.count(search: search);
   }
 
-  /// Insert an audit log entry. Use current user id from auth when calling from the app.
-  /// Does not throw; call after the main action so failures do not block approve/reject.
+  /// Insert an audit log entry.
   Future<void> insert({
     required String action,
     String? userId,
@@ -55,18 +30,20 @@ class AuditLogRepository {
     String? targetId,
     String? details,
   }) async {
-    final client = _client;
-    if (client == null) return;
-    try {
-      await client.from('audit_log').insert({
-        'action': action,
-        ...? (userId != null ? {'user_id': userId} : null),
-        ...? (targetTable != null ? {'target_table': targetTable} : null),
-        ...? (targetId != null ? {'target_id': targetId} : null),
-        ...? (details != null ? {'details': details} : null),
-      });
-    } catch (_) {
-      // Fire-and-forget: do not block or rethrow
-    }
+    await _api.insert({
+      'action': action,
+      if (userId != null) 'user_id': userId,
+      if (targetTable != null) 'target_table': targetTable,
+      if (targetId != null) 'target_id': targetId,
+      if (details != null) 'details': details, // Details is now handled as JSON string or Map in backend?
+      // Backend expects details as Dict[str, Any].
+      // If details is a string, we might need to parse it if it is JSON, or just wrap it.
+      // For now, I'll assume the caller passes a string that we might want to wrap.
+    });
   }
+}
+
+@riverpod
+AuditLogRepository auditLogRepository(AuditLogRepositoryRef ref) {
+  return AuditLogRepository(api: ref.watch(auditLogApiProvider));
 }

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:my_app/core/data/app_data_scope.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:my_app/core/auth/providers/auth_provider.dart';
 import 'package:my_app/core/theme/app_layout.dart';
 import 'package:my_app/core/theme/theme.dart';
 import 'package:my_app/shared/widgets/app_buttons.dart';
@@ -7,21 +8,17 @@ import 'package:my_app/features/listing/presentation/screens/claim_business_scre
 
 /// Shown after a user creates a new listing. Explains that the listing is pending approval
 /// and they must submit proof of ownership (same flow as claiming) before it can be approved.
-class PendingApprovalScreen extends StatelessWidget {
-  const PendingApprovalScreen({
-    super.key,
-    required this.businessId,
-    required this.businessName,
-  });
+class PendingApprovalScreen extends ConsumerWidget {
+  const PendingApprovalScreen({super.key, required this.businessId, required this.businessName});
 
   final String businessId;
   final String businessName;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final padding = AppLayout.horizontalPadding(context);
-    final uid = AppDataScope.of(context).authRepository.currentUserId;
+    final uid = ref.watch(authNotifierProvider).valueOrNull?.id;
 
     return Scaffold(
       backgroundColor: AppTheme.specOffWhite,
@@ -31,10 +28,7 @@ class PendingApprovalScreen extends StatelessWidget {
         elevation: 0,
         title: Text(
           'Pending approval',
-          style: theme.textTheme.titleLarge?.copyWith(
-            fontWeight: FontWeight.w700,
-            color: AppTheme.specNavy,
-          ),
+          style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700, color: AppTheme.specNavy),
         ),
       ),
       body: SafeArea(
@@ -45,15 +39,8 @@ class PendingApprovalScreen extends StatelessWidget {
             children: [
               Container(
                 padding: const EdgeInsets.all(24),
-                decoration: BoxDecoration(
-                  color: AppTheme.specGold.withValues(alpha: 0.15),
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(
-                  Icons.schedule_rounded,
-                  size: 56,
-                  color: AppTheme.specNavy,
-                ),
+                decoration: BoxDecoration(color: AppTheme.specGold.withValues(alpha: 0.15), shape: BoxShape.circle),
+                child: Icon(Icons.schedule_rounded, size: 56, color: AppTheme.specNavy),
               ),
               const SizedBox(height: 24),
               Text(
@@ -87,10 +74,7 @@ class PendingApprovalScreen extends StatelessWidget {
               Container(
                 height: 4,
                 width: 56,
-                decoration: BoxDecoration(
-                  color: AppTheme.specGold,
-                  borderRadius: BorderRadius.circular(2),
-                ),
+                decoration: BoxDecoration(color: AppTheme.specGold, borderRadius: BorderRadius.circular(2)),
               ),
               const SizedBox(height: 28),
               if (uid != null)
@@ -98,20 +82,15 @@ class PendingApprovalScreen extends StatelessWidget {
                   onPressed: () async {
                     final submitted = await Navigator.of(context).push<bool>(
                       MaterialPageRoute<bool>(
-                        builder: (_) => ClaimBusinessScreen(
-                          businessId: businessId,
-                          businessName: businessName,
-                          userId: uid,
-                        ),
+                        builder: (_) =>
+                            ClaimBusinessScreen(businessId: businessId, businessName: businessName, userId: uid),
                       ),
                     );
                     if (!context.mounted) return;
                     if (submitted == true) {
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
-                          content: const Text(
-                            'Proof submitted. We\'ll review and get back to you.',
-                          ),
+                          content: const Text('Proof submitted. We\'ll review and get back to you.'),
                           backgroundColor: AppTheme.specNavy,
                           behavior: SnackBarBehavior.floating,
                         ),
@@ -125,16 +104,11 @@ class PendingApprovalScreen extends StatelessWidget {
               else
                 Text(
                   'Sign in to submit proof of ownership.',
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    color: AppTheme.specNavy.withValues(alpha: 0.8),
-                  ),
+                  style: theme.textTheme.bodyMedium?.copyWith(color: AppTheme.specNavy.withValues(alpha: 0.8)),
                   textAlign: TextAlign.center,
                 ),
               const SizedBox(height: 16),
-              TextButton(
-                onPressed: () => Navigator.of(context).pop(),
-                child: const Text('Back to My Listings'),
-              ),
+              TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Back to My Listings')),
             ],
           ),
         ),

@@ -2,7 +2,9 @@ import 'dart:convert';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
-import 'package:my_app/core/data/app_data_scope.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:my_app/core/auth/providers/auth_provider.dart';
+import 'package:my_app/core/data/providers/app_data_providers.dart';
 import 'package:my_app/core/data/mock_data.dart';
 import 'package:my_app/core/data/models/business_category.dart';
 import 'package:my_app/core/data/models/subcategory.dart';
@@ -17,16 +19,16 @@ const String _kStateLouisiana = 'LA';
 
 /// Admin: add unclaimed business(es) — single form with category dropdown and
 /// subcategory multi-select; bulk import via CSV file upload.
-class AdminAddBusinessScreen extends StatefulWidget {
+class AdminAddBusinessScreen extends ConsumerStatefulWidget {
   const AdminAddBusinessScreen({super.key, this.embeddedInShell = false});
 
   final bool embeddedInShell;
 
   @override
-  State<AdminAddBusinessScreen> createState() => _AdminAddBusinessScreenState();
+  ConsumerState<AdminAddBusinessScreen> createState() => _AdminAddBusinessScreenState();
 }
 
-class _AdminAddBusinessScreenState extends State<AdminAddBusinessScreen> {
+class _AdminAddBusinessScreenState extends ConsumerState<AdminAddBusinessScreen> {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
   final _addressController = TextEditingController();
@@ -39,6 +41,7 @@ class _AdminAddBusinessScreenState extends State<AdminAddBusinessScreen> {
 
   List<BusinessCategory> _categories = [];
   List<Subcategory> _subcategories = [];
+
   /// Store category id so dropdown value is always in items (avoids red screen).
   String? _selectedCategoryId;
   final Set<String> _selectedSubcategoryIds = {};
@@ -61,7 +64,7 @@ class _AdminAddBusinessScreenState extends State<AdminAddBusinessScreen> {
       _initialLoadDone = true;
       _loadCategories();
       _loadParishes();
-      AppDataScope.of(context).authRepository.isAdmin().then((v) {
+      ref.read(authNotifierProvider.notifier).isAdmin().then((v) {
         if (mounted) setState(() => _isAdmin = v);
       });
     }
@@ -69,7 +72,7 @@ class _AdminAddBusinessScreenState extends State<AdminAddBusinessScreen> {
 
   Future<void> _loadParishes() async {
     try {
-      final ds = AppDataScope.of(context).dataSource;
+      final ds = ref.read(appDataScopeProvider);
       final list = await ds.getParishes();
       if (mounted) {
         setState(() {
@@ -111,7 +114,10 @@ class _AdminAddBusinessScreenState extends State<AdminAddBusinessScreen> {
     BusinessCategory? category;
     if (categoryId != null) {
       for (final c in _categories) {
-        if (c.id == categoryId) { category = c; break; }
+        if (c.id == categoryId) {
+          category = c;
+          break;
+        }
       }
     }
     setState(() {
@@ -174,7 +180,7 @@ class _AdminAddBusinessScreenState extends State<AdminAddBusinessScreen> {
       });
       return;
     }
-    final uid = AppDataScope.of(context).authRepository.currentUserId;
+    final uid = ref.read(authNotifierProvider).valueOrNull?.id;
     if (uid == null) {
       setState(() {
         _singleMessage = 'You must be signed in.';
@@ -190,7 +196,10 @@ class _AdminAddBusinessScreenState extends State<AdminAddBusinessScreen> {
     try {
       MockParish? selectedParish;
       for (final p in _parishes) {
-        if (p.id == _selectedParishId) { selectedParish = p; break; }
+        if (p.id == _selectedParishId) {
+          selectedParish = p;
+          break;
+        }
       }
       final businessRepo = BusinessRepository();
       final businessId = await businessRepo.insertBusiness(
@@ -258,10 +267,7 @@ class _AdminAddBusinessScreenState extends State<AdminAddBusinessScreen> {
                 Container(
                   height: 4,
                   width: 56,
-                  decoration: BoxDecoration(
-                    color: AppTheme.specGold,
-                    borderRadius: BorderRadius.circular(2),
-                  ),
+                  decoration: BoxDecoration(color: AppTheme.specGold, borderRadius: BorderRadius.circular(2)),
                 ),
               ],
             ),
@@ -274,11 +280,7 @@ class _AdminAddBusinessScreenState extends State<AdminAddBusinessScreen> {
               color: AppTheme.specWhite,
               borderRadius: BorderRadius.circular(cardRadius),
               boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.06),
-                  blurRadius: 12,
-                  offset: const Offset(0, 4),
-                ),
+                BoxShadow(color: Colors.black.withValues(alpha: 0.06), blurRadius: 12, offset: const Offset(0, 4)),
               ],
             ),
             child: Form(
@@ -288,10 +290,7 @@ class _AdminAddBusinessScreenState extends State<AdminAddBusinessScreen> {
                 children: [
                   Text(
                     'Single business',
-                    style: theme.textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w600,
-                      color: AppTheme.specNavy,
-                    ),
+                    style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600, color: AppTheme.specNavy),
                   ),
                   const SizedBox(height: 16),
                   TextFormField(
@@ -308,8 +307,7 @@ class _AdminAddBusinessScreenState extends State<AdminAddBusinessScreen> {
                       labelStyle: TextStyle(color: AppTheme.specNavy),
                     ),
                     textInputAction: TextInputAction.next,
-                    validator: (v) =>
-                        (v == null || v.trim().isEmpty) ? 'Required' : null,
+                    validator: (v) => (v == null || v.trim().isEmpty) ? 'Required' : null,
                   ),
                   const SizedBox(height: 16),
                   TextFormField(
@@ -332,7 +330,7 @@ class _AdminAddBusinessScreenState extends State<AdminAddBusinessScreen> {
                           padding: EdgeInsets.symmetric(vertical: 12),
                           child: Center(child: CircularProgressIndicator(color: AppTheme.specNavy)),
                         )
-                      :                       DropdownButtonFormField<String>(
+                      : DropdownButtonFormField<String>(
                           initialValue: (_selectedParishId != null && _parishes.any((p) => p.id == _selectedParishId))
                               ? _selectedParishId
                               : null,
@@ -347,9 +345,7 @@ class _AdminAddBusinessScreenState extends State<AdminAddBusinessScreen> {
                             labelStyle: TextStyle(color: AppTheme.specNavy),
                           ),
                           hint: const Text('Select parish'),
-                          items: _parishes
-                              .map((p) => DropdownMenuItem(value: p.id, child: Text(p.name)))
-                              .toList(),
+                          items: _parishes.map((p) => DropdownMenuItem(value: p.id, child: Text(p.name))).toList(),
                           onChanged: (id) => setState(() => _selectedParishId = id),
                           validator: (v) => v == null || v.isEmpty ? 'Please select a parish' : null,
                         ),
@@ -407,15 +403,9 @@ class _AdminAddBusinessScreenState extends State<AdminAddBusinessScreen> {
                         ),
                         labelStyle: TextStyle(color: AppTheme.specNavy),
                       ),
-                      items: _categories
-                          .map((c) => DropdownMenuItem(
-                                value: c.id,
-                                child: Text(c.name),
-                              ))
-                          .toList(),
+                      items: _categories.map((c) => DropdownMenuItem(value: c.id, child: Text(c.name))).toList(),
                       onChanged: _onCategoryChanged,
-                      validator: (v) =>
-                          v == null || v.isEmpty ? 'Please select a category' : null,
+                      validator: (v) => v == null || v.isEmpty ? 'Please select a category' : null,
                     ),
                   if (_selectedCategoryId != null) ...[
                     const SizedBox(height: 16),
@@ -426,9 +416,7 @@ class _AdminAddBusinessScreenState extends State<AdminAddBusinessScreen> {
                       )
                     else
                       InkWell(
-                        onTap: _subcategories.isEmpty
-                            ? null
-                            : () => _showSubcategoryPicker(context),
+                        onTap: _subcategories.isEmpty ? null : () => _showSubcategoryPicker(context),
                         borderRadius: BorderRadius.circular(12),
                         child: InputDecorator(
                           decoration: InputDecoration(
@@ -451,30 +439,26 @@ class _AdminAddBusinessScreenState extends State<AdminAddBusinessScreen> {
                                 children: _selectedSubcategoryIds.isEmpty
                                     ? [
                                         Text(
-                                          _subcategories.isEmpty
-                                              ? 'None available'
-                                              : 'None selected',
-                                          style: theme.textTheme.bodyMedium
-                                              ?.copyWith(
-                                                  color: AppTheme.specNavy.withValues(alpha: 0.7)),
+                                          _subcategories.isEmpty ? 'None available' : 'None selected',
+                                          style: theme.textTheme.bodyMedium?.copyWith(
+                                            color: AppTheme.specNavy.withValues(alpha: 0.7),
+                                          ),
                                         ),
                                       ]
                                     : _subcategories
-                                        .where((s) =>
-                                            _selectedSubcategoryIds.contains(s.id))
-                                        .map((s) => Chip(
+                                          .where((s) => _selectedSubcategoryIds.contains(s.id))
+                                          .map(
+                                            (s) => Chip(
                                               label: Text(s.name),
                                               deleteIcon: const Icon(Icons.close_rounded, size: 18),
                                               onDeleted: () => _toggleSubcategory(s.id),
                                               backgroundColor: AppTheme.specGold.withValues(alpha: 0.2),
-                                            ))
-                                        .toList(),
+                                            ),
+                                          )
+                                          .toList(),
                               ),
                               if (_subcategories.isNotEmpty)
-                                Icon(
-                                  Icons.arrow_drop_down_rounded,
-                                  color: AppTheme.specNavy.withValues(alpha: 0.6),
-                                ),
+                                Icon(Icons.arrow_drop_down_rounded, color: AppTheme.specNavy.withValues(alpha: 0.6)),
                             ],
                           ),
                         ),
@@ -487,9 +471,7 @@ class _AdminAddBusinessScreenState extends State<AdminAddBusinessScreen> {
                       child: Text(
                         _singleMessage!,
                         style: theme.textTheme.bodyMedium?.copyWith(
-                          color: _singleSuccess
-                              ? AppTheme.specNavy
-                              : theme.colorScheme.error,
+                          color: _singleSuccess ? AppTheme.specNavy : theme.colorScheme.error,
                         ),
                       ),
                     ),
@@ -518,18 +500,12 @@ class _AdminAddBusinessScreenState extends State<AdminAddBusinessScreen> {
                   Container(
                     height: 4,
                     width: 56,
-                    decoration: BoxDecoration(
-                      color: AppTheme.specGold,
-                      borderRadius: BorderRadius.circular(2),
-                    ),
+                    decoration: BoxDecoration(color: AppTheme.specGold, borderRadius: BorderRadius.circular(2)),
                   ),
                   const SizedBox(height: 20),
                   Text(
                     'Bulk import (admin only)',
-                    style: theme.textTheme.titleLarge?.copyWith(
-                      fontWeight: FontWeight.w600,
-                      color: AppTheme.specNavy,
-                    ),
+                    style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w600, color: AppTheme.specNavy),
                   ),
                   const SizedBox(height: 8),
                   _BulkImportSection(),
@@ -562,15 +538,11 @@ class _AdminAddBusinessScreenState extends State<AdminAddBusinessScreen> {
                     children: [
                       Text(
                         'Select subcategories',
-                        style: Theme.of(ctx).textTheme.titleMedium?.copyWith(
-                              fontWeight: FontWeight.w600,
-                              color: AppTheme.specNavy,
-                            ),
+                        style: Theme.of(
+                          ctx,
+                        ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600, color: AppTheme.specNavy),
                       ),
-                      TextButton(
-                        onPressed: () => Navigator.pop(ctx),
-                        child: const Text('Done'),
-                      ),
+                      TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Done')),
                     ],
                   ),
                 ),
@@ -586,7 +558,10 @@ class _AdminAddBusinessScreenState extends State<AdminAddBusinessScreen> {
                         value: selected,
                         onChanged: (_) => _toggleSubcategory(s.id),
                         title: Text(s.name),
-                        fillColor: WidgetStateProperty.resolveWith<Color>((Set<WidgetState> states) => states.contains(WidgetState.selected) ? AppTheme.specNavy : Colors.transparent),
+                        fillColor: WidgetStateProperty.resolveWith<Color>(
+                          (Set<WidgetState> states) =>
+                              states.contains(WidgetState.selected) ? AppTheme.specNavy : Colors.transparent,
+                        ),
                       );
                     },
                   ),
@@ -615,10 +590,7 @@ class _AdminAddBusinessScreenState extends State<AdminAddBusinessScreen> {
         ),
         title: Text(
           'Add business',
-          style: theme.textTheme.titleLarge?.copyWith(
-            fontWeight: FontWeight.w700,
-            color: AppTheme.specNavy,
-          ),
+          style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700, color: AppTheme.specNavy),
         ),
       ),
       body: _buildBody(context),
@@ -627,12 +599,12 @@ class _AdminAddBusinessScreenState extends State<AdminAddBusinessScreen> {
 }
 
 /// Bulk import: pick CSV file, parse, resolve category/subcategories, insert.
-class _BulkImportSection extends StatefulWidget {
+class _BulkImportSection extends ConsumerStatefulWidget {
   @override
-  State<_BulkImportSection> createState() => _BulkImportSectionState();
+  ConsumerState<_BulkImportSection> createState() => _BulkImportSectionState();
 }
 
-class _BulkImportSectionState extends State<_BulkImportSection> {
+class _BulkImportSectionState extends ConsumerState<_BulkImportSection> {
   String? _summary;
   List<String> _rowErrors = [];
   bool _loading = false;
@@ -674,7 +646,7 @@ class _BulkImportSectionState extends State<_BulkImportSection> {
   }
 
   Future<void> _pickAndImport() async {
-    final uid = AppDataScope.of(context).authRepository.currentUserId;
+    final uid = ref.read(authNotifierProvider).valueOrNull?.id;
     if (uid == null) {
       setState(() {
         _summary = 'You must be signed in.';
@@ -703,11 +675,7 @@ class _BulkImportSectionState extends State<_BulkImportSection> {
       _rowErrors = [];
       _pickedFileName = fileName;
     });
-    final lines = text
-        .split('\n')
-        .map((s) => s.trim())
-        .where((s) => s.isNotEmpty)
-        .toList();
+    final lines = text.split('\n').map((s) => s.trim()).where((s) => s.isNotEmpty).toList();
     if (lines.isEmpty) {
       setState(() {
         _summary = 'File has no rows.';
@@ -717,16 +685,13 @@ class _BulkImportSectionState extends State<_BulkImportSection> {
     }
     final header = _parseCsvLine(lines.first);
     final nameIdx = header.indexWhere((h) => h.toLowerCase() == 'name');
-    final categoryIdx =
-        header.indexWhere((h) => h.toLowerCase() == 'category');
-    final subcategoriesIdx =
-        header.indexWhere((h) => h.toLowerCase() == 'subcategories');
+    final categoryIdx = header.indexWhere((h) => h.toLowerCase() == 'category');
+    final subcategoriesIdx = header.indexWhere((h) => h.toLowerCase() == 'subcategories');
     final addressIdx = header.indexWhere((h) => h.toLowerCase() == 'address');
     final cityIdx = header.indexWhere((h) => h.toLowerCase() == 'city');
     final stateIdx = header.indexWhere((h) => h.toLowerCase() == 'state');
     final phoneIdx = header.indexWhere((h) => h.toLowerCase() == 'phone');
-    final websiteIdx =
-        header.indexWhere((h) => h.toLowerCase() == 'website');
+    final websiteIdx = header.indexWhere((h) => h.toLowerCase() == 'website');
     if (nameIdx < 0 || categoryIdx < 0) {
       setState(() {
         _summary = 'CSV must have "name" and "category" columns.';
@@ -756,39 +721,20 @@ class _BulkImportSectionState extends State<_BulkImportSection> {
         errors.add('Row $rowNum: category "$categoryName" not found');
         continue;
       }
-      final subcategoriesCell = subcategoriesIdx >= 0 &&
-              row.length > subcategoriesIdx
-          ? row[subcategoriesIdx]
-          : '';
-      final subcategoryIds = await categoryRepo.resolveSubcategoryIdsByNames(
-          cat.id, subcategoriesCell);
+      final subcategoriesCell = subcategoriesIdx >= 0 && row.length > subcategoriesIdx ? row[subcategoriesIdx] : '';
+      final subcategoryIds = await categoryRepo.resolveSubcategoryIdsByNames(cat.id, subcategoriesCell);
       try {
         final businessId = await businessRepo.insertBusiness(
           name: name,
           categoryId: cat.id,
           createdBy: uid,
-          address:
-              addressIdx >= 0 && row.length > addressIdx
-                  ? row[addressIdx].trim()
-                  : null,
-          city:
-              cityIdx >= 0 && row.length > cityIdx
-                  ? row[cityIdx].trim()
-                  : null,
-          state: stateIdx >= 0 && row.length > stateIdx
-              ? row[stateIdx].trim()
-              : _kStateLouisiana,
-          phone:
-              phoneIdx >= 0 && row.length > phoneIdx
-                  ? row[phoneIdx].trim()
-                  : null,
-          website:
-              websiteIdx >= 0 && row.length > websiteIdx
-                  ? row[websiteIdx].trim()
-                  : null,
+          address: addressIdx >= 0 && row.length > addressIdx ? row[addressIdx].trim() : null,
+          city: cityIdx >= 0 && row.length > cityIdx ? row[cityIdx].trim() : null,
+          state: stateIdx >= 0 && row.length > stateIdx ? row[stateIdx].trim() : _kStateLouisiana,
+          phone: phoneIdx >= 0 && row.length > phoneIdx ? row[phoneIdx].trim() : null,
+          website: websiteIdx >= 0 && row.length > websiteIdx ? row[websiteIdx].trim() : null,
         );
-        await businessRepo.setBusinessSubcategories(
-            businessId, subcategoryIds);
+        await businessRepo.setBusinessSubcategories(businessId, subcategoryIds);
         added++;
       } catch (e) {
         errors.add('Row $rowNum: ${e.toString()}');
@@ -809,9 +755,7 @@ class _BulkImportSectionState extends State<_BulkImportSection> {
       children: [
         Text(
           'Upload a CSV with columns: name, category, subcategories (comma-separated), and optionally address, city, state, phone, website. State defaults to Louisiana.',
-          style: theme.textTheme.bodySmall?.copyWith(
-            color: AppTheme.specNavy.withValues(alpha: 0.75),
-          ),
+          style: theme.textTheme.bodySmall?.copyWith(color: AppTheme.specNavy.withValues(alpha: 0.75)),
         ),
         const SizedBox(height: 12),
         AppOutlinedButton(
@@ -829,37 +773,27 @@ class _BulkImportSectionState extends State<_BulkImportSection> {
           const SizedBox(height: 8),
           Text(
             'File: $_pickedFileName',
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: AppTheme.specNavy.withValues(alpha: 0.7),
-            ),
+            style: theme.textTheme.bodySmall?.copyWith(color: AppTheme.specNavy.withValues(alpha: 0.7)),
           ),
         ],
         if (_summary != null) ...[
           const SizedBox(height: 12),
-          Text(
-            _summary!,
-            style: theme.textTheme.bodyLarge?.copyWith(
-              color: AppTheme.specNavy,
-            ),
-          ),
+          Text(_summary!, style: theme.textTheme.bodyLarge?.copyWith(color: AppTheme.specNavy)),
         ],
         if (_rowErrors.isNotEmpty) ...[
           const SizedBox(height: 8),
-          ..._rowErrors.take(20).map(
+          ..._rowErrors
+              .take(20)
+              .map(
                 (e) => Padding(
                   padding: const EdgeInsets.only(bottom: 4),
-                  child: Text(
-                    e,
-                    style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.error),
-                  ),
+                  child: Text(e, style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.error)),
                 ),
               ),
           if (_rowErrors.length > 20)
             Text(
               '… and ${_rowErrors.length - 20} more',
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: AppTheme.specNavy.withValues(alpha: 0.7),
-              ),
+              style: theme.textTheme.bodySmall?.copyWith(color: AppTheme.specNavy.withValues(alpha: 0.7)),
             ),
         ],
       ],

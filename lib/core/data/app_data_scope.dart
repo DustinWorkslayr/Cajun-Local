@@ -1,16 +1,14 @@
 import 'package:flutter/material.dart';
-import 'package:my_app/core/auth/auth_repository.dart';
 import 'package:my_app/core/data/listing_data_source.dart';
 import 'package:my_app/core/data/repositories/favorites_repository.dart';
 import 'package:my_app/core/revenuecat/revenuecat_service.dart';
 import 'package:my_app/core/subscription/user_tier_service.dart';
 
-/// Provides [ListingDataSource], [AuthRepository], [FavoritesRepository], [UserTierService], and optional [RevenueCatService] to the widget tree.
+/// Provides [ListingDataSource], [FavoritesRepository], [UserTierService], and optional [RevenueCatService] to the widget tree.
 class AppDataScope extends InheritedWidget {
   const AppDataScope({
     super.key,
     required this.dataSource,
-    required this.authRepository,
     required this.favoritesRepository,
     required this.userTierService,
     required super.child,
@@ -18,7 +16,6 @@ class AppDataScope extends InheritedWidget {
   });
 
   final ListingDataSource dataSource;
-  final AuthRepository authRepository;
   final FavoritesRepository favoritesRepository;
   final UserTierService userTierService;
   final RevenueCatService? revenueCatService;
@@ -33,7 +30,6 @@ class AppDataScope extends InheritedWidget {
   @override
   bool updateShouldNotify(AppDataScope oldWidget) =>
       dataSource != oldWidget.dataSource ||
-      authRepository != oldWidget.authRepository ||
       favoritesRepository != oldWidget.favoritesRepository ||
       userTierService != oldWidget.userTierService ||
       revenueCatService != oldWidget.revenueCatService;

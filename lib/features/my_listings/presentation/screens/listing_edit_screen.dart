@@ -1,6 +1,8 @@
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
-import 'package:my_app/core/data/app_data_scope.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:my_app/core/auth/providers/auth_provider.dart';
+import 'package:my_app/core/data/providers/app_data_providers.dart';
 import 'package:my_app/core/data/contact_form_templates.dart';
 import 'package:my_app/core/data/models/business.dart';
 import 'package:my_app/core/data/models/business_image.dart';
@@ -18,8 +20,6 @@ import 'package:my_app/core/data/repositories/punch_card_programs_repository.dar
 import 'package:my_app/core/data/services/business_images_storage_service.dart';
 import 'package:my_app/core/data/services/storage_upload_constants.dart';
 import 'package:my_app/core/subscription/business_tier_service.dart';
-import 'package:my_app/core/supabase/supabase_config.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:my_app/core/theme/app_layout.dart';
 import 'package:my_app/core/theme/theme.dart';
 import 'package:my_app/shared/widgets/business_tier_upgrade_dialog.dart';
@@ -38,22 +38,22 @@ import 'package:my_app/shared/widgets/business_links_editor.dart';
 import 'package:my_app/shared/widgets/owner_onboarding_dialog.dart';
 
 /// Tabbed edit/dashboard for a business listing. Tablet: left rail; mobile: tabs. Uses homepage theme (specOffWhite, specNavy, specGold).
-class ListingEditScreen extends StatefulWidget {
+class ListingEditScreen extends ConsumerStatefulWidget {
   const ListingEditScreen({super.key, required this.listingId});
 
   final String listingId;
 
   @override
-  State<ListingEditScreen> createState() => _ListingEditScreenState();
+  ConsumerState<ListingEditScreen> createState() => _ListingEditScreenState();
 }
 
-class _ListingEditScreenState extends State<ListingEditScreen>
-    with SingleTickerProviderStateMixin {
+class _ListingEditScreenState extends ConsumerState<ListingEditScreen> with SingleTickerProviderStateMixin {
   late TabController _tabController;
   int _selectedIndex = 0;
   bool _hasPendingApproval = false;
   bool _ownerOnboardingChecked = false;
-  Future<(MockListing?, List<MockMenuItem>, List<MockDeal>, List<MockPunchCard>, List<MockEvent>, String?)>? _loadFuture;
+  Future<(MockListing?, List<MockMenuItem>, List<MockDeal>, List<MockPunchCard>, List<MockEvent>, String?)>?
+  _loadFuture;
 
   @override
   void initState() {
@@ -67,18 +67,17 @@ class _ListingEditScreenState extends State<ListingEditScreen>
     });
   }
 
-  Future<(MockListing?, List<MockMenuItem>, List<MockDeal>, List<MockPunchCard>, List<MockEvent>, String?)> _createLoadFuture() {
-    final dataSource = AppDataScope.of(context).dataSource;
-    return Future.wait([
+  Future<(MockListing?, List<MockMenuItem>, List<MockDeal>, List<MockPunchCard>, List<MockEvent>, String?)>
+  _createLoadFuture() {
+    final dataSource = ref.read(listingDataSourceProvider);
+    return Future.wait<dynamic>([
       dataSource.getListingById(widget.listingId),
       dataSource.getMenuForListing(widget.listingId),
       dataSource.getDealsForListingForOwner(widget.listingId),
       dataSource.getPunchCardsForListing(widget.listingId),
       dataSource.getEventsForListing(widget.listingId),
     ]).then((r) async {
-      final tier = SupabaseConfig.isConfigured
-          ? await BusinessSubscriptionsRepository().getActivePlanTierForBusiness(widget.listingId)
-          : null;
+      final tier = await BusinessSubscriptionsRepository().getActivePlanTierForBusiness(widget.listingId);
       return (
         r[0] as MockListing?,
         r[1] as List<MockMenuItem>,
@@ -153,11 +152,7 @@ class _ListingEditScreenState extends State<ListingEditScreen>
       case 0:
         return _OverviewTab(listingId: widget.listingId, businessTier: businessTier);
       case 1:
-        return _DetailsTab(
-          listing: listing,
-          listingId: widget.listingId,
-          onSaveRequested: _onDetailsSaveRequested,
-        );
+        return _DetailsTab(listing: listing, listingId: widget.listingId, onSaveRequested: _onDetailsSaveRequested);
       case 2:
         return _MenuTab(listingId: widget.listingId, items: menuItems);
       case 3:
@@ -174,10 +169,7 @@ class _ListingEditScreenState extends State<ListingEditScreen>
         return _EventsTab(listingId: widget.listingId, events: events);
       case 5:
         if (_isPaidBusinessTier(businessTier)) {
-          return FormSubmissionsInboxScreen(
-            singleBusinessId: widget.listingId,
-            embeddedInTab: true,
-          );
+          return FormSubmissionsInboxScreen(singleBusinessId: widget.listingId, embeddedInTab: true);
         }
         return _FormSubmissionsPaywallTab();
       case 6:
@@ -201,12 +193,17 @@ class _ListingEditScreenState extends State<ListingEditScreen>
           backgroundColor: AppTheme.specOffWhite,
           surfaceTintColor: Colors.transparent,
           foregroundColor: AppTheme.specNavy,
-          title: Text('Listing', style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700, color: AppTheme.specNavy)),
+          title: Text(
+            'Listing',
+            style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700, color: AppTheme.specNavy),
+          ),
         ),
         body: const Center(child: CircularProgressIndicator()),
       );
     }
-    return FutureBuilder<(MockListing?, List<MockMenuItem>, List<MockDeal>, List<MockPunchCard>, List<MockEvent>, String?)>(
+    return FutureBuilder<
+      (MockListing?, List<MockMenuItem>, List<MockDeal>, List<MockPunchCard>, List<MockEvent>, String?)
+    >(
       future: _loadFuture,
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting && !snapshot.hasData) {
@@ -216,7 +213,10 @@ class _ListingEditScreenState extends State<ListingEditScreen>
               backgroundColor: AppTheme.specOffWhite,
               surfaceTintColor: Colors.transparent,
               foregroundColor: AppTheme.specNavy,
-              title: Text('Listing', style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700, color: AppTheme.specNavy)),
+              title: Text(
+                'Listing',
+                style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700, color: AppTheme.specNavy),
+              ),
             ),
             body: const Center(child: CircularProgressIndicator()),
           );
@@ -234,9 +234,14 @@ class _ListingEditScreenState extends State<ListingEditScreen>
               backgroundColor: AppTheme.specOffWhite,
               surfaceTintColor: Colors.transparent,
               foregroundColor: AppTheme.specNavy,
-              title: Text('Listing', style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700, color: AppTheme.specNavy)),
+              title: Text(
+                'Listing',
+                style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700, color: AppTheme.specNavy),
+              ),
             ),
-            body: Center(child: Text('Listing not found', style: theme.textTheme.bodyLarge?.copyWith(color: AppTheme.specNavy))),
+            body: Center(
+              child: Text('Listing not found', style: theme.textTheme.bodyLarge?.copyWith(color: AppTheme.specNavy)),
+            ),
           );
         }
 
@@ -265,9 +270,14 @@ class _ListingEditScreenState extends State<ListingEditScreen>
                   },
                   labelType: NavigationRailLabelType.all,
                   selectedIconTheme: const IconThemeData(color: AppTheme.specGold),
-                  selectedLabelTextStyle: theme.textTheme.labelLarge?.copyWith(color: AppTheme.specNavy, fontWeight: FontWeight.w600),
+                  selectedLabelTextStyle: theme.textTheme.labelLarge?.copyWith(
+                    color: AppTheme.specNavy,
+                    fontWeight: FontWeight.w600,
+                  ),
                   unselectedIconTheme: IconThemeData(color: AppTheme.specNavy.withValues(alpha: 0.7)),
-                  unselectedLabelTextStyle: theme.textTheme.labelLarge?.copyWith(color: AppTheme.specNavy.withValues(alpha: 0.7)),
+                  unselectedLabelTextStyle: theme.textTheme.labelLarge?.copyWith(
+                    color: AppTheme.specNavy.withValues(alpha: 0.7),
+                  ),
                   destinations: const [
                     NavigationRailDestination(icon: Icon(Icons.dashboard_rounded), label: Text('Overview')),
                     NavigationRailDestination(icon: Icon(Icons.info_outline_rounded), label: Text('Details')),
@@ -294,7 +304,10 @@ class _ListingEditScreenState extends State<ListingEditScreen>
                                 Expanded(
                                   child: Text(
                                     listing.name,
-                                    style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700, color: AppTheme.specNavy),
+                                    style: theme.textTheme.titleLarge?.copyWith(
+                                      fontWeight: FontWeight.w700,
+                                      color: AppTheme.specNavy,
+                                    ),
                                   ),
                                 ),
                                 IconButton(
@@ -316,7 +329,15 @@ class _ListingEditScreenState extends State<ListingEditScreen>
                       ),
                       if (_hasPendingApproval) _PendingApprovalBanner(),
                       Expanded(
-                        child: _buildTabContent(_selectedIndex, listing, menuItems, deals, punchCards, events, snapshot.data?.$6),
+                        child: _buildTabContent(
+                          _selectedIndex,
+                          listing,
+                          menuItems,
+                          deals,
+                          punchCards,
+                          events,
+                          snapshot.data?.$6,
+                        ),
                       ),
                     ],
                   ),
@@ -368,11 +389,9 @@ class _ListingEditScreenState extends State<ListingEditScreen>
               IconButton(
                 icon: const Icon(Icons.open_in_new_rounded),
                 onPressed: () {
-                  Navigator.of(context).push(
-                    MaterialPageRoute<void>(
-                      builder: (_) => ListingDetailScreen(listingId: widget.listingId),
-                    ),
-                  );
+                  Navigator.of(
+                    context,
+                  ).push(MaterialPageRoute<void>(builder: (_) => ListingDetailScreen(listingId: widget.listingId)));
                 },
                 tooltip: 'View as customer',
                 color: AppTheme.specNavy,
@@ -404,10 +423,7 @@ class _ListingEditScreenState extends State<ListingEditScreen>
                     ),
                     _EventsTab(listingId: widget.listingId, events: events),
                     _isPaidBusinessTier(snapshot.data?.$6)
-                        ? FormSubmissionsInboxScreen(
-                            singleBusinessId: widget.listingId,
-                            embeddedInTab: true,
-                          )
+                        ? FormSubmissionsInboxScreen(singleBusinessId: widget.listingId, embeddedInTab: true)
                         : const _FormSubmissionsPaywallTab(),
                     _MoreTab(listingId: widget.listingId, hasPaidTier: _isPaidBusinessTier(snapshot.data?.$6)),
                     _AccountAccessTab(listingId: widget.listingId),
@@ -436,11 +452,7 @@ class _PendingApprovalBanner extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
           child: Row(
             children: [
-              Icon(
-                Icons.schedule_rounded,
-                size: 20,
-                color: colorScheme.onTertiaryContainer,
-              ),
+              Icon(Icons.schedule_rounded, size: 20, color: colorScheme.onTertiaryContainer),
               const SizedBox(width: 10),
               Expanded(
                 child: Text(
@@ -475,48 +487,41 @@ class _OverviewTab extends StatelessWidget {
       children: [
         Text(
           'Overview',
-          style: theme.textTheme.headlineSmall?.copyWith(
-            fontWeight: FontWeight.w700,
-            color: AppTheme.specNavy,
-          ),
+          style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w700, color: AppTheme.specNavy),
         ),
         const SizedBox(height: 6),
         Text(
           tier == BusinessTier.free
               ? 'Your listing at a glance. Upgrade for more insights and features.'
               : tier == BusinessTier.localPlus
-                  ? 'Track profile views, saves, redemptions, and messages. Your metrics will appear here as customers interact with your listing.'
-                  : 'Full analytics for your listing. Profile views, saves, redemptions, and loyalty metrics.',
-          style: theme.textTheme.bodyMedium?.copyWith(
-            color: AppTheme.specNavy.withValues(alpha: 0.8),
-          ),
+              ? 'Track profile views, saves, redemptions, and messages. Your metrics will appear here as customers interact with your listing.'
+              : 'Full analytics for your listing. Profile views, saves, redemptions, and loyalty metrics.',
+          style: theme.textTheme.bodyMedium?.copyWith(color: AppTheme.specNavy.withValues(alpha: 0.8)),
         ),
         const SizedBox(height: 24),
         // Free: minimal stats + upsell cards
         if (tier == BusinessTier.free) ...[
           LayoutBuilder(
             builder: (context, constraints) {
-              final stats = [
-                ('Profile views', '—', Icons.visibility_rounded),
-                ('Saves', '—', Icons.favorite_rounded),
-              ];
+              final stats = [('Profile views', '—', Icons.visibility_rounded), ('Saves', '—', Icons.favorite_rounded)];
               return Wrap(
                 spacing: 12,
                 runSpacing: 12,
-                children: stats.map((s) => SizedBox(
-                  width: constraints.maxWidth > 400 ? (constraints.maxWidth - 12) / 2 : constraints.maxWidth,
-                  child: _StatCard(label: s.$1, value: s.$2, icon: s.$3),
-                )).toList(),
+                children: stats
+                    .map(
+                      (s) => SizedBox(
+                        width: constraints.maxWidth > 400 ? (constraints.maxWidth - 12) / 2 : constraints.maxWidth,
+                        child: _StatCard(label: s.$1, value: s.$2, icon: s.$3),
+                      ),
+                    )
+                    .toList(),
               );
             },
           ),
           const SizedBox(height: 24),
           Text(
             'Get more from your listing',
-            style: theme.textTheme.titleMedium?.copyWith(
-              fontWeight: FontWeight.w700,
-              color: AppTheme.specNavy,
-            ),
+            style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700, color: AppTheme.specNavy),
           ),
           const SizedBox(height: 12),
           _OverviewUpsellCard(
@@ -547,10 +552,14 @@ class _OverviewTab extends StatelessWidget {
               return Wrap(
                 spacing: 12,
                 runSpacing: 12,
-                children: stats.map((s) => SizedBox(
-                  width: crossCount == 2 ? (constraints.maxWidth - 12) / 2 : constraints.maxWidth,
-                  child: _StatCard(label: s.$1, value: s.$2, icon: s.$3),
-                )).toList(),
+                children: stats
+                    .map(
+                      (s) => SizedBox(
+                        width: crossCount == 2 ? (constraints.maxWidth - 12) / 2 : constraints.maxWidth,
+                        child: _StatCard(label: s.$1, value: s.$2, icon: s.$3),
+                      ),
+                    )
+                    .toList(),
               );
             },
           ),
@@ -570,10 +579,14 @@ class _OverviewTab extends StatelessWidget {
               return Wrap(
                 spacing: 12,
                 runSpacing: 12,
-                children: stats.map((s) => SizedBox(
-                  width: crossCount == 2 ? (constraints.maxWidth - 12) / 2 : constraints.maxWidth,
-                  child: _StatCard(label: s.$1, value: s.$2, icon: s.$3),
-                )).toList(),
+                children: stats
+                    .map(
+                      (s) => SizedBox(
+                        width: crossCount == 2 ? (constraints.maxWidth - 12) / 2 : constraints.maxWidth,
+                        child: _StatCard(label: s.$1, value: s.$2, icon: s.$3),
+                      ),
+                    )
+                    .toList(),
               );
             },
           ),
@@ -601,17 +614,11 @@ void _showPlanExplainer(BuildContext context, String planName, String body) {
       backgroundColor: AppTheme.specOffWhite,
       title: Text(
         planName,
-        style: theme.textTheme.titleLarge?.copyWith(
-          fontWeight: FontWeight.w700,
-          color: AppTheme.specNavy,
-        ),
+        style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700, color: AppTheme.specNavy),
       ),
       content: Text(
         body,
-        style: theme.textTheme.bodyMedium?.copyWith(
-          color: AppTheme.specNavy.withValues(alpha: 0.85),
-          height: 1.4,
-        ),
+        style: theme.textTheme.bodyMedium?.copyWith(color: AppTheme.specNavy.withValues(alpha: 0.85), height: 1.4),
       ),
       actions: [
         TextButton(
@@ -648,10 +655,7 @@ void _showMoreTabPaywall(BuildContext context) {
           Expanded(
             child: Text(
               'Unlock the More tab',
-              style: theme.textTheme.titleLarge?.copyWith(
-                fontWeight: FontWeight.w700,
-                color: nav,
-              ),
+              style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700, color: nav),
             ),
           ),
         ],
@@ -696,12 +700,7 @@ void _showMoreTabPaywall(BuildContext context) {
 }
 
 class _OverviewUpsellCard extends StatelessWidget {
-  const _OverviewUpsellCard({
-    required this.title,
-    required this.tagline,
-    required this.icon,
-    required this.onTap,
-  });
+  const _OverviewUpsellCard({required this.title, required this.tagline, required this.icon, required this.onTap});
 
   final String title;
   final String tagline;
@@ -723,11 +722,7 @@ class _OverviewUpsellCard extends StatelessWidget {
             color: AppTheme.specWhite,
             borderRadius: BorderRadius.circular(16),
             boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.06),
-                blurRadius: 10,
-                offset: const Offset(0, 4),
-              ),
+              BoxShadow(color: Colors.black.withValues(alpha: 0.06), blurRadius: 10, offset: const Offset(0, 4)),
             ],
             border: Border.all(color: AppTheme.specGold.withValues(alpha: 0.35)),
           ),
@@ -756,9 +751,7 @@ class _OverviewUpsellCard extends StatelessWidget {
                     const SizedBox(height: 4),
                     Text(
                       tagline,
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: AppTheme.specNavy.withValues(alpha: 0.75),
-                      ),
+                      style: theme.textTheme.bodySmall?.copyWith(color: AppTheme.specNavy.withValues(alpha: 0.75)),
                     ),
                   ],
                 ),
@@ -773,11 +766,7 @@ class _OverviewUpsellCard extends StatelessWidget {
 }
 
 class _StatCard extends StatelessWidget {
-  const _StatCard({
-    required this.label,
-    required this.value,
-    required this.icon,
-  });
+  const _StatCard({required this.label, required this.value, required this.icon});
 
   final String label;
   final String value;
@@ -792,13 +781,7 @@ class _StatCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppTheme.specWhite,
         borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.06),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.06), blurRadius: 10, offset: const Offset(0, 4))],
         border: Border.all(color: AppTheme.specNavy.withValues(alpha: 0.08)),
       ),
       child: Row(
@@ -815,18 +798,12 @@ class _StatCard extends StatelessWidget {
           Expanded(
             child: Text(
               label,
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: AppTheme.specNavy,
-                fontWeight: FontWeight.w500,
-              ),
+              style: theme.textTheme.bodyMedium?.copyWith(color: AppTheme.specNavy, fontWeight: FontWeight.w500),
             ),
           ),
           Text(
             value,
-            style: theme.textTheme.titleMedium?.copyWith(
-              fontWeight: FontWeight.w700,
-              color: AppTheme.specNavy,
-            ),
+            style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700, color: AppTheme.specNavy),
           ),
         ],
       ),
@@ -834,22 +811,18 @@ class _StatCard extends StatelessWidget {
   }
 }
 
-class _DetailsTab extends StatefulWidget {
-  const _DetailsTab({
-    required this.listing,
-    required this.listingId,
-    required this.onSaveRequested,
-  });
+class _DetailsTab extends ConsumerStatefulWidget {
+  const _DetailsTab({required this.listing, required this.listingId, required this.onSaveRequested});
 
   final MockListing listing;
   final String listingId;
   final VoidCallback onSaveRequested;
 
   @override
-  State<_DetailsTab> createState() => _DetailsTabState();
+  ConsumerState<_DetailsTab> createState() => _DetailsTabState();
 }
 
-class _DetailsTabState extends State<_DetailsTab> {
+class _DetailsTabState extends ConsumerState<_DetailsTab> {
   bool _isEditing = false;
   late TextEditingController _nameController;
   late TextEditingController _addressController;
@@ -895,13 +868,13 @@ class _DetailsTabState extends State<_DetailsTab> {
     if (!_subcategoryIdsLoaded) {
       _loadInitialSubcategoryIds();
     }
-    if (SupabaseConfig.isConfigured && _businessFuture == null) {
+    if (true && _businessFuture == null) {
       _businessFuture = BusinessRepository().getByIdForManager(widget.listingId);
     }
   }
 
   Future<void> _loadCategories() async {
-    final ds = AppDataScope.of(context).dataSource;
+    final ds = ref.read(listingDataSourceProvider);
     final list = await ds.getCategories();
     if (mounted) {
       setState(() {
@@ -915,7 +888,7 @@ class _DetailsTabState extends State<_DetailsTab> {
   }
 
   Future<void> _loadParishes() async {
-    final ds = AppDataScope.of(context).dataSource;
+    final ds = ref.read(listingDataSourceProvider);
     final list = await ds.getParishes();
     if (mounted) {
       setState(() {
@@ -926,8 +899,8 @@ class _DetailsTabState extends State<_DetailsTab> {
   }
 
   Future<void> _loadInitialSubcategoryIds() async {
-    final ds = AppDataScope.of(context).dataSource;
-    if (!ds.useSupabase) {
+    final ds = ref.read(listingDataSourceProvider);
+    if (!ds.useBackend) {
       if (mounted) setState(() => _subcategoryIdsLoaded = true);
       return;
     }
@@ -974,8 +947,8 @@ class _DetailsTabState extends State<_DetailsTab> {
   }
 
   Future<void> _saveEdits() async {
-    final ds = AppDataScope.of(context).dataSource;
-    if (ds.useSupabase) {
+    final ds = ref.read(listingDataSourceProvider);
+    if (ds.useBackend) {
       await ds.updateBusiness(
         widget.listingId,
         name: _nameController.text.trim(),
@@ -1049,10 +1022,7 @@ class _DetailsTabState extends State<_DetailsTab> {
                   children: [
                     Text(
                       'Business details',
-                      style: theme.textTheme.titleLarge?.copyWith(
-                        fontWeight: FontWeight.w800,
-                        color: nav,
-                      ),
+                      style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800, color: nav),
                     ),
                     const SizedBox(height: 4),
                     Text(
@@ -1074,7 +1044,10 @@ class _DetailsTabState extends State<_DetailsTab> {
                   children: [
                     TextButton(
                       onPressed: _cancelEditing,
-                      child: Text('Cancel', style: TextStyle(color: sub, fontWeight: FontWeight.w600)),
+                      child: Text(
+                        'Cancel',
+                        style: TextStyle(color: sub, fontWeight: FontWeight.w600),
+                      ),
                     ),
                     const SizedBox(width: 8),
                     AppPrimaryButton(
@@ -1093,7 +1066,13 @@ class _DetailsTabState extends State<_DetailsTab> {
             title: 'Basic info',
             icon: Icons.business_rounded,
             children: [
-              _EditField(label: 'Business name', controller: _nameController, hint: 'How your business appears to customers', specNavy: nav, specSub: sub),
+              _EditField(
+                label: 'Business name',
+                controller: _nameController,
+                hint: 'How your business appears to customers',
+                specNavy: nav,
+                specSub: sub,
+              ),
               _EditField(
                 label: 'Description',
                 controller: _descriptionController,
@@ -1109,9 +1088,27 @@ class _DetailsTabState extends State<_DetailsTab> {
             title: 'Contact & location',
             icon: Icons.location_on_outlined,
             children: [
-              _EditField(label: 'Address', controller: _addressController, hint: 'Street address', specNavy: nav, specSub: sub),
-              _EditField(label: 'Phone', controller: _phoneController, hint: 'Contact number', specNavy: nav, specSub: sub),
-              _EditField(label: 'Website', controller: _websiteController, hint: 'https://...', specNavy: nav, specSub: sub),
+              _EditField(
+                label: 'Address',
+                controller: _addressController,
+                hint: 'Street address',
+                specNavy: nav,
+                specSub: sub,
+              ),
+              _EditField(
+                label: 'Phone',
+                controller: _phoneController,
+                hint: 'Contact number',
+                specNavy: nav,
+                specSub: sub,
+              ),
+              _EditField(
+                label: 'Website',
+                controller: _websiteController,
+                hint: 'https://...',
+                specNavy: nav,
+                specSub: sub,
+              ),
             ],
           ),
           const SizedBox(height: 16),
@@ -1135,7 +1132,14 @@ class _DetailsTabState extends State<_DetailsTab> {
                 ),
                 dropdownColor: AppTheme.specWhite,
                 hint: Text('Select parish', style: TextStyle(color: sub)),
-                items: _parishes.map((p) => DropdownMenuItem(value: p.id, child: Text(p.name, style: TextStyle(color: nav)))).toList(),
+                items: _parishes
+                    .map(
+                      (p) => DropdownMenuItem(
+                        value: p.id,
+                        child: Text(p.name, style: TextStyle(color: nav)),
+                      ),
+                    )
+                    .toList(),
                 onChanged: (v) => setState(() => _selectedParishId = v),
               ),
               const SizedBox(height: 16),
@@ -1153,15 +1157,17 @@ class _DetailsTabState extends State<_DetailsTab> {
                   return FilterChip(
                     label: Text(p.name, style: TextStyle(color: (selected || isPrimary) ? nav : sub)),
                     selected: selected,
-                    onSelected: isPrimary ? null : (_) {
-                      setState(() {
-                        if (_selectedServiceParishIds.contains(p.id)) {
-                          _selectedServiceParishIds.remove(p.id);
-                        } else {
-                          _selectedServiceParishIds.add(p.id);
-                        }
-                      });
-                    },
+                    onSelected: isPrimary
+                        ? null
+                        : (_) {
+                            setState(() {
+                              if (_selectedServiceParishIds.contains(p.id)) {
+                                _selectedServiceParishIds.remove(p.id);
+                              } else {
+                                _selectedServiceParishIds.add(p.id);
+                              }
+                            });
+                          },
                     selectedColor: AppTheme.specGold.withValues(alpha: 0.35),
                     checkmarkColor: nav,
                   );
@@ -1180,7 +1186,10 @@ class _DetailsTabState extends State<_DetailsTab> {
               ),
               const SizedBox(height: 8),
               if (!_categoriesLoaded)
-                const SizedBox(height: 48, child: Center(child: CircularProgressIndicator(color: AppTheme.specNavy)))
+                const SizedBox(
+                  height: 48,
+                  child: Center(child: CircularProgressIndicator(color: AppTheme.specNavy)),
+                )
               else
                 DropdownButtonFormField<String>(
                   initialValue: _categories.any((c) => c.id == _selectedCategoryId) ? _selectedCategoryId : null,
@@ -1191,7 +1200,14 @@ class _DetailsTabState extends State<_DetailsTab> {
                     contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                   ),
                   dropdownColor: AppTheme.specWhite,
-                  items: _categories.map((c) => DropdownMenuItem(value: c.id, child: Text(c.name, style: TextStyle(color: nav)))).toList(),
+                  items: _categories
+                      .map(
+                        (c) => DropdownMenuItem(
+                          value: c.id,
+                          child: Text(c.name, style: TextStyle(color: nav)),
+                        ),
+                      )
+                      .toList(),
                   onChanged: _onCategoryChanged,
                 ),
               if (_selectedCategoryId != null && subcategories.isNotEmpty) ...[
@@ -1267,7 +1283,10 @@ class _DetailsTabState extends State<_DetailsTab> {
                   if (listing.parishId != null) const SizedBox(height: 8),
                   _DetailRow(
                     label: 'Also serves',
-                    value: listing.parishIds.where((id) => id != listing.parishId).map((id) => _parishName(id)).join(', '),
+                    value: listing.parishIds
+                        .where((id) => id != listing.parishId)
+                        .map((id) => _parishName(id))
+                        .join(', '),
                     specNavy: nav,
                     specSub: sub,
                   ),
@@ -1279,19 +1298,15 @@ class _DetailsTabState extends State<_DetailsTab> {
           AppSectionCard(
             title: 'Category',
             icon: Icons.category_rounded,
-            children: [
-              _DetailRow(label: 'Category', value: listing.categoryName, specNavy: nav, specSub: sub),
-            ],
+            children: [_DetailRow(label: 'Category', value: listing.categoryName, specNavy: nav, specSub: sub)],
           ),
         ],
-        if (SupabaseConfig.isConfigured) ...[
+        if (true) ...[
           const SizedBox(height: 16),
           AppSectionCard(
             title: 'Hours',
             icon: Icons.schedule_rounded,
-            children: [
-              BusinessHoursEditor(businessId: widget.listingId),
-            ],
+            children: [BusinessHoursEditor(businessId: widget.listingId)],
           ),
           const SizedBox(height: 16),
           AppSectionCard(
@@ -1337,7 +1352,7 @@ class _DetailsTabState extends State<_DetailsTab> {
 }
 
 /// Logo upload + cover photo button for Details tab.
-class _LogoAndBannerSection extends StatefulWidget {
+class _LogoAndBannerSection extends ConsumerStatefulWidget {
   const _LogoAndBannerSection({
     required this.business,
     required this.listingId,
@@ -1355,10 +1370,10 @@ class _LogoAndBannerSection extends StatefulWidget {
   final Color specSub;
 
   @override
-  State<_LogoAndBannerSection> createState() => _LogoAndBannerSectionState();
+  ConsumerState<_LogoAndBannerSection> createState() => _LogoAndBannerSectionState();
 }
 
-class _LogoAndBannerSectionState extends State<_LogoAndBannerSection> {
+class _LogoAndBannerSectionState extends ConsumerState<_LogoAndBannerSection> {
   bool _uploadingLogo = false;
   bool _uploadingBanner = false;
   List<BusinessImage> _galleryImages = [];
@@ -1394,9 +1409,7 @@ class _LogoAndBannerSectionState extends State<_LogoAndBannerSection> {
     final bytes = file.bytes;
     if (bytes == null || bytes.isEmpty) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Could not read file.')),
-        );
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Could not read file.')));
       }
       return;
     }
@@ -1410,9 +1423,8 @@ class _LogoAndBannerSectionState extends State<_LogoAndBannerSection> {
         extension: ext,
       );
       if (!mounted) return;
-      final auth = AppDataScope.of(context).authRepository;
-      final uid = auth.currentUserId;
-      final isAdmin = uid != null && await auth.isAdmin();
+      final uid = ref.read(authNotifierProvider).valueOrNull?.id;
+      final isAdmin = uid != null && await ref.read(authNotifierProvider.notifier).isAdmin();
       await BusinessImagesRepository().insert(
         businessId: widget.listingId,
         url: url,
@@ -1424,16 +1436,12 @@ class _LogoAndBannerSectionState extends State<_LogoAndBannerSection> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(
-            isAdmin ? 'Photo added (approved).' : 'Photo added. It will appear after admin approval.',
-          ),
+          content: Text(isAdmin ? 'Photo added (approved).' : 'Photo added. It will appear after admin approval.'),
         ),
       );
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e')),
-        );
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
       }
     } finally {
       if (mounted) {
@@ -1456,16 +1464,12 @@ class _LogoAndBannerSectionState extends State<_LogoAndBannerSection> {
           _galleryImages = reordered;
           _savingOrder = false;
         });
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Order saved.')),
-        );
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Order saved.')));
       }
     } catch (e) {
       if (mounted) {
         setState(() => _savingOrder = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to save order: $e')),
-        );
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to save order: $e')));
       }
     }
   }
@@ -1482,9 +1486,7 @@ class _LogoAndBannerSectionState extends State<_LogoAndBannerSection> {
     final bytes = file.bytes;
     if (bytes == null || bytes.isEmpty) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Could not read file.')),
-        );
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Could not read file.')));
       }
       return;
     }
@@ -1524,9 +1526,7 @@ class _LogoAndBannerSectionState extends State<_LogoAndBannerSection> {
     final bytes = file.bytes;
     if (bytes == null || bytes.isEmpty) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Could not read file.')),
-        );
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Could not read file.')));
       }
       return;
     }
@@ -1590,11 +1590,7 @@ class _LogoAndBannerSectionState extends State<_LogoAndBannerSection> {
         AppOutlinedButton(
           onPressed: _uploadingLogo ? null : _uploadLogo,
           icon: _uploadingLogo
-              ? SizedBox(
-                  width: 20,
-                  height: 20,
-                  child: CircularProgressIndicator(strokeWidth: 2, color: nav),
-                )
+              ? SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: nav))
               : const Icon(Icons.upload_rounded, size: 20),
           label: Text(_uploadingLogo ? 'Uploading...' : 'Upload logo'),
         ),
@@ -1630,11 +1626,7 @@ class _LogoAndBannerSectionState extends State<_LogoAndBannerSection> {
         AppOutlinedButton(
           onPressed: _uploadingBanner ? null : _uploadBanner,
           icon: _uploadingBanner
-              ? SizedBox(
-                  width: 20,
-                  height: 20,
-                  child: CircularProgressIndicator(strokeWidth: 2, color: nav),
-                )
+              ? SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: nav))
               : const Icon(Icons.image_rounded, size: 20),
           label: Text(_uploadingBanner ? 'Uploading...' : 'Upload banner'),
         ),
@@ -1652,22 +1644,14 @@ class _LogoAndBannerSectionState extends State<_LogoAndBannerSection> {
         AppOutlinedButton(
           onPressed: _uploadingGallery ? null : _addGalleryImage,
           icon: _uploadingGallery
-              ? SizedBox(
-                  width: 20,
-                  height: 20,
-                  child: CircularProgressIndicator(strokeWidth: 2, color: nav),
-                )
+              ? SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: nav))
               : const Icon(Icons.add_photo_alternate_rounded, size: 20),
           label: Text(_uploadingGallery ? 'Uploading...' : 'Add photo'),
         ),
         if (_galleryLoading)
           const Padding(
             padding: EdgeInsets.symmetric(vertical: 16),
-            child: Center(child: SizedBox(
-              width: 24,
-              height: 24,
-              child: CircularProgressIndicator(strokeWidth: 2),
-            )),
+            child: Center(child: SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2))),
           )
         else if (_galleryImages.isNotEmpty) ...[
           const SizedBox(height: 12),
@@ -1707,23 +1691,13 @@ class _LogoAndBannerSectionState extends State<_LogoAndBannerSection> {
                     ),
                     title: Text(
                       'Photo ${index + 1}',
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        fontWeight: FontWeight.w600,
-                        color: nav,
-                      ),
+                      style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600, color: nav),
                     ),
                     subtitle: img.status != 'approved'
-                        ? Text(
-                            img.status,
-                            style: theme.textTheme.bodySmall?.copyWith(color: sub),
-                          )
+                        ? Text(img.status, style: theme.textTheme.bodySmall?.copyWith(color: sub))
                         : null,
                     trailing: _savingOrder
-                        ? const SizedBox(
-                            width: 24,
-                            height: 24,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
+                        ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2))
                         : Icon(Icons.drag_handle_rounded, color: sub),
                   ),
                 ),
@@ -1767,17 +1741,11 @@ class _EditField extends StatelessWidget {
         children: [
           Text(
             label,
-            style: theme.textTheme.labelMedium?.copyWith(
-              color: labelColor,
-              fontWeight: FontWeight.w600,
-            ),
+            style: theme.textTheme.labelMedium?.copyWith(color: labelColor, fontWeight: FontWeight.w600),
           ),
           if (hint != null) ...[
             const SizedBox(height: 4),
-            Text(
-              hint!,
-              style: theme.textTheme.bodySmall?.copyWith(color: labelColor.withValues(alpha: 0.9)),
-            ),
+            Text(hint!, style: theme.textTheme.bodySmall?.copyWith(color: labelColor.withValues(alpha: 0.9))),
           ],
           const SizedBox(height: 8),
           TextField(
@@ -1810,12 +1778,7 @@ class _EditField extends StatelessWidget {
 }
 
 class _DetailRow extends StatelessWidget {
-  const _DetailRow({
-    required this.label,
-    required this.value,
-    this.specNavy,
-    this.specSub,
-  });
+  const _DetailRow({required this.label, required this.value, this.specNavy, this.specSub});
 
   final String label;
   final String value;
@@ -1834,32 +1797,26 @@ class _DetailRow extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            label,
-            style: theme.textTheme.labelMedium?.copyWith(color: labelColor),
-          ),
+          Text(label, style: theme.textTheme.labelMedium?.copyWith(color: labelColor)),
           const SizedBox(height: 4),
-          Text(
-            value,
-            style: theme.textTheme.bodyLarge?.copyWith(color: valueColor),
-          ),
+          Text(value, style: theme.textTheme.bodyLarge?.copyWith(color: valueColor)),
         ],
       ),
     );
   }
 }
 
-class _MenuTab extends StatefulWidget {
+class _MenuTab extends ConsumerStatefulWidget {
   const _MenuTab({required this.listingId, required this.items});
 
   final String listingId;
   final List<MockMenuItem> items;
 
   @override
-  State<_MenuTab> createState() => _MenuTabState();
+  ConsumerState<_MenuTab> createState() => _MenuTabState();
 }
 
-class _MenuTabState extends State<_MenuTab> {
+class _MenuTabState extends ConsumerState<_MenuTab> {
   List<MenuSection> _sections = [];
   Map<String, List<MenuItem>> _itemsBySection = {};
   bool _loading = true;
@@ -1868,7 +1825,7 @@ class _MenuTabState extends State<_MenuTab> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    final useSupabase = AppDataScope.of(context).dataSource.useSupabase;
+    final useSupabase = ref.read(listingDataSourceProvider).useBackend;
     if (useSupabase != _useSupabase || _loading) {
       _useSupabase = useSupabase;
       if (useSupabase) {
@@ -1896,10 +1853,7 @@ class _MenuTabState extends State<_MenuTab> {
   }
 
   Future<void> _addCategory() async {
-    final name = await showDialog<String>(
-      context: context,
-      builder: (ctx) => _AddCategoryDialog(),
-    );
+    final name = await showDialog<String>(context: context, builder: (ctx) => _AddCategoryDialog());
     if (name == null || name.trim().isEmpty || !mounted) return;
     try {
       await MenuRepository().createSection(widget.listingId, name.trim());
@@ -1924,8 +1878,10 @@ class _MenuTabState extends State<_MenuTab> {
       await MenuRepository().insertItem(
         sectionId: section.id,
         name: result.name.trim(),
-        price: result.price?.trim().isEmpty ?? true ? null : result.price?.trim(),
-        description: result.description?.trim().isEmpty ?? true ? null : result.description?.trim(),
+        price: (result.price != null && result.price!.trim().isNotEmpty) ? result.price!.trim() : null,
+        description: (result.description != null && result.description!.trim().isNotEmpty)
+            ? result.description!.trim()
+            : null,
       );
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Item added')));
@@ -1957,10 +1913,7 @@ class _MenuTabState extends State<_MenuTab> {
       children: [
         Text(
           'Menu',
-          style: theme.textTheme.headlineSmall?.copyWith(
-            fontWeight: FontWeight.w700,
-            color: nav,
-          ),
+          style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w700, color: nav),
         ),
         const SizedBox(height: 6),
         Text(
@@ -1981,11 +1934,7 @@ class _MenuTabState extends State<_MenuTab> {
               color: AppTheme.specWhite,
               borderRadius: BorderRadius.circular(16),
               boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.06),
-                  blurRadius: 10,
-                  offset: const Offset(0, 4),
-                ),
+                BoxShadow(color: Colors.black.withValues(alpha: 0.06), blurRadius: 10, offset: const Offset(0, 4)),
               ],
               border: Border.all(color: nav.withValues(alpha: 0.1)),
             ),
@@ -1995,10 +1944,7 @@ class _MenuTabState extends State<_MenuTab> {
                 const SizedBox(height: 14),
                 Text(
                   'No categories yet',
-                  style: theme.textTheme.titleMedium?.copyWith(
-                    color: nav,
-                    fontWeight: FontWeight.w700,
-                  ),
+                  style: theme.textTheme.titleMedium?.copyWith(color: nav, fontWeight: FontWeight.w700),
                 ),
                 const SizedBox(height: 6),
                 Text(
@@ -2035,10 +1981,7 @@ class _MenuTabState extends State<_MenuTab> {
       children: [
         Text(
           'Menu',
-          style: theme.textTheme.headlineSmall?.copyWith(
-            fontWeight: FontWeight.w700,
-            color: nav,
-          ),
+          style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w700, color: nav),
         ),
         const SizedBox(height: 6),
         Text(
@@ -2048,11 +1991,9 @@ class _MenuTabState extends State<_MenuTab> {
         const SizedBox(height: 20),
         AppSecondaryButton(
           onPressed: () {
-            Navigator.of(context).push(
-              MaterialPageRoute<void>(
-                builder: (_) => CreateMenuItemScreen(listingId: widget.listingId),
-              ),
-            );
+            Navigator.of(
+              context,
+            ).push(MaterialPageRoute<void>(builder: (_) => CreateMenuItemScreen(listingId: widget.listingId)));
           },
           icon: const Icon(Icons.add_rounded, size: 20),
           label: const Text('Add item'),
@@ -2070,15 +2011,25 @@ class _MenuTabState extends State<_MenuTab> {
               children: [
                 Icon(Icons.view_list_rounded, size: 48, color: nav.withValues(alpha: 0.4)),
                 const SizedBox(height: 14),
-                Text('No items yet', style: theme.textTheme.titleMedium?.copyWith(color: nav, fontWeight: FontWeight.w700)),
+                Text(
+                  'No items yet',
+                  style: theme.textTheme.titleMedium?.copyWith(color: nav, fontWeight: FontWeight.w700),
+                ),
                 const SizedBox(height: 6),
-                Text('Tap "Add item" above.', style: theme.textTheme.bodySmall?.copyWith(color: sub), textAlign: TextAlign.center),
+                Text(
+                  'Tap "Add item" above.',
+                  style: theme.textTheme.bodySmall?.copyWith(color: sub),
+                  textAlign: TextAlign.center,
+                ),
               ],
             ),
           )
         else
           ...items.map((item) {
-            final subtitle = [if (item.description != null) item.description!, if (item.price != null) item.price!].join(' · ');
+            final subtitle = [
+              if (item.description != null) item.description!,
+              if (item.price != null) item.price!,
+            ].join(' · ');
             return Padding(
               padding: const EdgeInsets.only(bottom: 10),
               child: _DealPunchCard(
@@ -2132,10 +2083,7 @@ class _AddCategoryDialogState extends State<_AddCategoryDialog> {
       ),
       actions: [
         TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Cancel')),
-        AppSecondaryButton(
-          onPressed: () => _submit(),
-          child: const Text('Add'),
-        ),
+        AppSecondaryButton(onPressed: () => _submit(), child: const Text('Add')),
       ],
     );
   }
@@ -2198,10 +2146,7 @@ class _AddMenuItemDialogState extends State<_AddMenuItemDialog> {
             const SizedBox(height: 12),
             TextField(
               controller: _descriptionController,
-              decoration: const InputDecoration(
-                labelText: 'Description (optional)',
-                border: OutlineInputBorder(),
-              ),
+              decoration: const InputDecoration(labelText: 'Description (optional)', border: OutlineInputBorder()),
               maxLines: 2,
               textCapitalization: TextCapitalization.sentences,
             ),
@@ -2299,13 +2244,7 @@ class _MenuSectionCardState extends State<_MenuSectionCard> {
       decoration: BoxDecoration(
         color: AppTheme.specWhite,
         borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.06),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
-          ),
-        ],
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.06), blurRadius: 12, offset: const Offset(0, 4))],
         border: Border.all(color: nav.withValues(alpha: 0.1)),
       ),
       child: Column(
@@ -2340,10 +2279,7 @@ class _MenuSectionCardState extends State<_MenuSectionCard> {
                                   child: const Text('Cancel'),
                                 ),
                                 const SizedBox(width: 8),
-                                AppSecondaryButton(
-                                  onPressed: _saveSectionName,
-                                  child: const Text('Save'),
-                                ),
+                                AppSecondaryButton(onPressed: _saveSectionName, child: const Text('Save')),
                               ],
                             ),
                           ],
@@ -2359,10 +2295,7 @@ class _MenuSectionCardState extends State<_MenuSectionCard> {
                                 const SizedBox(width: 10),
                                 Text(
                                   widget.section.name,
-                                  style: theme.textTheme.titleMedium?.copyWith(
-                                    fontWeight: FontWeight.w700,
-                                    color: nav,
-                                  ),
+                                  style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700, color: nav),
                                 ),
                                 const SizedBox(width: 6),
                                 Icon(Icons.edit_rounded, size: 16, color: sub),
@@ -2393,11 +2326,7 @@ class _MenuSectionCardState extends State<_MenuSectionCard> {
                   )
                 : Column(
                     children: widget.items.map((item) {
-                      return _MenuItemRow(
-                        key: ValueKey(item.id),
-                        item: item,
-                        onUpdated: widget.onItemUpdated,
-                      );
+                      return _MenuItemRow(key: ValueKey(item.id), item: item, onUpdated: widget.onItemUpdated);
                     }).toList(),
                   ),
           ),
@@ -2484,11 +2413,7 @@ class _MenuItemRowState extends State<_MenuItemRow> {
           children: [
             TextField(
               controller: _nameController,
-              decoration: const InputDecoration(
-                labelText: 'Name',
-                isDense: true,
-                border: OutlineInputBorder(),
-              ),
+              decoration: const InputDecoration(labelText: 'Name', isDense: true, border: OutlineInputBorder()),
               style: theme.textTheme.bodyMedium?.copyWith(color: nav),
             ),
             const SizedBox(height: 8),
@@ -2498,38 +2423,24 @@ class _MenuItemRowState extends State<_MenuItemRow> {
                   flex: 2,
                   child: TextField(
                     controller: _priceController,
-                    decoration: const InputDecoration(
-                      labelText: 'Price',
-                      isDense: true,
-                      border: OutlineInputBorder(),
-                    ),
+                    decoration: const InputDecoration(labelText: 'Price', isDense: true, border: OutlineInputBorder()),
                   ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
                   flex: 3,
-                  child: TextButton(
-                    onPressed: _save,
-                    child: const Text('Save'),
-                  ),
+                  child: TextButton(onPressed: _save, child: const Text('Save')),
                 ),
                 Expanded(
                   flex: 2,
-                  child: TextButton(
-                    onPressed: () => setState(() => _editing = false),
-                    child: const Text('Cancel'),
-                  ),
+                  child: TextButton(onPressed: () => setState(() => _editing = false), child: const Text('Cancel')),
                 ),
               ],
             ),
             const SizedBox(height: 6),
             TextField(
               controller: _descriptionController,
-              decoration: const InputDecoration(
-                labelText: 'Description',
-                isDense: true,
-                border: OutlineInputBorder(),
-              ),
+              decoration: const InputDecoration(labelText: 'Description', isDense: true, border: OutlineInputBorder()),
               maxLines: 2,
             ),
           ],
@@ -2554,35 +2465,32 @@ class _MenuItemRowState extends State<_MenuItemRow> {
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-              Icon(Icons.restaurant_rounded, size: 20, color: nav.withValues(alpha: 0.6)),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      widget.item.name,
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        fontWeight: FontWeight.w600,
-                        color: nav,
-                      ),
-                    ),
-                    if ((widget.item.price ?? '').isNotEmpty || (widget.item.description ?? '').isNotEmpty) ...[
-                      const SizedBox(height: 4),
+                Icon(Icons.restaurant_rounded, size: 20, color: nav.withValues(alpha: 0.6)),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
                       Text(
-                        [
-                          if ((widget.item.price ?? '').isNotEmpty) widget.item.price,
-                          if ((widget.item.description ?? '').isNotEmpty) widget.item.description,
-                        ].join(' · '),
-                        style: theme.textTheme.bodySmall?.copyWith(color: sub),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
+                        widget.item.name,
+                        style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600, color: nav),
                       ),
+                      if ((widget.item.price ?? '').isNotEmpty || (widget.item.description ?? '').isNotEmpty) ...[
+                        const SizedBox(height: 4),
+                        Text(
+                          [
+                            if ((widget.item.price ?? '').isNotEmpty) widget.item.price,
+                            if ((widget.item.description ?? '').isNotEmpty) widget.item.description,
+                          ].join(' · '),
+                          style: theme.textTheme.bodySmall?.copyWith(color: sub),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
                     ],
-                  ],
+                  ),
                 ),
-              ),
-              Icon(Icons.edit_rounded, size: 18, color: sub),
+                Icon(Icons.edit_rounded, size: 18, color: sub),
               ],
             ),
           ),
@@ -2592,7 +2500,7 @@ class _MenuItemRowState extends State<_MenuItemRow> {
   }
 }
 
-class _DealsTab extends StatelessWidget {
+class _DealsTab extends ConsumerWidget {
   const _DealsTab({
     required this.listingId,
     required this.deals,
@@ -2610,31 +2518,24 @@ class _DealsTab extends StatelessWidget {
   final VoidCallback? onRefresh;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
-    final useSupabase = AppDataScope.of(context).dataSource.useSupabase;
+    final useSupabase = ref.read(listingDataSourceProvider).useBackend;
     final tier = BusinessTierService.fromPlanTier(businessTier);
-    final atDealLimit = useSupabase &&
-        activeDealCount >= BusinessTierService.maxActiveDeals(tier);
-    final canCreatePunchCard = !useSupabase ||
-        BusinessTierService.canCreatePunchCard(tier);
+    final atDealLimit = useSupabase && activeDealCount >= BusinessTierService.maxActiveDeals(tier);
+    final canCreatePunchCard = !useSupabase || BusinessTierService.canCreatePunchCard(tier);
 
     return ListView(
       padding: const EdgeInsets.all(24),
       children: [
         Text(
           'Deals & punch cards',
-          style: theme.textTheme.headlineSmall?.copyWith(
-            fontWeight: FontWeight.w700,
-            color: AppTheme.specNavy,
-          ),
+          style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w700, color: AppTheme.specNavy),
         ),
         const SizedBox(height: 6),
         Text(
           'Create coupons and loyalty punch cards. New items require admin approval before they go live.',
-          style: theme.textTheme.bodyMedium?.copyWith(
-            color: AppTheme.specNavy.withValues(alpha: 0.8),
-          ),
+          style: theme.textTheme.bodyMedium?.copyWith(color: AppTheme.specNavy.withValues(alpha: 0.8)),
         ),
         const SizedBox(height: 20),
         Wrap(
@@ -2650,16 +2551,11 @@ class _DealsTab extends StatelessWidget {
                   );
                   return;
                 }
-                Navigator.of(context).push(
-                  MaterialPageRoute<void>(
-                    builder: (_) => CreateDealScreen(listingId: listingId),
-                  ),
-                ).then((_) => onRefresh?.call());
+                Navigator.of(context)
+                    .push(MaterialPageRoute<void>(builder: (_) => CreateDealScreen(listingId: listingId)))
+                    .then((_) => onRefresh?.call());
               },
-              icon: Icon(
-                atDealLimit ? Icons.lock_outline_rounded : Icons.local_offer_rounded,
-                size: 20,
-              ),
+              icon: Icon(atDealLimit ? Icons.lock_outline_rounded : Icons.local_offer_rounded, size: 20),
               label: Text(atDealLimit ? 'Deal limit reached' : 'Add deal'),
             ),
             AppSecondaryButton(
@@ -2671,28 +2567,19 @@ class _DealsTab extends StatelessWidget {
                   );
                   return;
                 }
-                Navigator.of(context).push(
-                  MaterialPageRoute<void>(
-                    builder: (_) => CreateLoyaltyScreen(listingId: listingId),
-                  ),
-                ).then((_) => onRefresh?.call());
+                Navigator.of(context)
+                    .push(MaterialPageRoute<void>(builder: (_) => CreateLoyaltyScreen(listingId: listingId)))
+                    .then((_) => onRefresh?.call());
               },
-              icon: Icon(
-                canCreatePunchCard ? Icons.loyalty_rounded : Icons.lock_outline_rounded,
-                size: 20,
-              ),
-              label: Text(
-                canCreatePunchCard ? 'Add punch card' : 'Upgrade for punch cards',
-              ),
+              icon: Icon(canCreatePunchCard ? Icons.loyalty_rounded : Icons.lock_outline_rounded, size: 20),
+              label: Text(canCreatePunchCard ? 'Add punch card' : 'Upgrade for punch cards'),
             ),
             if (useSupabase)
               AppOutlinedButton(
                 onPressed: () {
-                  Navigator.of(context).push(
-                    MaterialPageRoute<void>(
-                      builder: (_) => PunchCardEnrollmentsScreen(businessId: listingId),
-                    ),
-                  ).then((_) => onRefresh?.call());
+                  Navigator.of(context)
+                      .push(MaterialPageRoute<void>(builder: (_) => PunchCardEnrollmentsScreen(businessId: listingId)))
+                      .then((_) => onRefresh?.call());
                 },
                 icon: const Icon(Icons.people_outline_rounded, size: 20),
                 label: const Text('View enrollments'),
@@ -2703,43 +2590,41 @@ class _DealsTab extends StatelessWidget {
         if (deals.isNotEmpty) ...[
           Text(
             'Deals (${deals.length})',
-            style: theme.textTheme.titleMedium?.copyWith(
-              fontWeight: FontWeight.w700,
-              color: AppTheme.specNavy,
-            ),
+            style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700, color: AppTheme.specNavy),
           ),
           const SizedBox(height: 10),
-          ...deals.map((d) => Padding(
-                padding: const EdgeInsets.only(bottom: 10),
-                child: _DealPunchCard(
-                  icon: Icons.local_offer_rounded,
-                  title: d.title,
-                  subtitle: d.description,
-                  dealId: useSupabase ? d.id : null,
-                  onRefresh: onRefresh,
-                ),
-              )),
+          ...deals.map(
+            (d) => Padding(
+              padding: const EdgeInsets.only(bottom: 10),
+              child: _DealPunchCard(
+                icon: Icons.local_offer_rounded,
+                title: d.title,
+                subtitle: d.description,
+                dealId: useSupabase ? d.id : null,
+                onRefresh: onRefresh,
+              ),
+            ),
+          ),
           const SizedBox(height: 20),
         ],
         if (punchCards.isNotEmpty) ...[
           Text(
             'Punch cards (${punchCards.length})',
-            style: theme.textTheme.titleMedium?.copyWith(
-              fontWeight: FontWeight.w700,
-              color: AppTheme.specNavy,
-            ),
+            style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700, color: AppTheme.specNavy),
           ),
           const SizedBox(height: 10),
-          ...punchCards.map((p) => Padding(
-                padding: const EdgeInsets.only(bottom: 10),
-                child: _DealPunchCard(
-                  icon: Icons.loyalty_rounded,
-                  title: p.title,
-                  subtitle: '${p.punchesEarned}/${p.punchesRequired} punches — ${p.rewardDescription}',
-                  punchCardId: useSupabase ? p.id : null,
-                  onRefresh: onRefresh,
-                ),
-              )),
+          ...punchCards.map(
+            (p) => Padding(
+              padding: const EdgeInsets.only(bottom: 10),
+              child: _DealPunchCard(
+                icon: Icons.loyalty_rounded,
+                title: p.title,
+                subtitle: '${p.punchesEarned}/${p.punchesRequired} punches — ${p.rewardDescription}',
+                punchCardId: useSupabase ? p.id : null,
+                onRefresh: onRefresh,
+              ),
+            ),
+          ),
         ],
         if (deals.isEmpty && punchCards.isEmpty)
           Container(
@@ -2748,11 +2633,7 @@ class _DealsTab extends StatelessWidget {
               color: AppTheme.specWhite,
               borderRadius: BorderRadius.circular(16),
               boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.06),
-                  blurRadius: 10,
-                  offset: const Offset(0, 4),
-                ),
+                BoxShadow(color: Colors.black.withValues(alpha: 0.06), blurRadius: 10, offset: const Offset(0, 4)),
               ],
               border: Border.all(color: AppTheme.specNavy.withValues(alpha: 0.1)),
             ),
@@ -2762,17 +2643,12 @@ class _DealsTab extends StatelessWidget {
                 const SizedBox(height: 14),
                 Text(
                   'No deals or punch cards yet',
-                  style: theme.textTheme.titleMedium?.copyWith(
-                    color: AppTheme.specNavy,
-                    fontWeight: FontWeight.w700,
-                  ),
+                  style: theme.textTheme.titleMedium?.copyWith(color: AppTheme.specNavy, fontWeight: FontWeight.w700),
                 ),
                 const SizedBox(height: 6),
                 Text(
                   'Use the buttons above to create a deal or a punch card. They’ll need admin approval before going live.',
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: AppTheme.specNavy.withValues(alpha: 0.75),
-                  ),
+                  style: theme.textTheme.bodySmall?.copyWith(color: AppTheme.specNavy.withValues(alpha: 0.75)),
                   textAlign: TextAlign.center,
                 ),
               ],
@@ -2812,14 +2688,8 @@ class _DealPunchCard extends StatelessWidget {
               : 'This punch card will be removed. Existing customer progress cannot be restored.',
         ),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('Cancel'),
-          ),
-          AppDangerButton(
-            onPressed: () => Navigator.of(ctx).pop(true),
-            child: const Text('Remove'),
-          ),
+          TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Cancel')),
+          AppDangerButton(onPressed: () => Navigator.of(ctx).pop(true), child: const Text('Remove')),
         ],
       ),
     );
@@ -2831,16 +2701,14 @@ class _DealPunchCard extends StatelessWidget {
         await PunchCardProgramsRepository().deleteForManager(punchCardId!);
       }
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(isDeal ? 'Deal removed' : 'Loyalty card removed')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(isDeal ? 'Deal removed' : 'Loyalty card removed')));
         onRefresh?.call();
       }
     } catch (e) {
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Could not remove: $e')),
-        );
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Could not remove: $e')));
       }
     }
   }
@@ -2855,13 +2723,7 @@ class _DealPunchCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppTheme.specWhite,
         borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 8, offset: const Offset(0, 2))],
         border: Border.all(color: AppTheme.specNavy.withValues(alpha: 0.08)),
       ),
       child: Row(
@@ -2881,17 +2743,12 @@ class _DealPunchCard extends StatelessWidget {
               children: [
                 Text(
                   title,
-                  style: theme.textTheme.titleSmall?.copyWith(
-                    color: AppTheme.specNavy,
-                    fontWeight: FontWeight.w600,
-                  ),
+                  style: theme.textTheme.titleSmall?.copyWith(color: AppTheme.specNavy, fontWeight: FontWeight.w600),
                 ),
                 const SizedBox(height: 2),
                 Text(
                   subtitle,
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: AppTheme.specNavy.withValues(alpha: 0.75),
-                  ),
+                  style: theme.textTheme.bodySmall?.copyWith(color: AppTheme.specNavy.withValues(alpha: 0.75)),
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -2912,10 +2769,7 @@ class _DealPunchCard extends StatelessWidget {
 }
 
 class _EventsTab extends StatelessWidget {
-  const _EventsTab({
-    required this.listingId,
-    required this.events,
-  });
+  const _EventsTab({required this.listingId, required this.events});
 
   final String listingId;
   final List<MockEvent> events;
@@ -2929,26 +2783,19 @@ class _EventsTab extends StatelessWidget {
       children: [
         Text(
           'Events',
-          style: theme.textTheme.headlineSmall?.copyWith(
-            fontWeight: FontWeight.w700,
-            color: AppTheme.specNavy,
-          ),
+          style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w700, color: AppTheme.specNavy),
         ),
         const SizedBox(height: 6),
         Text(
           '${events.length} event(s). Events are visible to customers after approval.',
-          style: theme.textTheme.bodyMedium?.copyWith(
-            color: AppTheme.specNavy.withValues(alpha: 0.8),
-          ),
+          style: theme.textTheme.bodyMedium?.copyWith(color: AppTheme.specNavy.withValues(alpha: 0.8)),
         ),
         const SizedBox(height: 20),
         AppSecondaryButton(
           onPressed: () {
-            Navigator.of(context).push(
-              MaterialPageRoute<void>(
-                builder: (_) => CreateEventScreen(listingId: listingId),
-              ),
-            );
+            Navigator.of(
+              context,
+            ).push(MaterialPageRoute<void>(builder: (_) => CreateEventScreen(listingId: listingId)));
           },
           icon: const Icon(Icons.event_rounded, size: 20),
           label: const Text('Add event'),
@@ -2961,11 +2808,7 @@ class _EventsTab extends StatelessWidget {
               color: AppTheme.specWhite,
               borderRadius: BorderRadius.circular(16),
               boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.06),
-                  blurRadius: 10,
-                  offset: const Offset(0, 4),
-                ),
+                BoxShadow(color: Colors.black.withValues(alpha: 0.06), blurRadius: 10, offset: const Offset(0, 4)),
               ],
               border: Border.all(color: AppTheme.specNavy.withValues(alpha: 0.1)),
             ),
@@ -2975,17 +2818,12 @@ class _EventsTab extends StatelessWidget {
                 const SizedBox(height: 14),
                 Text(
                   'No events yet',
-                  style: theme.textTheme.titleMedium?.copyWith(
-                    color: AppTheme.specNavy,
-                    fontWeight: FontWeight.w700,
-                  ),
+                  style: theme.textTheme.titleMedium?.copyWith(color: AppTheme.specNavy, fontWeight: FontWeight.w700),
                 ),
                 const SizedBox(height: 6),
                 Text(
                   'Tap "Add event" above to create your first event.',
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: AppTheme.specNavy.withValues(alpha: 0.75),
-                  ),
+                  style: theme.textTheme.bodySmall?.copyWith(color: AppTheme.specNavy.withValues(alpha: 0.75)),
                   textAlign: TextAlign.center,
                 ),
               ],
@@ -2996,8 +2834,7 @@ class _EventsTab extends StatelessWidget {
             final dateStr =
                 '${e.eventDate.year}-${e.eventDate.month.toString().padLeft(2, '0')}-${e.eventDate.day.toString().padLeft(2, '0')}';
             final statusLabel = e.status == 'pending' ? ' (pending approval)' : '';
-            final subtitle =
-                '$dateStr${e.location != null ? ' · ${e.location}' : ''}$statusLabel';
+            final subtitle = '$dateStr${e.location != null ? ' · ${e.location}' : ''}$statusLabel';
             return Padding(
               padding: const EdgeInsets.only(bottom: 10),
               child: Material(
@@ -3006,19 +2843,12 @@ class _EventsTab extends StatelessWidget {
                   onTap: () {
                     Navigator.of(context).push(
                       MaterialPageRoute<void>(
-                        builder: (_) => EventDetailScreen(
-                          eventId: e.id,
-                          listingId: listingId,
-                        ),
+                        builder: (_) => EventDetailScreen(eventId: e.id, listingId: listingId),
                       ),
                     );
                   },
                   borderRadius: BorderRadius.circular(14),
-                  child: _DealPunchCard(
-                    icon: Icons.event_rounded,
-                    title: e.title,
-                    subtitle: subtitle,
-                  ),
+                  child: _DealPunchCard(icon: Icons.event_rounded, title: e.title, subtitle: subtitle),
                 ),
               ),
             );
@@ -3052,26 +2882,18 @@ class _FormSubmissionsPaywallTab extends StatelessWidget {
             const SizedBox(height: 16),
             Text(
               'Messages',
-              style: theme.textTheme.titleLarge?.copyWith(
-                fontWeight: FontWeight.w700,
-                color: AppTheme.specNavy,
-              ),
+              style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700, color: AppTheme.specNavy),
             ),
             const SizedBox(height: 8),
             Text(
               message,
               textAlign: TextAlign.center,
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: AppTheme.specNavy.withValues(alpha: 0.85),
-              ),
+              style: theme.textTheme.bodyMedium?.copyWith(color: AppTheme.specNavy.withValues(alpha: 0.85)),
             ),
             const SizedBox(height: 24),
             AppSecondaryButton(
               onPressed: () {
-                BusinessTierUpgradeDialog.show(
-                  context,
-                  message: message,
-                );
+                BusinessTierUpgradeDialog.show(context, message: message);
               },
               icon: const Icon(Icons.workspace_premium_rounded, size: 20),
               label: const Text('View plans'),
@@ -3101,16 +2923,10 @@ class _MoreTab extends StatelessWidget {
         children: [
           Text(
             'Premium features',
-            style: theme.textTheme.headlineSmall?.copyWith(
-              fontWeight: FontWeight.w700,
-              color: nav,
-            ),
+            style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w700, color: nav),
           ),
           const SizedBox(height: 6),
-          Text(
-            'Unlock with a paid business plan.',
-            style: theme.textTheme.bodyMedium?.copyWith(color: sub),
-          ),
+          Text('Unlock with a paid business plan.', style: theme.textTheme.bodyMedium?.copyWith(color: sub)),
           const SizedBox(height: 24),
           Container(
             padding: const EdgeInsets.all(24),
@@ -3118,11 +2934,7 @@ class _MoreTab extends StatelessWidget {
               color: AppTheme.specWhite,
               borderRadius: BorderRadius.circular(16),
               boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.06),
-                  blurRadius: 12,
-                  offset: const Offset(0, 4),
-                ),
+                BoxShadow(color: Colors.black.withValues(alpha: 0.06), blurRadius: 12, offset: const Offset(0, 4)),
               ],
               border: Border.all(color: AppTheme.specGold.withValues(alpha: 0.4)),
             ),
@@ -3143,10 +2955,7 @@ class _MoreTab extends StatelessWidget {
                   children: [
                     Text(
                       'Upgrade to unlock',
-                      style: theme.textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w700,
-                        color: nav,
-                      ),
+                      style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700, color: nav),
                     ),
                   ],
                 ),
@@ -3183,10 +2992,7 @@ class _MoreTab extends StatelessWidget {
       children: [
         Text(
           'Premium options',
-          style: theme.textTheme.headlineSmall?.copyWith(
-            fontWeight: FontWeight.w700,
-            color: nav,
-          ),
+          style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w700, color: nav),
         ),
         const SizedBox(height: 6),
         Text(
@@ -3205,42 +3011,22 @@ class _MoreTab extends StatelessWidget {
                 style: theme.textTheme.bodySmall?.copyWith(color: sub),
               ),
               const SizedBox(height: 12),
-              if (SupabaseConfig.isConfigured)
-                Text(
-                  'Add and reorder photos on the Details tab.',
-                  style: theme.textTheme.bodySmall?.copyWith(color: sub),
-                )
-              else
-                Text(
-                  'Add photos to showcase your business.',
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: sub,
-                    fontStyle: FontStyle.italic,
-                  ),
-                ),
+              Text(
+                'Add and reorder photos on the Details tab.',
+                style: theme.textTheme.bodySmall?.copyWith(color: sub),
+              ),
             ],
           ),
         ),
+        _AdvertisingSection(listingId: listingId, theme: theme, nav: nav, sub: sub),
         const SizedBox(height: 20),
-        if (SupabaseConfig.isConfigured) ...[
-          _AdvertisingSection(
-            listingId: listingId,
-            theme: theme,
-            nav: nav,
-            sub: sub,
-          ),
-          const SizedBox(height: 20),
-          _MoreSection(
-            title: 'Custom links',
-            icon: Icons.link_rounded,
-            child: BusinessLinksEditor(businessId: listingId),
-          ),
-          const SizedBox(height: 20),
-          Padding(
-            padding: const EdgeInsets.only(bottom: 20),
-            child: _ContactFormTemplateSection(listingId: listingId),
-          ),
-        ],
+        _MoreSection(
+          title: 'Custom links',
+          icon: Icons.link_rounded,
+          child: BusinessLinksEditor(businessId: listingId),
+        ),
+        const SizedBox(height: 20),
+        _ContactFormTemplateSection(listingId: listingId),
         const SizedBox(height: 24),
       ],
     );
@@ -3257,24 +3043,22 @@ class _AccountAccessTab extends StatelessWidget {
   Widget build(BuildContext context) {
     return ListView(
       padding: const EdgeInsets.all(24),
-      children: [
-        _AccountAccessSection(listingId: listingId),
-      ],
+      children: [_AccountAccessSection(listingId: listingId)],
     );
   }
 }
 
 /// Account access: list users with access, add by email, remove. Managers only (RLS).
-class _AccountAccessSection extends StatefulWidget {
+class _AccountAccessSection extends ConsumerStatefulWidget {
   const _AccountAccessSection({required this.listingId});
 
   final String listingId;
 
   @override
-  State<_AccountAccessSection> createState() => _AccountAccessSectionState();
+  ConsumerState<_AccountAccessSection> createState() => _AccountAccessSectionState();
 }
 
-class _AccountAccessSectionState extends State<_AccountAccessSection> {
+class _AccountAccessSectionState extends ConsumerState<_AccountAccessSection> {
   late Future<List<BusinessManagerEntry>> _managersFuture;
 
   @override
@@ -3315,10 +3099,7 @@ class _AccountAccessSectionState extends State<_AccountAccessSection> {
                 TextFormField(
                   controller: controller,
                   keyboardType: TextInputType.emailAddress,
-                  decoration: const InputDecoration(
-                    labelText: 'Email',
-                    hintText: 'colleague@example.com',
-                  ),
+                  decoration: const InputDecoration(labelText: 'Email', hintText: 'colleague@example.com'),
                   validator: (v) {
                     if (v == null || v.trim().isEmpty) return 'Enter an email';
                     return null;
@@ -3339,9 +3120,9 @@ class _AccountAccessSectionState extends State<_AccountAccessSection> {
                 final userId = await BusinessManagersRepository().lookupUserByEmail(widget.listingId, email);
                 if (!ctx.mounted) return;
                 if (userId == null) {
-                  ScaffoldMessenger.of(ctx).showSnackBar(
-                    SnackBar(content: Text('No account found with that email. They must sign up first.')),
-                  );
+                  ScaffoldMessenger.of(
+                    ctx,
+                  ).showSnackBar(SnackBar(content: Text('No account found with that email. They must sign up first.')));
                   return;
                 }
                 try {
@@ -3350,9 +3131,7 @@ class _AccountAccessSectionState extends State<_AccountAccessSection> {
                   Navigator.of(ctx).pop(true);
                 } catch (e) {
                   if (!ctx.mounted) return;
-                  ScaffoldMessenger.of(ctx).showSnackBar(
-                    SnackBar(content: Text('Could not add user: $e')),
-                  );
+                  ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(content: Text('Could not add user: $e')));
                 }
               },
               child: const Text('Add'),
@@ -3373,10 +3152,7 @@ class _AccountAccessSectionState extends State<_AccountAccessSection> {
           '${entry.displayName ?? entry.email ?? entry.userId} will no longer be able to manage this listing.',
         ),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('Cancel'),
-          ),
+          TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Cancel')),
           FilledButton(
             onPressed: () => Navigator.of(ctx).pop(true),
             style: FilledButton.styleFrom(backgroundColor: AppTheme.specRed),
@@ -3390,15 +3166,11 @@ class _AccountAccessSectionState extends State<_AccountAccessSection> {
       await BusinessManagersRepository().delete(widget.listingId, entry.userId);
       if (mounted) _refresh();
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Access removed')),
-        );
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Access removed')));
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Could not remove: $e')),
-        );
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Could not remove: $e')));
       }
     }
   }
@@ -3408,7 +3180,7 @@ class _AccountAccessSectionState extends State<_AccountAccessSection> {
     final theme = Theme.of(context);
     final nav = AppTheme.specNavy;
     final sub = nav.withValues(alpha: 0.8);
-    final currentUserId = Supabase.instance.client.auth.currentUser?.id;
+    final currentUserId = ref.watch(authNotifierProvider).valueOrNull?.id;
 
     return _MoreSection(
       title: 'Account access',
@@ -3436,9 +3208,9 @@ class _AccountAccessSectionState extends State<_AccountAccessSection> {
                 children: [
                   ...list.map((e) {
                     final isCurrent = e.userId == currentUserId;
-                    final label = e.displayName?.isNotEmpty == true
+                    final label = (e.displayName != null && e.displayName!.trim().isNotEmpty)
                         ? e.displayName!
-                        : (e.email?.isNotEmpty == true ? e.email! : 'User');
+                        : (e.email ?? 'Unknown manager');
                     return Padding(
                       padding: const EdgeInsets.only(bottom: 8),
                       child: Row(
@@ -3479,12 +3251,7 @@ class _AccountAccessSectionState extends State<_AccountAccessSection> {
 
 /// Advertising section for paid-tier owners: how it works, benefits, CTA. Matches upselling style.
 class _AdvertisingSection extends StatelessWidget {
-  const _AdvertisingSection({
-    required this.listingId,
-    required this.theme,
-    required this.nav,
-    required this.sub,
-  });
+  const _AdvertisingSection({required this.listingId, required this.theme, required this.nav, required this.sub});
 
   final String listingId;
   final ThemeData theme;
@@ -3498,13 +3265,7 @@ class _AdvertisingSection extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppTheme.specWhite,
         borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.06),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
-          ),
-        ],
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.06), blurRadius: 12, offset: const Offset(0, 4))],
         border: Border.all(color: AppTheme.specGold.withValues(alpha: 0.35)),
       ),
       child: Column(
@@ -3527,18 +3288,12 @@ class _AdvertisingSection extends StatelessWidget {
                   children: [
                     Text(
                       'Advertising',
-                      style: theme.textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w700,
-                        color: nav,
-                      ),
+                      style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700, color: nav),
                     ),
                     const SizedBox(height: 2),
                     Text(
                       'Promote your business with sponsored placements in Explore and Deals. Tap to buy an ad or view performance.',
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: sub,
-                        height: 1.35,
-                      ),
+                      style: theme.textTheme.bodySmall?.copyWith(color: sub, height: 1.35),
                     ),
                   ],
                 ),
@@ -3548,11 +3303,9 @@ class _AdvertisingSection extends StatelessWidget {
           const SizedBox(height: 20),
           AppSecondaryButton(
             onPressed: () {
-              Navigator.of(context).push(
-                MaterialPageRoute<void>(
-                  builder: (_) => BusinessAdsScreen(businessId: listingId),
-                ),
-              );
+              Navigator.of(
+                context,
+              ).push(MaterialPageRoute<void>(builder: (_) => BusinessAdsScreen(businessId: listingId)));
             },
             icon: const Icon(Icons.campaign_rounded, size: 20),
             label: const Text('Manage ads'),
@@ -3564,11 +3317,7 @@ class _AdvertisingSection extends StatelessWidget {
 }
 
 class _MoreSection extends StatelessWidget {
-  const _MoreSection({
-    required this.title,
-    required this.icon,
-    required this.child,
-  });
+  const _MoreSection({required this.title, required this.icon, required this.child});
 
   final String title;
   final IconData icon;
@@ -3582,13 +3331,7 @@ class _MoreSection extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppTheme.specWhite,
         borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.06),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.06), blurRadius: 10, offset: const Offset(0, 4))],
         border: Border.all(color: AppTheme.specNavy.withValues(alpha: 0.1)),
       ),
       child: Column(
@@ -3600,10 +3343,7 @@ class _MoreSection extends StatelessWidget {
               const SizedBox(width: 10),
               Text(
                 title,
-                style: theme.textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.w700,
-                  color: AppTheme.specNavy,
-                ),
+                style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700, color: AppTheme.specNavy),
               ),
             ],
           ),
@@ -3651,7 +3391,7 @@ class _ContactFormTemplateSectionState extends State<_ContactFormTemplateSection
     try {
       await BusinessRepository().updateContactFormTemplate(
         widget.listingId,
-        _selectedKey?.isEmpty == true ? null : _selectedKey,
+        _selectedKey == null || _selectedKey!.trim().isEmpty ? null : _selectedKey,
       );
       if (mounted) {
         setState(() {
@@ -3679,9 +3419,7 @@ class _ContactFormTemplateSectionState extends State<_ContactFormTemplateSection
                 )
               : null;
         });
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Contact form template saved.')),
-        );
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Contact form template saved.')));
       }
     } catch (_) {
       if (mounted) setState(() => _saving = false);
@@ -3692,7 +3430,9 @@ class _ContactFormTemplateSectionState extends State<_ContactFormTemplateSection
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     if (_loading) {
-      return const Center(child: Padding(padding: EdgeInsets.all(24), child: CircularProgressIndicator()));
+      return const Center(
+        child: Padding(padding: EdgeInsets.all(24), child: CircularProgressIndicator()),
+      );
     }
     final current = _selectedKey ?? 'none';
     if (current != 'none' && ContactFormTemplates.getByKey(current) == null) {
@@ -3714,10 +3454,7 @@ class _ContactFormTemplateSectionState extends State<_ContactFormTemplateSection
               const SizedBox(width: 8),
               Text(
                 'Contact form template',
-                style: theme.textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.w700,
-                  color: AppTheme.specNavy,
-                ),
+                style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700, color: AppTheme.specNavy),
               ),
             ],
           ),
@@ -3739,10 +3476,7 @@ class _ContactFormTemplateSectionState extends State<_ContactFormTemplateSection
                   value: key,
                   title: Text(label, style: theme.textTheme.bodyMedium?.copyWith(color: AppTheme.specNavy)),
                   fillColor: WidgetStateProperty.resolveWith(
-                    (Set<WidgetState> states) =>
-                        states.contains(WidgetState.selected)
-                            ? AppTheme.specNavy
-                            : null,
+                    (Set<WidgetState> states) => states.contains(WidgetState.selected) ? AppTheme.specNavy : null,
                   ),
                 );
               }).toList(),
@@ -3759,20 +3493,18 @@ class _ContactFormTemplateSectionState extends State<_ContactFormTemplateSection
                   children: [
                     Text(
                       'Preview: fields shown',
-                      style: theme.textTheme.labelMedium?.copyWith(
-                        color: AppTheme.specNavy.withValues(alpha: 0.8),
-                      ),
+                      style: theme.textTheme.labelMedium?.copyWith(color: AppTheme.specNavy.withValues(alpha: 0.8)),
                     ),
                     const SizedBox(height: 4),
-                    ...def.fields.map((f) => Padding(
-                          padding: const EdgeInsets.only(bottom: 2),
-                          child: Text(
-                            '• ${f.label}${f.required ? ' (required)' : ''}',
-                            style: theme.textTheme.bodySmall?.copyWith(
-                              color: AppTheme.specNavy.withValues(alpha: 0.9),
-                            ),
-                          ),
-                        )),
+                    ...def.fields.map(
+                      (f) => Padding(
+                        padding: const EdgeInsets.only(bottom: 2),
+                        child: Text(
+                          '• ${f.label}${f.required ? ' (required)' : ''}',
+                          style: theme.textTheme.bodySmall?.copyWith(color: AppTheme.specNavy.withValues(alpha: 0.9)),
+                        ),
+                      ),
+                    ),
                   ],
                 );
               },
@@ -3782,7 +3514,11 @@ class _ContactFormTemplateSectionState extends State<_ContactFormTemplateSection
           AppSecondaryButton(
             onPressed: _saving ? null : _save,
             child: _saving
-                ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                ? const SizedBox(
+                    height: 20,
+                    width: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                  )
                 : const Text('Save'),
           ),
         ],

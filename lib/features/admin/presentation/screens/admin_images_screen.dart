@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:my_app/core/data/app_data_scope.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:my_app/core/auth/providers/auth_provider.dart';
 import 'package:my_app/core/data/models/business_image.dart';
 import 'package:my_app/core/data/repositories/audit_log_repository.dart';
 import 'package:my_app/core/data/repositories/business_images_repository.dart';
@@ -12,21 +13,17 @@ import 'package:my_app/features/admin/presentation/screens/admin_image_detail_sc
 import 'package:my_app/shared/widgets/app_buttons.dart';
 
 /// Admin images: grouped by business. Pending first; approve per image, per business, or all.
-class AdminImagesScreen extends StatefulWidget {
-  const AdminImagesScreen({
-    super.key,
-    this.status,
-    this.embeddedInShell = false,
-  });
+class AdminImagesScreen extends ConsumerStatefulWidget {
+  const AdminImagesScreen({super.key, this.status, this.embeddedInShell = false});
 
   final String? status;
   final bool embeddedInShell;
 
   @override
-  State<AdminImagesScreen> createState() => _AdminImagesScreenState();
+  ConsumerState<AdminImagesScreen> createState() => _AdminImagesScreenState();
 }
 
-class _AdminImagesScreenState extends State<AdminImagesScreen> {
+class _AdminImagesScreenState extends ConsumerState<AdminImagesScreen> {
   List<BusinessImage>? _images;
   Map<String, String> _businessNameById = {};
   String? _businessesError;
@@ -76,14 +73,14 @@ class _AdminImagesScreenState extends State<AdminImagesScreen> {
   }
 
   void _openAddImage() {
-    Navigator.of(context).push(
-      MaterialPageRoute<void>(builder: (_) => const AdminAddImageScreen()),
-    ).then((_) => _load());
+    Navigator.of(
+      context,
+    ).push(MaterialPageRoute<void>(builder: (_) => const AdminAddImageScreen())).then((_) => _load());
   }
 
   Future<void> _approveImages(List<String> ids) async {
     if (ids.isEmpty) return;
-    final uid = AppDataScope.of(context).authRepository.currentUserId;
+    final uid = ref.read(authNotifierProvider).valueOrNull?.id;
     if (uid == null) return;
     setState(() => _approving = true);
     try {
@@ -95,16 +92,16 @@ class _AdminImagesScreenState extends State<AdminImagesScreen> {
         details: ids.join(','),
       );
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('${ids.length} image${ids.length == 1 ? '' : 's'} approved')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('${ids.length} image${ids.length == 1 ? '' : 's'} approved')));
         _load();
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to approve: $e'), backgroundColor: Colors.red),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Failed to approve: $e'), backgroundColor: Colors.red));
       }
     } finally {
       if (mounted) setState(() => _approving = false);
@@ -146,16 +143,8 @@ class _AdminImagesScreenState extends State<AdminImagesScreen> {
         backgroundColor: AppTheme.specOffWhite,
         foregroundColor: AppTheme.specNavy,
         actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh_rounded),
-            tooltip: 'Refresh',
-            onPressed: _loading ? null : _load,
-          ),
-          IconButton(
-            icon: const Icon(Icons.add_rounded),
-            tooltip: 'Add image',
-            onPressed: _openAddImage,
-          ),
+          IconButton(icon: const Icon(Icons.refresh_rounded), tooltip: 'Refresh', onPressed: _loading ? null : _load),
+          IconButton(icon: const Icon(Icons.add_rounded), tooltip: 'Add image', onPressed: _openAddImage),
         ],
       ),
       body: _buildBody(context),
@@ -215,11 +204,9 @@ class _AdminImagesScreenState extends State<AdminImagesScreen> {
                     list.isEmpty
                         ? 'No images'
                         : totalPending > 0
-                            ? '$totalPending pending in ${groupedPending.length} business${groupedPending.length == 1 ? '' : 'es'}. Approve per business or all at once.'
-                            : '${list.length} image${list.length == 1 ? '' : 's'} total.',
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      color: AppTheme.specNavy.withValues(alpha: 0.75),
-                    ),
+                        ? '$totalPending pending in ${groupedPending.length} business${groupedPending.length == 1 ? '' : 'es'}. Approve per business or all at once.'
+                        : '${list.length} image${list.length == 1 ? '' : 's'} total.',
+                    style: theme.textTheme.bodyMedium?.copyWith(color: AppTheme.specNavy.withValues(alpha: 0.75)),
                   ),
                   if (_businessesError != null) ...[
                     const SizedBox(height: 8),
@@ -282,38 +269,31 @@ class _AdminImagesScreenState extends State<AdminImagesScreen> {
             )
           else
             SliverList(
-              delegate: SliverChildBuilderDelegate(
-                (context, index) {
-                  final businessIds = groupedPending.keys.toList();
-                  if (index >= businessIds.length) return null;
-                  final businessId = businessIds[index];
-                  final groupImages = groupedPending[businessId]!;
-                  final businessName = _businessNameById[businessId] ?? businessId;
-                  return _BusinessImageGroup(
-                    businessId: businessId,
-                    businessName: businessName,
-                    images: groupImages,
-                    approving: _approving,
-                    onApproveOne: (id) => _approveImages([id]),
-                    onApproveAll: () => _approveImages(groupImages.map((i) => i.id).toList()),
-                    onTapImage: (img) {
-                      Navigator.of(context).push(
-                        MaterialPageRoute<void>(
-                          builder: (_) => AdminImageDetailScreen(imageId: img.id),
-                        ),
-                      ).then((_) => _load());
-                    },
-                    onOpenBusiness: () {
-                      Navigator.of(context).push(
-                        MaterialPageRoute<void>(
-                          builder: (_) => AdminBusinessDetailScreen(businessId: businessId),
-                        ),
-                      );
-                    },
-                  );
-                },
-                childCount: groupedPending.length,
-              ),
+              delegate: SliverChildBuilderDelegate((context, index) {
+                final businessIds = groupedPending.keys.toList();
+                if (index >= businessIds.length) return null;
+                final businessId = businessIds[index];
+                final groupImages = groupedPending[businessId]!;
+                final businessName = _businessNameById[businessId] ?? businessId;
+                return _BusinessImageGroup(
+                  businessId: businessId,
+                  businessName: businessName,
+                  images: groupImages,
+                  approving: _approving,
+                  onApproveOne: (id) => _approveImages([id]),
+                  onApproveAll: () => _approveImages(groupImages.map((i) => i.id).toList()),
+                  onTapImage: (img) {
+                    Navigator.of(context)
+                        .push(MaterialPageRoute<void>(builder: (_) => AdminImageDetailScreen(imageId: img.id)))
+                        .then((_) => _load());
+                  },
+                  onOpenBusiness: () {
+                    Navigator.of(
+                      context,
+                    ).push(MaterialPageRoute<void>(builder: (_) => AdminBusinessDetailScreen(businessId: businessId)));
+                  },
+                );
+              }, childCount: groupedPending.length),
             ),
           const SliverToBoxAdapter(child: SizedBox(height: 24)),
         ],
@@ -359,11 +339,7 @@ class _BusinessImageGroup extends StatelessWidget {
               color: AppTheme.specWhite,
               borderRadius: BorderRadius.circular(16),
               boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.06),
-                  blurRadius: 10,
-                  offset: const Offset(0, 4),
-                ),
+                BoxShadow(color: Colors.black.withValues(alpha: 0.06), blurRadius: 10, offset: const Offset(0, 4)),
               ],
               border: Border.all(color: AppTheme.specNavy.withValues(alpha: 0.1)),
             ),
@@ -386,9 +362,7 @@ class _BusinessImageGroup extends StatelessWidget {
                           const SizedBox(height: 2),
                           Text(
                             '${images.length} pending image${images.length == 1 ? '' : 's'}',
-                            style: theme.textTheme.bodySmall?.copyWith(
-                              color: AppTheme.specNavy.withValues(alpha: 0.7),
-                            ),
+                            style: theme.textTheme.bodySmall?.copyWith(color: AppTheme.specNavy.withValues(alpha: 0.7)),
                           ),
                         ],
                       ),
@@ -402,11 +376,7 @@ class _BusinessImageGroup extends StatelessWidget {
                     AppSecondaryButton(
                       onPressed: approving ? null : onApproveAll,
                       icon: approving
-                          ? const SizedBox(
-                              width: 18,
-                              height: 18,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            )
+                          ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
                           : const Icon(Icons.check_circle_rounded, size: 20),
                       label: Text('Approve all (${images.length})'),
                     ),

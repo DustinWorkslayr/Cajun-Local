@@ -1,23 +1,24 @@
 import 'package:flutter/material.dart';
-import 'package:my_app/core/auth/auth_repository.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:my_app/core/auth/providers/auth_provider.dart';
 import 'package:my_app/core/data/models/business_claim.dart';
 import 'package:my_app/core/data/models/profile.dart';
 import 'package:my_app/core/data/repositories/audit_log_repository.dart';
 import 'package:my_app/core/data/repositories/business_claims_repository.dart';
 import 'package:my_app/core/data/repositories/business_managers_repository.dart';
 import 'package:my_app/core/data/repositories/business_repository.dart';
-import 'package:my_app/core/data/services/send_email_service.dart';
+import 'package:my_app/core/data/repositories/profiles_repository.dart';
 
-class AdminClaimDetailScreen extends StatefulWidget {
+class AdminClaimDetailScreen extends ConsumerStatefulWidget {
   const AdminClaimDetailScreen({super.key, required this.claimId});
 
   final String claimId;
 
   @override
-  State<AdminClaimDetailScreen> createState() => _AdminClaimDetailScreenState();
+  ConsumerState<AdminClaimDetailScreen> createState() => _AdminClaimDetailScreenState();
 }
 
-class _AdminClaimDetailScreenState extends State<AdminClaimDetailScreen> {
+class _AdminClaimDetailScreenState extends ConsumerState<AdminClaimDetailScreen> {
   BusinessClaim? _claim;
   String? _businessName;
   Profile? _profile;
@@ -43,7 +44,7 @@ class _AdminClaimDetailScreenState extends State<AdminClaimDetailScreen> {
       return;
     }
     final b = await BusinessRepository().getByIdForAdmin(c.businessId);
-    final p = await AuthRepository().getProfileForAdmin(c.userId);
+    final p = await ref.read(profilesRepositoryProvider).getProfile(c.userId);
     if (mounted) {
       setState(() {
         _claim = c;
@@ -57,13 +58,15 @@ class _AdminClaimDetailScreenState extends State<AdminClaimDetailScreen> {
   Future<void> _updateStatus(String status) async {
     final repo = BusinessClaimsRepository();
     await repo.updateStatus(widget.claimId, status);
-    final uid = AuthRepository().currentUserId;
-    AuditLogRepository().insert(
-      action: status == 'approved' ? 'claim_approved' : 'claim_rejected',
-      userId: uid,
-      targetTable: 'business_claims',
-      targetId: widget.claimId,
-    );
+    final uid = ref.read(authNotifierProvider).valueOrNull?.id;
+    if (uid != null) {
+      AuditLogRepository().insert(
+        action: status == 'approved' ? 'claim_approved' : 'claim_rejected',
+        userId: uid,
+        targetTable: 'business_claims',
+        targetId: widget.claimId,
+      );
+    }
     if (status == 'approved' && _claim != null) {
       try {
         await BusinessManagersRepository().insert(_claim!.businessId, _claim!.userId);
@@ -77,21 +80,7 @@ class _AdminClaimDetailScreenState extends State<AdminClaimDetailScreen> {
     }
     final to = _profile?.email?.trim();
     if (to != null && to.isNotEmpty) {
-      final businessName = _businessName ?? _claim?.businessId ?? 'the business';
-      final displayName = _profile?.displayName ?? to;
-      if (status == 'approved') {
-        await SendEmailService().send(
-          to: to,
-          template: 'claim_approved',
-          variables: {'display_name': displayName, 'email': to, 'business_name': businessName},
-        );
-      } else if (status == 'rejected') {
-        await SendEmailService().send(
-          to: to,
-          template: 'claim_rejected',
-          variables: {'display_name': displayName, 'business_name': businessName},
-        );
-      }
+      // TODO: Backend should handle email notifications for claim approval/rejection.
     }
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(

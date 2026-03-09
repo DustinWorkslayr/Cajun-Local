@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:my_app/core/data/app_data_scope.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:my_app/core/auth/providers/auth_provider.dart';
+import 'package:my_app/core/data/providers/app_data_providers.dart';
 import 'package:my_app/core/data/mock_data.dart';
 import 'package:my_app/core/theme/app_layout.dart';
 import 'package:my_app/core/theme/theme.dart';
@@ -8,17 +10,17 @@ import 'package:my_app/shared/widgets/app_buttons.dart';
 import 'package:my_app/shared/widgets/punch_qr_sheet.dart';
 
 /// Screen showing the current user's punch card enrollments (punches and redemption).
-class MyPunchCardsScreen extends StatelessWidget {
+class MyPunchCardsScreen extends ConsumerWidget {
   const MyPunchCardsScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
-    final dataSource = AppDataScope.of(context).dataSource;
+    final dataSource = ref.watch(listingDataSourceProvider);
     final padding = AppLayout.horizontalPadding(context);
-    final auth = AppDataScope.of(context).authRepository;
+    final userId = ref.watch(authNotifierProvider).valueOrNull?.id;
 
-    if (auth.currentUserId == null) {
+    if (userId == null) {
       return Scaffold(
         appBar: AppBar(
           title: const Text('My punch cards'),
@@ -30,9 +32,7 @@ class MyPunchCardsScreen extends StatelessWidget {
             padding: const EdgeInsets.all(24),
             child: Text(
               'Sign in to see your punch cards.',
-              style: theme.textTheme.bodyLarge?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
-              ),
+              style: theme.textTheme.bodyLarge?.copyWith(color: theme.colorScheme.onSurfaceVariant),
               textAlign: TextAlign.center,
             ),
           ),
@@ -74,9 +74,7 @@ class MyPunchCardsScreen extends StatelessWidget {
                     const SizedBox(height: 8),
                     Text(
                       'Enroll in a punch card at a business to see your progress here.',
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        color: theme.colorScheme.onSurfaceVariant,
-                      ),
+                      style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant),
                       textAlign: TextAlign.center,
                     ),
                   ],
@@ -99,14 +97,12 @@ class MyPunchCardsScreen extends StatelessWidget {
                       card: card,
                       listingName: listing?.name,
                       onTap: () {
-                        Navigator.of(context).push(
-                          MaterialPageRoute<void>(
-                            builder: (_) => ListingDetailScreen(listingId: card.listingId),
-                          ),
-                        );
+                        Navigator.of(
+                          context,
+                        ).push(MaterialPageRoute<void>(builder: (_) => ListingDetailScreen(listingId: card.listingId)));
                       },
                       onShowQr: card.userPunchCardId != null && !card.isRedeemed
-                          ? () => showPunchQrSheet(context, userPunchCardId: card.userPunchCardId!, cardTitle: card.title)
+                          ? () => showPunchQrSheet(context, programId: card.id, cardTitle: card.title)
                           : null,
                     ),
                   );
@@ -121,12 +117,7 @@ class MyPunchCardsScreen extends StatelessWidget {
 }
 
 class _MyPunchCardTile extends StatelessWidget {
-  const _MyPunchCardTile({
-    required this.card,
-    required this.onTap,
-    this.listingName,
-    this.onShowQr,
-  });
+  const _MyPunchCardTile({required this.card, required this.onTap, this.listingName, this.onShowQr});
 
   final MockPunchCard card;
   final VoidCallback onTap;
@@ -150,11 +141,7 @@ class _MyPunchCardTile extends StatelessWidget {
             borderRadius: BorderRadius.circular(_cardRadius),
             border: Border.all(color: AppTheme.specGold.withValues(alpha: 0.3), width: 1),
             boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.06),
-                blurRadius: 12,
-                offset: const Offset(0, 4),
-              ),
+              BoxShadow(color: Colors.black.withValues(alpha: 0.06), blurRadius: 12, offset: const Offset(0, 4)),
             ],
           ),
           child: Column(
@@ -194,18 +181,13 @@ class _MyPunchCardTile extends StatelessWidget {
                 const SizedBox(height: 4),
                 Text(
                   listingName!,
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: AppTheme.specRed,
-                    fontWeight: FontWeight.w500,
-                  ),
+                  style: theme.textTheme.bodySmall?.copyWith(color: AppTheme.specRed, fontWeight: FontWeight.w500),
                 ),
               ],
               const SizedBox(height: 10),
               Text(
                 card.rewardDescription,
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
-                ),
+                style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
               ),
               const SizedBox(height: 14),
               Row(
@@ -235,10 +217,7 @@ class _MyPunchCardTile extends StatelessWidget {
                   const SizedBox(width: 8),
                   Text(
                     '${card.punchesEarned}/${card.punchesRequired} punches',
-                    style: theme.textTheme.labelLarge?.copyWith(
-                      fontWeight: FontWeight.w600,
-                      color: AppTheme.specNavy,
-                    ),
+                    style: theme.textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w600, color: AppTheme.specNavy),
                   ),
                 ],
               ),
@@ -251,7 +230,10 @@ class _MyPunchCardTile extends StatelessWidget {
                     icon: const Icon(Icons.qr_code_2_rounded, size: 20, color: AppTheme.specNavy),
                     label: Text(
                       'Show QR for punch',
-                      style: theme.textTheme.labelLarge?.copyWith(color: AppTheme.specNavy, fontWeight: FontWeight.w600),
+                      style: theme.textTheme.labelLarge?.copyWith(
+                        color: AppTheme.specNavy,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                   ),
                 ),

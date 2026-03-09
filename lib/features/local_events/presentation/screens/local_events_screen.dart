@@ -1,32 +1,31 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
-import 'package:my_app/core/data/app_data_scope.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:my_app/core/auth/providers/auth_provider.dart';
+import 'package:my_app/core/data/providers/app_data_providers.dart';
 import 'package:my_app/core/data/models/business_event.dart';
 import 'package:my_app/core/data/models/event_rsvp.dart';
 import 'package:my_app/core/data/repositories/business_events_repository.dart';
 import 'package:my_app/core/data/repositories/business_repository.dart';
-import 'package:my_app/core/data/repositories/event_rsvps_repository.dart';
-import 'package:my_app/core/supabase/supabase_config.dart';
 import 'package:my_app/core/theme/app_layout.dart';
 import 'package:my_app/core/theme/theme.dart';
 import 'package:my_app/features/listing/presentation/screens/listing_detail_screen.dart';
 
 /// Local Events — approved events from all businesses. Theme aligned with home/news.
 /// Shows "My RSVPs" when signed in and RSVP chips on each event card.
-class LocalEventsScreen extends StatefulWidget {
+class LocalEventsScreen extends ConsumerStatefulWidget {
   const LocalEventsScreen({super.key});
 
   @override
-  State<LocalEventsScreen> createState() => _LocalEventsScreenState();
+  ConsumerState<LocalEventsScreen> createState() => _LocalEventsScreenState();
 }
 
-class _LocalEventsScreenState extends State<LocalEventsScreen> {
-  final _rsvpRepo = EventRsvpsRepository();
+class _LocalEventsScreenState extends ConsumerState<LocalEventsScreen> {
   Map<String, String> _myStatusByEventId = {};
   bool _myRsvpsLoaded = false;
 
   Future<void> _loadMyRsvps() async {
-    final list = await _rsvpRepo.listMyRsvps();
+    final list = await ref.read(eventRsvpsRepositoryProvider).listMyRsvps();
     if (!mounted) return;
     setState(() {
       _myStatusByEventId = {for (var r in list) r.eventId: r.status};
@@ -35,7 +34,7 @@ class _LocalEventsScreenState extends State<LocalEventsScreen> {
   }
 
   Future<void> _setRsvp(String eventId, String status) async {
-    await _rsvpRepo.upsert(eventId: eventId, status: status);
+    await ref.read(eventRsvpsRepositoryProvider).upsert(eventId: eventId, status: status);
     if (mounted) setState(() => _myStatusByEventId[eventId] = status);
   }
 
@@ -62,8 +61,7 @@ class _LocalEventsScreenState extends State<LocalEventsScreen> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    if (!_myRsvpsLoaded &&
-        AppDataScope.of(context).authRepository.currentUserId != null) {
+    if (!_myRsvpsLoaded && ref.watch(authNotifierProvider).valueOrNull?.id != null) {
       _loadMyRsvps();
     }
   }
@@ -96,9 +94,7 @@ class _LocalEventsScreenState extends State<LocalEventsScreen> {
                     const SizedBox(height: 4),
                     Text(
                       'Happenings from businesses near you.',
-                      style: theme.textTheme.bodyLarge?.copyWith(
-                        color: AppTheme.specNavy.withValues(alpha: 0.7),
-                      ),
+                      style: theme.textTheme.bodyLarge?.copyWith(color: AppTheme.specNavy.withValues(alpha: 0.7)),
                     ),
                   ],
                 ),
@@ -108,8 +104,8 @@ class _LocalEventsScreenState extends State<LocalEventsScreen> {
           SliverPadding(
             padding: EdgeInsets.fromLTRB(padding.left, 12, padding.right, padding.right),
             sliver: FutureBuilder<List<EventRsvp>>(
-              future: AppDataScope.of(context).authRepository.currentUserId != null
-                  ? _rsvpRepo.listMyRsvps()
+              future: ref.watch(authNotifierProvider).valueOrNull?.id != null
+                  ? ref.read(eventRsvpsRepositoryProvider).listMyRsvps()
                   : Future.value(<EventRsvp>[]),
               builder: (context, myRsvpsSnapshot) {
                 final myRsvps = myRsvpsSnapshot.data ?? [];
@@ -120,17 +116,11 @@ class _LocalEventsScreenState extends State<LocalEventsScreen> {
                   child: FutureBuilder<Map<String, (BusinessEvent?, String)>>(
                     future: _loadMyRsvpsWithDetails(myRsvps),
                     builder: (context, detailsSnapshot) {
-                      if (detailsSnapshot.connectionState ==
-                              ConnectionState.waiting &&
-                          !detailsSnapshot.hasData) {
+                      if (detailsSnapshot.connectionState == ConnectionState.waiting && !detailsSnapshot.hasData) {
                         return const Padding(
                           padding: EdgeInsets.only(bottom: 24),
                           child: Center(
-                            child: SizedBox(
-                              width: 24,
-                              height: 24,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            ),
+                            child: SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2)),
                           ),
                         );
                       }
@@ -162,42 +152,33 @@ class _LocalEventsScreenState extends State<LocalEventsScreen> {
                                   onTap: () {
                                     Navigator.of(context).push(
                                       MaterialPageRoute<void>(
-                                        builder: (_) => ListingDetailScreen(
-                                          listingId: event.businessId,
-                                        ),
+                                        builder: (_) => ListingDetailScreen(listingId: event.businessId),
                                       ),
                                     );
                                   },
                                   borderRadius: BorderRadius.circular(12),
                                   child: Padding(
-                                    padding: const EdgeInsets.symmetric(
-                                        horizontal: 14, vertical: 12),
+                                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                                     child: Row(
                                       children: [
                                         Expanded(
                                           child: Column(
-                                            crossAxisAlignment:
-                                                CrossAxisAlignment.start,
+                                            crossAxisAlignment: CrossAxisAlignment.start,
                                             children: [
                                               Text(
                                                 event.title,
-                                                style: theme.textTheme
-                                                    .bodyLarge
-                                                    ?.copyWith(
-                                                      fontWeight: FontWeight.w600,
-                                                      color: AppTheme.specNavy,
-                                                    ),
+                                                style: theme.textTheme.bodyLarge?.copyWith(
+                                                  fontWeight: FontWeight.w600,
+                                                  color: AppTheme.specNavy,
+                                                ),
                                                 maxLines: 1,
                                                 overflow: TextOverflow.ellipsis,
                                               ),
                                               Text(
                                                 businessName,
-                                                style: theme.textTheme
-                                                    .bodySmall
-                                                    ?.copyWith(
-                                                      color: AppTheme.specNavy
-                                                          .withValues(alpha: 0.7),
-                                                    ),
+                                                style: theme.textTheme.bodySmall?.copyWith(
+                                                  color: AppTheme.specNavy.withValues(alpha: 0.7),
+                                                ),
                                                 maxLines: 1,
                                                 overflow: TextOverflow.ellipsis,
                                               ),
@@ -205,31 +186,25 @@ class _LocalEventsScreenState extends State<LocalEventsScreen> {
                                           ),
                                         ),
                                         Container(
-                                          padding: const EdgeInsets.symmetric(
-                                              horizontal: 10, vertical: 4),
+                                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                                           decoration: BoxDecoration(
                                             color: status == 'going'
-                                                ? Colors.green
-                                                    .withValues(alpha: 0.2)
+                                                ? Colors.green.withValues(alpha: 0.2)
                                                 : status == 'interested'
-                                                    ? AppTheme.specGold
-                                                        .withValues(alpha: 0.3)
-                                                    : AppTheme.specNavy
-                                                        .withValues(alpha: 0.1),
-                                            borderRadius:
-                                                BorderRadius.circular(8),
+                                                ? AppTheme.specGold.withValues(alpha: 0.3)
+                                                : AppTheme.specNavy.withValues(alpha: 0.1),
+                                            borderRadius: BorderRadius.circular(8),
                                           ),
                                           child: Text(
                                             status == 'going'
                                                 ? 'Going'
                                                 : status == 'interested'
-                                                    ? 'Interested'
-                                                    : 'Not going',
-                                            style: theme.textTheme.labelSmall
-                                                ?.copyWith(
-                                                  fontWeight: FontWeight.w600,
-                                                  color: AppTheme.specNavy,
-                                                ),
+                                                ? 'Interested'
+                                                : 'Not going',
+                                            style: theme.textTheme.labelSmall?.copyWith(
+                                              fontWeight: FontWeight.w600,
+                                              color: AppTheme.specNavy,
+                                            ),
                                           ),
                                         ),
                                       ],
@@ -251,18 +226,13 @@ class _LocalEventsScreenState extends State<LocalEventsScreen> {
           SliverPadding(
             padding: EdgeInsets.fromLTRB(padding.left, 20, padding.right, padding.right),
             sliver: FutureBuilder<List<BusinessEvent>>(
-              future: SupabaseConfig.isConfigured
-                  ? BusinessEventsRepository().listApproved()
-                  : Future.value(<BusinessEvent>[]),
+              future: BusinessEventsRepository().listApproved(),
               builder: (context, eventsSnapshot) {
-                if (eventsSnapshot.connectionState == ConnectionState.waiting &&
-                    !eventsSnapshot.hasData) {
+                if (eventsSnapshot.connectionState == ConnectionState.waiting && !eventsSnapshot.hasData) {
                   return const SliverToBoxAdapter(
                     child: Padding(
                       padding: EdgeInsets.symmetric(vertical: 48),
-                      child: Center(
-                        child: CircularProgressIndicator(color: AppTheme.specNavy),
-                      ),
+                      child: Center(child: CircularProgressIndicator(color: AppTheme.specNavy)),
                     ),
                   );
                 }
@@ -274,11 +244,7 @@ class _LocalEventsScreenState extends State<LocalEventsScreen> {
                       child: Center(
                         child: Column(
                           children: [
-                            Icon(
-                              Icons.event_rounded,
-                              size: 56,
-                              color: AppTheme.specNavy.withValues(alpha: 0.4),
-                            ),
+                            Icon(Icons.event_rounded, size: 56, color: AppTheme.specNavy.withValues(alpha: 0.4)),
                             const SizedBox(height: 16),
                             Text(
                               'No events yet',
@@ -305,40 +271,29 @@ class _LocalEventsScreenState extends State<LocalEventsScreen> {
                   builder: (context, namesSnapshot) {
                     final names = namesSnapshot.data ?? {};
                     return SliverList(
-                      delegate: SliverChildBuilderDelegate(
-                        (context, index) {
-                          final event = events[index];
-                          final businessName =
-                              names[event.businessId] ?? 'Local business';
-                          final isFirst = index == 0;
-                          return Padding(
-                            padding: EdgeInsets.only(
-                              bottom: isFirst ? 24 : 20,
-                            ),
-                            child: _EventCard(
-                              event: event,
-                              businessName: businessName,
-                              featured: isFirst,
-                              myRsvpStatus: _myStatusByEventId[event.id],
-                              isSignedIn: AppDataScope.of(context)
-                                      .authRepository
-                                      .currentUserId !=
-                                  null,
-                              onRsvp: (status) => _setRsvp(event.id, status),
-                              onTap: () {
-                                Navigator.of(context).push(
-                                  MaterialPageRoute<void>(
-                                    builder: (_) => ListingDetailScreen(
-                                      listingId: event.businessId,
-                                    ),
-                                  ),
-                                );
-                              },
-                            ),
-                          );
-                        },
-                        childCount: events.length,
-                      ),
+                      delegate: SliverChildBuilderDelegate((context, index) {
+                        final event = events[index];
+                        final businessName = names[event.businessId] ?? 'Local business';
+                        final isFirst = index == 0;
+                        return Padding(
+                          padding: EdgeInsets.only(bottom: isFirst ? 24 : 20),
+                          child: _EventCard(
+                            event: event,
+                            businessName: businessName,
+                            featured: isFirst,
+                            myRsvpStatus: _myStatusByEventId[event.id],
+                            isSignedIn: ref.watch(authNotifierProvider).valueOrNull?.id != null,
+                            onRsvp: (status) => _setRsvp(event.id, status),
+                            onTap: () {
+                              Navigator.of(context).push(
+                                MaterialPageRoute<void>(
+                                  builder: (_) => ListingDetailScreen(listingId: event.businessId),
+                                ),
+                              );
+                            },
+                          ),
+                        );
+                      }, childCount: events.length),
                     );
                   },
                 );
@@ -351,27 +306,25 @@ class _LocalEventsScreenState extends State<LocalEventsScreen> {
     );
   }
 
-  Future<Map<String, (BusinessEvent?, String)>> _loadMyRsvpsWithDetails(
-    List<EventRsvp> rsvps,
-  ) async {
+  Future<Map<String, (BusinessEvent?, String)>> _loadMyRsvpsWithDetails(List<EventRsvp> rsvps) async {
     final eventsRepo = BusinessEventsRepository();
     final businessRepo = BusinessRepository();
     final map = <String, (BusinessEvent?, String)>{};
-    await Future.wait(rsvps.map((r) async {
-      final event = await eventsRepo.getById(r.eventId);
-      String name = 'Business';
-      if (event != null) {
-        final b = await businessRepo.getById(event.businessId);
-        name = b?.name ?? name;
-      }
-      map[r.eventId] = (event, name);
-    }));
+    await Future.wait(
+      rsvps.map((r) async {
+        final event = await eventsRepo.getById(r.eventId);
+        String name = 'Business';
+        if (event != null) {
+          final b = await businessRepo.getById(event.businessId);
+          name = b?.name ?? name;
+        }
+        map[r.eventId] = (event, name);
+      }),
+    );
     return map;
   }
 
-  static Future<Map<String, String>> _loadBusinessNames(
-    List<String> businessIds,
-  ) async {
+  static Future<Map<String, String>> _loadBusinessNames(List<String> businessIds) async {
     final repo = BusinessRepository();
     final map = <String, String>{};
     await Future.wait(
@@ -406,15 +359,12 @@ class _EventCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final hasImage =
-        event.imageUrl != null && event.imageUrl!.isNotEmpty;
+    final hasImage = event.imageUrl != null && event.imageUrl!.isNotEmpty;
     final dateStr = _LocalEventsScreenState.formatDate(event.eventDate);
     final timeStr = _LocalEventsScreenState.formatTime(event.eventDate);
     final dateTimeStr = timeStr.isEmpty ? dateStr : '$dateStr · $timeStr';
     final description = event.description?.trim() ?? '';
-    final excerpt = description.length > 120
-        ? '${description.substring(0, 120).trim()}…'
-        : description;
+    final excerpt = description.length > 120 ? '${description.substring(0, 120).trim()}…' : description;
 
     return Material(
       color: Colors.transparent,
@@ -426,11 +376,7 @@ class _EventCard extends StatelessWidget {
             color: AppTheme.specWhite,
             borderRadius: BorderRadius.circular(16),
             boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.06),
-                blurRadius: 12,
-                offset: const Offset(0, 4),
-              ),
+              BoxShadow(color: Colors.black.withValues(alpha: 0.06), blurRadius: 12, offset: const Offset(0, 4)),
             ],
           ),
           clipBehavior: Clip.antiAlias,
@@ -445,16 +391,11 @@ class _EventCard extends StatelessWidget {
                     fit: BoxFit.cover,
                     placeholder: (_, _) => Container(
                       color: AppTheme.specNavy.withValues(alpha: 0.08),
-                      child: const Center(
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      ),
+                      child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
                     ),
                     errorWidget: (_, _, _) => Container(
                       color: AppTheme.specNavy.withValues(alpha: 0.08),
-                      child: Icon(
-                        Icons.image_not_supported_outlined,
-                        color: AppTheme.specNavy.withValues(alpha: 0.3),
-                      ),
+                      child: Icon(Icons.image_not_supported_outlined, color: AppTheme.specNavy.withValues(alpha: 0.3)),
                     ),
                   ),
                 ),
@@ -490,16 +431,11 @@ class _EventCard extends StatelessWidget {
                         fontWeight: FontWeight.w500,
                       ),
                     ),
-                    if (event.location != null &&
-                        event.location!.trim().isNotEmpty) ...[
+                    if (event.location != null && event.location!.trim().isNotEmpty) ...[
                       const SizedBox(height: 4),
                       Row(
                         children: [
-                          Icon(
-                            Icons.location_on_outlined,
-                            size: 16,
-                            color: AppTheme.specNavy.withValues(alpha: 0.6),
-                          ),
+                          Icon(Icons.location_on_outlined, size: 16, color: AppTheme.specNavy.withValues(alpha: 0.6)),
                           const SizedBox(width: 4),
                           Expanded(
                             child: Text(
@@ -542,44 +478,33 @@ class _EventCard extends StatelessWidget {
                               color: myRsvpStatus == 'going'
                                   ? AppTheme.specNavy
                                   : AppTheme.specNavy.withValues(alpha: 0.8),
-                              fontWeight:
-                                  myRsvpStatus == 'going'
-                                      ? FontWeight.w600
-                                      : FontWeight.w500,
+                              fontWeight: myRsvpStatus == 'going' ? FontWeight.w600 : FontWeight.w500,
                             ),
                           ),
                           FilterChip(
                             label: const Text('Interested'),
                             selected: myRsvpStatus == 'interested',
                             onSelected: (_) => onRsvp!('interested'),
-                            selectedColor:
-                                AppTheme.specGold.withValues(alpha: 0.35),
+                            selectedColor: AppTheme.specGold.withValues(alpha: 0.35),
                             checkmarkColor: AppTheme.specNavy,
                             labelStyle: theme.textTheme.labelMedium?.copyWith(
                               color: myRsvpStatus == 'interested'
                                   ? AppTheme.specNavy
                                   : AppTheme.specNavy.withValues(alpha: 0.8),
-                              fontWeight:
-                                  myRsvpStatus == 'interested'
-                                      ? FontWeight.w600
-                                      : FontWeight.w500,
+                              fontWeight: myRsvpStatus == 'interested' ? FontWeight.w600 : FontWeight.w500,
                             ),
                           ),
                           FilterChip(
                             label: const Text('Not going'),
                             selected: myRsvpStatus == 'not_going',
                             onSelected: (_) => onRsvp!('not_going'),
-                            selectedColor:
-                                AppTheme.specNavy.withValues(alpha: 0.15),
+                            selectedColor: AppTheme.specNavy.withValues(alpha: 0.15),
                             checkmarkColor: AppTheme.specNavy,
                             labelStyle: theme.textTheme.labelMedium?.copyWith(
                               color: myRsvpStatus == 'not_going'
                                   ? AppTheme.specNavy
                                   : AppTheme.specNavy.withValues(alpha: 0.8),
-                              fontWeight:
-                                  myRsvpStatus == 'not_going'
-                                      ? FontWeight.w600
-                                      : FontWeight.w500,
+                              fontWeight: myRsvpStatus == 'not_going' ? FontWeight.w600 : FontWeight.w500,
                             ),
                           ),
                         ],
@@ -596,11 +521,7 @@ class _EventCard extends StatelessWidget {
                           ),
                         ),
                         const SizedBox(width: 4),
-                        Icon(
-                          Icons.arrow_forward_rounded,
-                          size: 18,
-                          color: AppTheme.specGold,
-                        ),
+                        Icon(Icons.arrow_forward_rounded, size: 18, color: AppTheme.specGold),
                       ],
                     ),
                   ],

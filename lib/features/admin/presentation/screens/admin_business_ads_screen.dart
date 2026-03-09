@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:my_app/core/data/models/ad_package.dart';
 import 'package:my_app/core/data/models/business_ad.dart';
 import 'package:my_app/core/data/repositories/business_ads_repository.dart';
 import 'package:my_app/core/theme/theme.dart';
@@ -8,11 +7,7 @@ import 'package:my_app/shared/widgets/app_buttons.dart';
 
 /// Admin: list business ads, filter by status. Tap to open detail slide-out with full admin control.
 class AdminBusinessAdsScreen extends StatefulWidget {
-  const AdminBusinessAdsScreen({
-    super.key,
-    this.embeddedInShell = false,
-    this.status,
-  });
+  const AdminBusinessAdsScreen({super.key, this.embeddedInShell = false, this.status});
 
   final bool embeddedInShell;
   final String? status;
@@ -47,15 +42,7 @@ class _AdminBusinessAdsScreenState extends State<AdminBusinessAdsScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final repo = BusinessAdsRepository();
-    const statuses = [
-      'draft',
-      'pending_payment',
-      'pending_approval',
-      'active',
-      'paused',
-      'expired',
-      'rejected',
-    ];
+    const statuses = ['draft', 'pending_payment', 'pending_approval', 'active', 'paused', 'expired', 'rejected'];
 
     return Scaffold(
       backgroundColor: AppTheme.specOffWhite,
@@ -64,10 +51,7 @@ class _AdminBusinessAdsScreenState extends State<AdminBusinessAdsScreen> {
         surfaceTintColor: Colors.transparent,
         title: Text(
           'Business ads',
-          style: theme.textTheme.titleLarge?.copyWith(
-            fontWeight: FontWeight.w700,
-            color: AppTheme.specNavy,
-          ),
+          style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700, color: AppTheme.specNavy),
         ),
         iconTheme: const IconThemeData(color: AppTheme.specNavy),
         bottom: PreferredSize(
@@ -83,16 +67,17 @@ class _AdminBusinessAdsScreenState extends State<AdminBusinessAdsScreen> {
                   onSelected: (_) => setState(() => _statusFilter = null),
                   selectedColor: AppTheme.specGold.withValues(alpha: 0.4),
                 ),
-                ...statuses.map((s) => Padding(
-                      padding: const EdgeInsets.only(left: 6),
-                      child: FilterChip(
-                        label: Text(BusinessAd.statusLabel(s)),
-                        selected: _statusFilter == s,
-                        onSelected: (_) => setState(() => _statusFilter = s),
-                        selectedColor:
-                            AppTheme.specGold.withValues(alpha: 0.4),
-                      ),
-                    )),
+                ...statuses.map(
+                  (s) => Padding(
+                    padding: const EdgeInsets.only(left: 6),
+                    child: FilterChip(
+                      label: Text(BusinessAd.statusLabel(s)),
+                      selected: _statusFilter == s,
+                      onSelected: (_) => setState(() => _statusFilter = s),
+                      selectedColor: AppTheme.specGold.withValues(alpha: 0.4),
+                    ),
+                  ),
+                ),
               ],
             ),
           ),
@@ -101,22 +86,15 @@ class _AdminBusinessAdsScreenState extends State<AdminBusinessAdsScreen> {
       body: FutureBuilder<List<BusinessAd>>(
         future: repo.listAll(status: _statusFilter),
         builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting &&
-              !snapshot.hasData) {
-            return const Center(
-              child: CircularProgressIndicator(color: AppTheme.specNavy),
-            );
+          if (snapshot.connectionState == ConnectionState.waiting && !snapshot.hasData) {
+            return const Center(child: CircularProgressIndicator(color: AppTheme.specNavy));
           }
           final list = snapshot.data ?? [];
           if (list.isEmpty) {
             return Center(
               child: Text(
-                _statusFilter != null
-                    ? 'No ads with status ${BusinessAd.statusLabel(_statusFilter!)}.'
-                    : 'No ads.',
-                style: theme.textTheme.bodyLarge?.copyWith(
-                  color: AppTheme.specNavy.withValues(alpha: 0.8),
-                ),
+                _statusFilter != null ? 'No ads with status ${BusinessAd.statusLabel(_statusFilter!)}.' : 'No ads.',
+                style: theme.textTheme.bodyLarge?.copyWith(color: AppTheme.specNavy.withValues(alpha: 0.8)),
               ),
             );
           }
@@ -128,33 +106,12 @@ class _AdminBusinessAdsScreenState extends State<AdminBusinessAdsScreen> {
               return Padding(
                 padding: const EdgeInsets.only(bottom: 10),
                 child: AdminListCard(
-                  title: ad.headline?.isNotEmpty == true
-                      ? ad.headline!
-                      : 'Ad ${ad.id.substring(0, 8)}',
+                  title: (ad.headline != null && ad.headline!.trim().isNotEmpty) ? ad.headline! : 'Untitled Ad',
                   subtitle:
-                      '${ad.packageName ?? 'Package'} · ${ad.placement ?? ''} · ${BusinessAd.statusLabel(ad.status)}\n'
-                      'Business: ${ad.businessId.substring(0, 8)}… · Impressions: ${ad.impressions} · Clicks: ${ad.clicks}',
-                  badges: [
-                    AdminBadgeData(BusinessAd.statusLabel(ad.status)),
-                  ],
-                  leading: ad.imageUrl != null && ad.imageUrl!.isNotEmpty
-                      ? ClipRRect(
-                          borderRadius: BorderRadius.circular(10),
-                          child: Image.network(
-                            ad.imageUrl!,
-                            width: 48,
-                            height: 48,
-                            fit: BoxFit.cover,
-                            errorBuilder: (_, _, _) => _placeholderIcon(),
-                          ),
-                        )
-                      : _placeholderIcon(),
-                  trailing: const Icon(
-                    Icons.chevron_right_rounded,
-                    color: AppTheme.specNavy,
-                    size: 24,
-                  ),
+                      '${ad.packageName ?? 'Package ${ad.packageId.substring(0, 8)}…'} · ${ad.businessId.substring(0, 8)}…',
+                  badges: [AdminBadgeData(BusinessAd.statusLabel(ad.status), color: _statusColor(ad.status))],
                   onTap: () => _openAdDetail(context, ad),
+                  leading: _placeholderIcon(),
                 ),
               );
             },
@@ -172,20 +129,29 @@ class _AdminBusinessAdsScreenState extends State<AdminBusinessAdsScreen> {
         color: AppTheme.specGold.withValues(alpha: 0.2),
         borderRadius: BorderRadius.circular(10),
       ),
-      child: const Icon(Icons.campaign_rounded,
-          color: AppTheme.specNavy, size: 26),
+      child: const Icon(Icons.campaign_rounded, color: AppTheme.specNavy, size: 26),
     );
+  }
+
+  Color _statusColor(String status) {
+    switch (status) {
+      case 'active':
+        return Colors.green;
+      case 'rejected':
+      case 'expired':
+        return AppTheme.specRed;
+      case 'pending_payment':
+      case 'pending_approval':
+        return AppTheme.specGold;
+      default:
+        return AppTheme.specNavy;
+    }
   }
 }
 
 /// Admin ad detail slide-out: same view as business owner (details, analytics, time remaining) + full admin controls.
 class AdminAdDetailSlideOut extends StatefulWidget {
-  const AdminAdDetailSlideOut({
-    super.key,
-    required this.ad,
-    required this.onClose,
-    required this.onUpdated,
-  });
+  const AdminAdDetailSlideOut({super.key, required this.ad, required this.onClose, required this.onUpdated});
 
   final BusinessAd ad;
   final VoidCallback onClose;
@@ -204,9 +170,10 @@ class AdminAdDetailSlideOut extends StatefulWidget {
       barrierLabel: 'Dismiss',
       transitionBuilder: (ctx, a1, a2, child) {
         return SlideTransition(
-          position: Tween<Offset>(begin: const Offset(1, 0), end: Offset.zero).animate(
-            CurvedAnimation(parent: a1, curve: Curves.easeOutCubic),
-          ),
+          position: Tween<Offset>(
+            begin: const Offset(1, 0),
+            end: Offset.zero,
+          ).animate(CurvedAnimation(parent: a1, curve: Curves.easeOutCubic)),
           child: child,
         );
       },
@@ -226,15 +193,11 @@ class AdminAdDetailSlideOut extends StatefulWidget {
                   minHeight: 0,
                   maxHeight: double.infinity,
                 ),
-                child: AdminAdDetailSlideOut(
-                ad: ad,
-                onClose: onClose,
-                onUpdated: onUpdated,
+                child: AdminAdDetailSlideOut(ad: ad, onClose: onClose, onUpdated: onUpdated),
               ),
             ),
           ),
-        ),
-      );
+        );
       },
     );
   }
@@ -246,68 +209,15 @@ class AdminAdDetailSlideOut extends StatefulWidget {
 class _AdminAdDetailSlideOutState extends State<AdminAdDetailSlideOut> {
   late BusinessAd _ad;
   bool _updating = false;
-  late TextEditingController _headlineController;
-  late TextEditingController _imageUrlController;
-  late TextEditingController _targetUrlController;
-  bool _savingFields = false;
-  String? _saveError;
 
   @override
   void initState() {
     super.initState();
     _ad = widget.ad;
-    _headlineController = TextEditingController(text: _ad.headline ?? '');
-    _imageUrlController = TextEditingController(text: _ad.imageUrl ?? '');
-    _targetUrlController = TextEditingController(text: _ad.targetUrl ?? '');
-  }
-
-  @override
-  void dispose() {
-    _headlineController.dispose();
-    _imageUrlController.dispose();
-    _targetUrlController.dispose();
-    super.dispose();
-  }
-
-  Future<void> _saveFields() async {
-    setState(() {
-      _savingFields = true;
-      _saveError = null;
-    });
-    try {
-      await BusinessAdsRepository().updateDraft(
-        _ad.id,
-        headline: _headlineController.text.trim(),
-        imageUrl: _imageUrlController.text.trim(),
-        targetUrl: _targetUrlController.text.trim(),
-      );
-      final updated = await BusinessAdsRepository().getById(_ad.id);
-      if (mounted) {
-        setState(() {
-          _savingFields = false;
-          if (updated != null) {
-            _ad = updated;
-            _headlineController.text = _ad.headline ?? '';
-            _imageUrlController.text = _ad.imageUrl ?? '';
-            _targetUrlController.text = _ad.targetUrl ?? '';
-          }
-        });
-        widget.onUpdated();
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Ad details saved')),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() {
-          _savingFields = false;
-          _saveError = e.toString();
-        });
-      }
-    }
   }
 
   Future<void> _updateStatus(String status) async {
+    if (!mounted) return;
     setState(() => _updating = true);
     try {
       await BusinessAdsRepository().updateStatus(_ad.id, status);
@@ -318,16 +228,12 @@ class _AdminAdDetailSlideOutState extends State<AdminAdDetailSlideOut> {
           if (updated != null) _ad = updated;
         });
         widget.onUpdated();
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Ad ${BusinessAd.statusLabel(status)}')),
-        );
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Ad ${BusinessAd.statusLabel(status)}')));
       }
     } catch (e) {
       if (mounted) {
         setState(() => _updating = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed: $e')),
-        );
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed: $e')));
       }
     }
   }
@@ -339,14 +245,8 @@ class _AdminAdDetailSlideOutState extends State<AdminAdDetailSlideOut> {
         title: const Text('Delete ad?'),
         content: const Text('This cannot be undone.'),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('Cancel'),
-          ),
-          AppDangerButton(
-            onPressed: () => Navigator.of(ctx).pop(true),
-            child: const Text('Delete'),
-          ),
+          TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Cancel')),
+          AppDangerButton(onPressed: () => Navigator.of(ctx).pop(true), child: const Text('Delete')),
         ],
       ),
     );
@@ -357,16 +257,12 @@ class _AdminAdDetailSlideOutState extends State<AdminAdDetailSlideOut> {
       if (mounted) {
         widget.onUpdated();
         Navigator.of(context).pop();
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Ad deleted')),
-        );
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Ad deleted')));
       }
     } catch (e) {
       if (mounted) {
         setState(() => _updating = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed: $e')),
-        );
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed: $e')));
       }
     }
   }
@@ -386,17 +282,10 @@ class _AdminAdDetailSlideOutState extends State<AdminAdDetailSlideOut> {
     }
   }
 
-  static String _formatDate(DateTime d) {
-    return '${d.month}/${d.day}/${d.year}';
-  }
-
   Widget _sectionTitle(ThemeData theme, Color nav, String label) {
     return Text(
       label,
-      style: theme.textTheme.titleSmall?.copyWith(
-        fontWeight: FontWeight.w700,
-        color: nav,
-      ),
+      style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700, color: nav),
     );
   }
 
@@ -405,29 +294,7 @@ class _AdminAdDetailSlideOutState extends State<AdminAdDetailSlideOut> {
     final theme = Theme.of(context);
     final nav = AppTheme.specNavy;
     final sub = nav.withValues(alpha: 0.75);
-    final now = DateTime.now();
-    final end = _ad.endDate;
-    final start = _ad.startDate ?? _ad.createdAt;
-    int? daysTotal;
-    int? daysLeft;
-    double progress = 0;
-    if (start != null && end != null) {
-      daysTotal = end.difference(start).inDays;
-      if (daysTotal > 0) {
-        if (now.isAfter(end)) {
-          daysLeft = 0;
-          progress = 0;
-        } else {
-          daysLeft = end.difference(now).inDays;
-          final elapsed = now.difference(start).inDays;
-          final elapsedFraction = (elapsed / daysTotal).clamp(0.0, 1.0);
-          progress = 1.0 - elapsedFraction;
-        }
-      }
-    }
-    final ctr = _ad.impressions > 0
-        ? (_ad.clicks / _ad.impressions * 100).toStringAsFixed(1)
-        : null;
+    final ctr = _ad.impressions > 0 ? (_ad.clicks / _ad.impressions * 100).toStringAsFixed(1) : null;
 
     final canApprove = _ad.status == 'pending_payment' || _ad.status == 'pending_approval';
     final canReject = _ad.status == 'pending_payment' || _ad.status == 'pending_approval' || _ad.status == 'draft';
@@ -441,12 +308,15 @@ class _AdminAdDetailSlideOutState extends State<AdminAdDetailSlideOut> {
           child: Row(
             children: [
               Expanded(
-                child: Text(
-                  'Ad details',
-                  style: theme.textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.w700,
-                    color: nav,
-                  ),
+                child: Row(
+                  children: [
+                    Text(
+                      'Ad details',
+                      style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700, color: nav),
+                    ),
+                    const SizedBox(width: 12),
+                    AdminBadge(label: BusinessAd.statusLabel(_ad.status), color: _statusColor(_ad.status)),
+                  ],
                 ),
               ),
               IconButton(
@@ -479,242 +349,37 @@ class _AdminAdDetailSlideOutState extends State<AdminAdDetailSlideOut> {
                 _sectionTitle(theme, nav, 'Details'),
                 const SizedBox(height: 10),
                 Text(
-                  _ad.headline?.isNotEmpty == true ? _ad.headline! : 'Ad',
-                  style: theme.textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w600,
-                    color: nav,
-                  ),
+                  (_ad.headline != null && _ad.headline!.trim().isNotEmpty)
+                      ? _ad.headline!
+                      : 'Untitled Ad (no headline)',
+                  style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700, color: nav),
                 ),
-                const SizedBox(height: 6),
-                Text(
-                  '${_ad.packageName ?? 'Package'} · ${_ad.placement != null ? AdPackage.placementLabel(_ad.placement!) : ''}',
-                  style: theme.textTheme.bodySmall?.copyWith(color: sub),
-                ),
-                const SizedBox(height: 10),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: _statusColor(_ad.status).withValues(alpha: 0.2),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Text(
-                    BusinessAd.statusLabel(_ad.status),
-                    style: theme.textTheme.labelMedium?.copyWith(
-                      color: _statusColor(_ad.status),
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
+                const SizedBox(height: 12),
+                _StatChip(label: 'Package', value: _ad.packageName ?? '—', theme: theme, nav: nav, sub: sub),
                 const SizedBox(height: 8),
-                Text(
-                  'Business ID: ${_ad.businessId}',
-                  style: theme.textTheme.labelSmall?.copyWith(color: sub),
-                ),
-                const SizedBox(height: 24),
-                _sectionTitle(theme, nav, 'Edit details'),
-                const SizedBox(height: 10),
-                TextFormField(
-                  controller: _headlineController,
-                  decoration: InputDecoration(
-                    labelText: 'Headline',
-                    hintText: 'Ad headline',
-                    filled: true,
-                    fillColor: theme.colorScheme.surfaceContainerLowest,
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide.none,
-                    ),
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                  ),
-                  style: theme.textTheme.bodyLarge,
-                  onChanged: (_) => setState(() => _saveError = null),
-                ),
-                const SizedBox(height: 12),
-                TextFormField(
-                  controller: _imageUrlController,
-                  decoration: InputDecoration(
-                    labelText: 'Image URL',
-                    hintText: 'https://…',
-                    filled: true,
-                    fillColor: theme.colorScheme.surfaceContainerLowest,
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide.none,
-                    ),
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                  ),
-                  style: theme.textTheme.bodyLarge,
-                  maxLines: 2,
-                  onChanged: (_) => setState(() => _saveError = null),
-                ),
-                const SizedBox(height: 12),
-                TextFormField(
-                  controller: _targetUrlController,
-                  decoration: InputDecoration(
-                    labelText: 'Target URL',
-                    hintText: 'https://…',
-                    filled: true,
-                    fillColor: theme.colorScheme.surfaceContainerLowest,
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide.none,
-                    ),
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                  ),
-                  style: theme.textTheme.bodyLarge,
-                  maxLines: 2,
-                  onChanged: (_) => setState(() => _saveError = null),
-                ),
-                if (_saveError != null) ...[
-                  const SizedBox(height: 8),
-                  Text(
-                    _saveError!,
-                    style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.error),
-                  ),
-                ],
-                const SizedBox(height: 12),
-                AppSecondaryButton(
-                  onPressed: _savingFields ? null : _saveFields,
-                  icon: _savingFields
-                      ? SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: theme.colorScheme.onPrimary,
-                          ),
-                        )
-                      : const Icon(Icons.save_rounded, size: 20),
-                  label: Text(_savingFields ? 'Saving…' : 'Save changes'),
-                ),
-                if (daysLeft != null || daysTotal != null) ...[
-                if (_ad.startDate != null || _ad.endDate != null) ...[
-                  const SizedBox(height: 8),
-                  Text(
-                    'Dates: ${_ad.startDate != null ? _formatDate(_ad.startDate!) : '—'} → ${_ad.endDate != null ? _formatDate(_ad.endDate!) : '—'}',
-                    style: theme.textTheme.labelSmall?.copyWith(color: sub),
-                  ),
-                ],
-                const SizedBox(height: 20),
-                Text(
-                  'Time remaining',
-                  style: theme.textTheme.titleSmall?.copyWith(
-                    fontWeight: FontWeight.w700,
-                    color: nav,
-                  ),
-                ),
-                  const SizedBox(height: 8),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            ClipRRect(
-                              borderRadius: BorderRadius.circular(8),
-                              child: LinearProgressIndicator(
-                                value: progress,
-                                minHeight: 12,
-                                backgroundColor: nav.withValues(alpha: 0.15),
-                                valueColor: AlwaysStoppedAnimation<Color>(
-                                  daysLeft != null && daysLeft > 0
-                                      ? AppTheme.specGold
-                                      : nav.withValues(alpha: 0.5),
-                                ),
-                              ),
-                            ),
-                            const SizedBox(height: 6),
-                            Text(
-                              daysLeft != null
-                                  ? (daysLeft > 0
-                                      ? '$daysLeft of $daysTotal days left'
-                                      : 'Ad ended')
-                                  : (daysTotal != null ? '$daysTotal days total' : '—'),
-                              style: theme.textTheme.labelSmall?.copyWith(color: sub),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Text(
-                        daysLeft != null
-                            ? (daysLeft > 0 ? '$daysLeft days left' : 'Ended')
-                            : (daysTotal != null ? '$daysTotal days' : '—'),
-                        style: theme.textTheme.labelLarge?.copyWith(
-                          fontWeight: FontWeight.w600,
-                          color: nav,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-                const SizedBox(height: 20),
-                _sectionTitle(theme, nav, 'Analytics'),
-                const SizedBox(height: 10),
                 Row(
                   children: [
                     Expanded(
                       child: _StatChip(
                         label: 'Impressions',
-                        value: '${_ad.impressions}',
+                        value: _ad.impressions.toString(),
                         theme: theme,
                         nav: nav,
                         sub: sub,
                       ),
                     ),
-                    const SizedBox(width: 12),
+                    const SizedBox(width: 8),
                     Expanded(
-                      child: _StatChip(
-                        label: 'Clicks',
-                        value: '${_ad.clicks}',
-                        theme: theme,
-                        nav: nav,
-                        sub: sub,
-                      ),
+                      child: _StatChip(label: 'Clicks', value: _ad.clicks.toString(), theme: theme, nav: nav, sub: sub),
                     ),
                   ],
                 ),
                 if (ctr != null) ...[
-                  const SizedBox(height: 10),
-                  _StatChip(
-                    label: 'Click-through rate',
-                    value: '$ctr%',
-                    theme: theme,
-                    nav: nav,
-                    sub: sub,
-                  ),
+                  const SizedBox(height: 8),
+                  _StatChip(label: 'Click-through rate', value: '$ctr%', theme: theme, nav: nav, sub: sub),
                 ],
-                const SizedBox(height: 24),
-                _sectionTitle(theme, nav, 'Change status'),
-                const SizedBox(height: 4),
-                Text(
-                  'Only ads with status Active are shown to users. Approve to showcase.',
-                  style: theme.textTheme.bodySmall?.copyWith(color: sub),
-                ),
-                const SizedBox(height: 10),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: AppTheme.specWhite,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: nav.withValues(alpha: 0.2)),
-                  ),
-                  child: DropdownButtonHideUnderline(
-                    child: DropdownButton<String>(
-                      value: _ad.status,
-                      isExpanded: true,
-                      icon: const Icon(Icons.arrow_drop_down_rounded),
-                      items: const ['draft', 'pending_payment', 'pending_approval', 'active', 'paused', 'expired', 'rejected']
-                          .map((s) => DropdownMenuItem(value: s, child: Text(BusinessAd.statusLabel(s))))
-                          .toList(),
-                      onChanged: _updating
-                          ? null
-                          : (String? value) {
-                              if (value != null && value != _ad.status) _updateStatus(value);
-                            },
-                    ),
-                  ),
-                ),
+                const SizedBox(height: 20),
+                _sectionTitle(theme, nav, 'Admin actions'),
                 const SizedBox(height: 12),
                 Wrap(
                   spacing: 8,
@@ -770,7 +435,6 @@ class _AdminAdDetailSlideOutState extends State<AdminAdDetailSlideOut> {
       ],
     );
   }
-
 }
 
 /// Preview card showing how the ad looks in the app (matches Explore sponsored style).
@@ -789,13 +453,7 @@ class _AdPreviewCard extends StatelessWidget {
         color: AppTheme.specWhite,
         borderRadius: BorderRadius.circular(18),
         border: Border.all(color: AppTheme.specGold.withValues(alpha: 0.3)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 8, offset: const Offset(0, 2))],
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -831,23 +489,12 @@ class _AdPreviewCard extends StatelessWidget {
                     fontWeight: FontWeight.w600,
                   ),
                 ),
-                const SizedBox(height: 2),
                 Text(
-                  ad.headline?.isNotEmpty == true ? ad.headline! : 'Ad headline',
-                  style: theme.textTheme.titleSmall?.copyWith(
-                    fontWeight: FontWeight.w600,
-                    color: nav,
-                  ),
+                  (ad.headline != null && ad.headline!.trim().isNotEmpty) ? ad.headline! : 'Untitled sponsored',
+                  style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w700, color: nav),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
                 ),
-                if (ad.placement != null && ad.placement!.isNotEmpty) ...[
-                  const SizedBox(height: 6),
-                  Text(
-                    AdPackage.placementLabel(ad.placement!),
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: nav.withValues(alpha: 0.6),
-                    ),
-                  ),
-                ],
               ],
             ),
           ),
@@ -884,17 +531,11 @@ class _StatChip extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            label,
-            style: theme.textTheme.labelMedium?.copyWith(color: sub),
-          ),
+          Text(label, style: theme.textTheme.labelMedium?.copyWith(color: sub)),
           const SizedBox(height: 4),
           Text(
             value,
-            style: theme.textTheme.titleMedium?.copyWith(
-              fontWeight: FontWeight.w700,
-              color: nav,
-            ),
+            style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700, color: nav),
           ),
         ],
       ),

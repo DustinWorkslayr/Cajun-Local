@@ -1,26 +1,26 @@
 import 'package:flutter/material.dart';
-import 'package:my_app/core/auth/auth_repository.dart';
-import 'package:my_app/core/data/app_data_scope.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:my_app/core/auth/providers/auth_provider.dart';
 import 'package:my_app/core/data/models/deal.dart';
 import 'package:my_app/core/data/repositories/business_managers_repository.dart';
 import 'package:my_app/core/data/repositories/business_repository.dart';
 import 'package:my_app/core/data/repositories/audit_log_repository.dart';
 import 'package:my_app/core/data/repositories/deals_repository.dart';
-import 'package:my_app/core/data/services/send_email_service.dart';
 import 'package:my_app/core/theme/theme.dart';
 import 'package:my_app/shared/widgets/app_buttons.dart';
+import 'package:my_app/core/data/repositories/profiles_repository.dart';
 
 /// Admin detail: show deal and Approve/Reject actions (full-screen route).
-class AdminDealDetailScreen extends StatefulWidget {
+class AdminDealDetailScreen extends ConsumerStatefulWidget {
   const AdminDealDetailScreen({super.key, required this.dealId});
 
   final String dealId;
 
   @override
-  State<AdminDealDetailScreen> createState() => _AdminDealDetailScreenState();
+  ConsumerState<AdminDealDetailScreen> createState() => _AdminDealDetailScreenState();
 }
 
-class _AdminDealDetailScreenState extends State<AdminDealDetailScreen> {
+class _AdminDealDetailScreenState extends ConsumerState<AdminDealDetailScreen> {
   Deal? _deal;
   bool _loading = true;
   String? _error;
@@ -45,7 +45,7 @@ class _AdminDealDetailScreenState extends State<AdminDealDetailScreen> {
 
   Future<void> _updateStatus(String status) async {
     final repo = DealsRepository();
-    final uid = AppDataScope.of(context).authRepository.currentUserId;
+    final uid = ref.read(authNotifierProvider).valueOrNull?.id;
     await repo.updateStatus(widget.dealId, status, approvedBy: uid);
     AuditLogRepository().insert(
       action: status == 'approved' ? 'deal_approved' : 'deal_rejected',
@@ -57,13 +57,14 @@ class _AdminDealDetailScreenState extends State<AdminDealDetailScreen> {
       final businessRepo = BusinessRepository();
       final business = await businessRepo.getByIdForAdmin(_deal!.businessId);
       final businessName = business?.name ?? _deal!.businessId;
-      final userId = await BusinessManagersRepository().getFirstManagerUserId(_deal!.businessId) ??
+      final userId =
+          await BusinessManagersRepository().getFirstManagerUserId(_deal!.businessId) ??
           await businessRepo.getCreatedBy(_deal!.businessId);
       if (userId != null) {
-        final profile = await AuthRepository().getProfileForAdmin(userId);
+        final profile = await ref.read(profilesRepositoryProvider).getProfile(userId);
         final to = profile?.email?.trim();
         if (to != null && to.isNotEmpty) {
-          await SendEmailService().send(
+          /* await SendEmailService().send(
             to: to,
             template: 'deal_approved',
             variables: {
@@ -72,14 +73,12 @@ class _AdminDealDetailScreenState extends State<AdminDealDetailScreen> {
               'deal_title': _deal!.title,
               'business_name': businessName,
             },
-          );
+          ); // TODO: Implement backend email notification */
         }
       }
     }
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Status set to $status')),
-      );
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Status set to $status')));
       _load();
     }
   }
@@ -93,75 +92,68 @@ class _AdminDealDetailScreenState extends State<AdminDealDetailScreen> {
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : _error != null
-              ? Center(child: Text(_error!, style: theme.textTheme.bodyLarge))
-              : SingleChildScrollView(
-                  padding: const EdgeInsets.all(24),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      _DetailRow(label: 'Status', value: _deal!.status),
-                      _DetailRow(label: 'Title', value: _deal!.title),
-                      _DetailRow(label: 'Deal type', value: _deal!.dealType),
-                      _DetailRow(label: 'Business ID', value: _deal!.businessId),
-                      if (_deal!.description != null) _DetailRow(label: 'Description', value: _deal!.description!),
-                      if (_deal!.startDate != null) _DetailRow(label: 'Start', value: _deal!.startDate!.toIso8601String()),
-                      if (_deal!.endDate != null) _DetailRow(label: 'End', value: _deal!.endDate!.toIso8601String()),
-                      _DetailRow(label: 'Active', value: '${_deal!.isActive ?? false}'),
-                      const SizedBox(height: 24),
-                      if (_deal!.status == 'pending') ...[
-                        Row(
-                          children: [
-                            Expanded(
-                              child: FilledButton.icon(
-                                onPressed: () => _updateStatus('approved'),
-                                icon: const Icon(Icons.check_rounded, size: 20),
-                                label: const Text('Approve'),
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: OutlinedButton.icon(
-                                onPressed: () => _updateStatus('rejected'),
-                                icon: const Icon(Icons.close_rounded, size: 20),
-                                label: const Text('Reject'),
-                              ),
-                            ),
-                          ],
+          ? Center(child: Text(_error!, style: theme.textTheme.bodyLarge))
+          : SingleChildScrollView(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  _DetailRow(label: 'Status', value: _deal!.status),
+                  _DetailRow(label: 'Title', value: _deal!.title),
+                  _DetailRow(label: 'Deal type', value: _deal!.dealType),
+                  _DetailRow(label: 'Business ID', value: _deal!.businessId),
+                  if (_deal!.description != null) _DetailRow(label: 'Description', value: _deal!.description!),
+                  if (_deal!.startDate != null) _DetailRow(label: 'Start', value: _deal!.startDate!.toIso8601String()),
+                  if (_deal!.endDate != null) _DetailRow(label: 'End', value: _deal!.endDate!.toIso8601String()),
+                  _DetailRow(label: 'Active', value: '${_deal!.isActive ?? false}'),
+                  const SizedBox(height: 24),
+                  if (_deal!.status == 'pending') ...[
+                    Row(
+                      children: [
+                        Expanded(
+                          child: FilledButton.icon(
+                            onPressed: () => _updateStatus('approved'),
+                            icon: const Icon(Icons.check_rounded, size: 20),
+                            label: const Text('Approve'),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: OutlinedButton.icon(
+                            onPressed: () => _updateStatus('rejected'),
+                            icon: const Icon(Icons.close_rounded, size: 20),
+                            label: const Text('Reject'),
+                          ),
                         ),
                       ],
-                    ],
-                  ),
-                ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
     );
   }
 }
 
 /// Slide-out view for deal detail (admin business edit → Deals tab). Matches app slideout style.
-class AdminDealDetailSlideOut extends StatefulWidget {
-  const AdminDealDetailSlideOut({
-    super.key,
-    required this.dealId,
-    required this.onClose,
-    required this.onUpdated,
-  });
+class AdminDealDetailSlideOut extends ConsumerStatefulWidget {
+  const AdminDealDetailSlideOut({super.key, required this.dealId, required this.onClose, required this.onUpdated});
 
   final String dealId;
   final VoidCallback onClose;
   final VoidCallback onUpdated;
 
-  static void show(
-    BuildContext context, {
-    required String dealId,
-    required VoidCallback onUpdated,
-  }) {
+  static void show(BuildContext context, {required String dealId, required VoidCallback onUpdated}) {
     showGeneralDialog<void>(
       context: context,
       barrierColor: Colors.black54,
       barrierDismissible: true,
       transitionBuilder: (ctx, a1, a2, child) {
         return SlideTransition(
-          position: Tween<Offset>(begin: const Offset(1, 0), end: Offset.zero)
-              .animate(CurvedAnimation(parent: a1, curve: Curves.easeOutCubic)),
+          position: Tween<Offset>(
+            begin: const Offset(1, 0),
+            end: Offset.zero,
+          ).animate(CurvedAnimation(parent: a1, curve: Curves.easeOutCubic)),
           child: child,
         );
       },
@@ -195,14 +187,15 @@ class AdminDealDetailSlideOut extends StatefulWidget {
   }
 
   @override
-  State<AdminDealDetailSlideOut> createState() => _AdminDealDetailSlideOutState();
+  ConsumerState<AdminDealDetailSlideOut> createState() => _AdminDealDetailSlideOutState();
 }
 
-class _AdminDealDetailSlideOutState extends State<AdminDealDetailSlideOut> {
+class _AdminDealDetailSlideOutState extends ConsumerState<AdminDealDetailSlideOut> {
   Deal? _deal;
   bool _loading = true;
   String? _error;
   bool _saving = false;
+
   /// Selected status in dropdown; synced from _deal when loaded/updated.
   String _selectedStatus = 'pending';
 
@@ -226,7 +219,7 @@ class _AdminDealDetailSlideOutState extends State<AdminDealDetailSlideOut> {
 
   Future<void> _updateStatus(String status) async {
     setState(() => _saving = true);
-    final uid = AppDataScope.of(context).authRepository.currentUserId;
+    final uid = ref.read(authNotifierProvider).valueOrNull?.id;
     try {
       await DealsRepository().updateStatus(widget.dealId, status, approvedBy: uid);
       AuditLogRepository().insert(
@@ -239,13 +232,14 @@ class _AdminDealDetailSlideOutState extends State<AdminDealDetailSlideOut> {
         final businessRepo = BusinessRepository();
         final business = await businessRepo.getByIdForAdmin(_deal!.businessId);
         final businessName = business?.name ?? _deal!.businessId;
-        final userId = await BusinessManagersRepository().getFirstManagerUserId(_deal!.businessId) ??
+        final userId =
+            await BusinessManagersRepository().getFirstManagerUserId(_deal!.businessId) ??
             await businessRepo.getCreatedBy(_deal!.businessId);
         if (userId != null) {
-          final profile = await AuthRepository().getProfileForAdmin(userId);
+          final profile = await ref.read(profilesRepositoryProvider).getProfile(userId);
           final to = profile?.email?.trim();
           if (to != null && to.isNotEmpty) {
-            await SendEmailService().send(
+            /* await SendEmailService().send(
               to: to,
               template: 'deal_approved',
               variables: {
@@ -254,22 +248,18 @@ class _AdminDealDetailSlideOutState extends State<AdminDealDetailSlideOut> {
                 'deal_title': _deal!.title,
                 'business_name': businessName,
               },
-            );
+            ); // TODO: Implement backend email notification */
           }
         }
       }
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Status set to $status')),
-        );
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Status set to $status')));
         widget.onUpdated();
         _load();
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e')),
-        );
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
       }
     } finally {
       if (mounted) setState(() => _saving = false);
@@ -295,17 +285,10 @@ class _AdminDealDetailSlideOutState extends State<AdminDealDetailSlideOut> {
               Expanded(
                 child: Text(
                   _deal?.title ?? 'Deal',
-                  style: theme.textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.w700,
-                    color: AppTheme.specNavy,
-                  ),
+                  style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700, color: AppTheme.specNavy),
                 ),
               ),
-              IconButton(
-                icon: const Icon(Icons.close_rounded),
-                onPressed: widget.onClose,
-                color: AppTheme.specNavy,
-              ),
+              IconButton(icon: const Icon(Icons.close_rounded), onPressed: widget.onClose, color: AppTheme.specNavy),
             ],
           ),
         ),
@@ -314,70 +297,72 @@ class _AdminDealDetailSlideOutState extends State<AdminDealDetailSlideOut> {
           child: _loading
               ? const Center(child: CircularProgressIndicator(color: AppTheme.specNavy))
               : _error != null
-                  ? Padding(
-                      padding: const EdgeInsets.all(24),
-                      child: Text(_error!, style: theme.textTheme.bodyLarge?.copyWith(color: AppTheme.specNavy)),
-                    )
-                  : SingleChildScrollView(
-                      padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          _SlideOutRow(label: 'Status', value: _deal!.status),
-                          _SlideOutRow(label: 'Title', value: _deal!.title),
-                          _SlideOutRow(label: 'Deal type', value: _deal!.dealType),
-                          if (_deal!.description != null && _deal!.description!.isNotEmpty)
-                            _SlideOutRow(label: 'Description', value: _deal!.description!),
-                          if (_deal!.startDate != null)
-                            _SlideOutRow(label: 'Start', value: _formatDate(_deal!.startDate)),
-                          if (_deal!.endDate != null)
-                            _SlideOutRow(label: 'End', value: _formatDate(_deal!.endDate)),
-                          _SlideOutRow(label: 'Active', value: (_deal!.isActive == true) ? 'Yes' : 'No'),
-                          const SizedBox(height: 20),
-                          Text(
-                            'Change status',
-                            style: theme.textTheme.titleSmall?.copyWith(
-                              fontWeight: FontWeight.w700,
-                              color: AppTheme.specNavy,
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          DropdownButtonFormField<String>(
-                            initialValue: _selectedStatus,
-                            decoration: InputDecoration(
-                              filled: true,
-                              fillColor: AppTheme.specWhite,
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(12),
-                                borderSide: BorderSide(color: AppTheme.specNavy.withValues(alpha: 0.2)),
-                              ),
-                              contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                            ),
-                            items: const [
-                              DropdownMenuItem(value: 'pending', child: Text('Pending')),
-                              DropdownMenuItem(value: 'approved', child: Text('Approved')),
-                              DropdownMenuItem(value: 'rejected', child: Text('Rejected')),
-                            ],
-                            onChanged: (v) {
-                              if (v != null) setState(() => _selectedStatus = v);
-                            },
-                          ),
-                          const SizedBox(height: 12),
-                          SizedBox(
-                            width: double.infinity,
-                            child: AppPrimaryButton(
-                              onPressed: (_saving || _selectedStatus == _deal!.status)
-                                  ? null
-                                  : () => _updateStatus(_selectedStatus),
-                              icon: _saving
-                                  ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                                  : const Icon(Icons.check_circle_rounded, size: 20),
-                              label: Text(_selectedStatus == _deal!.status ? 'No change' : 'Update status'),
-                            ),
-                          ),
-                        ],
+              ? Padding(
+                  padding: const EdgeInsets.all(24),
+                  child: Text(_error!, style: theme.textTheme.bodyLarge?.copyWith(color: AppTheme.specNavy)),
+                )
+              : SingleChildScrollView(
+                  padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      _SlideOutRow(label: 'Status', value: _deal!.status),
+                      _SlideOutRow(label: 'Title', value: _deal!.title),
+                      _SlideOutRow(label: 'Deal type', value: _deal!.dealType),
+                      if (_deal!.description != null && _deal!.description!.isNotEmpty)
+                        _SlideOutRow(label: 'Description', value: _deal!.description!),
+                      if (_deal!.startDate != null) _SlideOutRow(label: 'Start', value: _formatDate(_deal!.startDate)),
+                      if (_deal!.endDate != null) _SlideOutRow(label: 'End', value: _formatDate(_deal!.endDate)),
+                      _SlideOutRow(label: 'Active', value: (_deal!.isActive == true) ? 'Yes' : 'No'),
+                      const SizedBox(height: 20),
+                      Text(
+                        'Change status',
+                        style: theme.textTheme.titleSmall?.copyWith(
+                          fontWeight: FontWeight.w700,
+                          color: AppTheme.specNavy,
+                        ),
                       ),
-                    ),
+                      const SizedBox(height: 8),
+                      DropdownButtonFormField<String>(
+                        initialValue: _selectedStatus,
+                        decoration: InputDecoration(
+                          filled: true,
+                          fillColor: AppTheme.specWhite,
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide(color: AppTheme.specNavy.withValues(alpha: 0.2)),
+                          ),
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                        ),
+                        items: const [
+                          DropdownMenuItem(value: 'pending', child: Text('Pending')),
+                          DropdownMenuItem(value: 'approved', child: Text('Approved')),
+                          DropdownMenuItem(value: 'rejected', child: Text('Rejected')),
+                        ],
+                        onChanged: (v) {
+                          if (v != null) setState(() => _selectedStatus = v);
+                        },
+                      ),
+                      const SizedBox(height: 12),
+                      SizedBox(
+                        width: double.infinity,
+                        child: AppPrimaryButton(
+                          onPressed: (_saving || _selectedStatus == _deal!.status)
+                              ? null
+                              : () => _updateStatus(_selectedStatus),
+                          icon: _saving
+                              ? const SizedBox(
+                                  width: 20,
+                                  height: 20,
+                                  child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                                )
+                              : const Icon(Icons.check_circle_rounded, size: 20),
+                          label: Text(_selectedStatus == _deal!.status ? 'No change' : 'Update status'),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
         ),
       ],
     );
@@ -406,10 +391,7 @@ class _SlideOutRow extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 4),
-          Text(
-            value,
-            style: theme.textTheme.bodyLarge?.copyWith(color: AppTheme.specNavy),
-          ),
+          Text(value, style: theme.textTheme.bodyLarge?.copyWith(color: AppTheme.specNavy)),
         ],
       ),
     );

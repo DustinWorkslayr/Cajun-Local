@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:my_app/core/data/models/email_template.dart';
 import 'package:my_app/core/data/repositories/email_templates_repository.dart';
-import 'package:my_app/core/data/services/send_email_service.dart';
 import 'package:my_app/core/theme/theme.dart';
 import 'package:my_app/features/admin/presentation/widgets/admin_shared.dart';
 import 'package:my_app/shared/widgets/app_buttons.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:my_app/core/auth/providers/auth_provider.dart';
 
 class AdminEmailTemplatesScreen extends StatefulWidget {
   const AdminEmailTemplatesScreen({super.key, this.embeddedInShell = false});
@@ -43,49 +43,49 @@ class _AdminEmailTemplatesScreenState extends State<AdminEmailTemplatesScreen> {
   Widget _buildBody(BuildContext context) {
     final theme = Theme.of(context);
     return FutureBuilder<List<EmailTemplate>>(
-        future: _listFuture,
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting && !snapshot.hasData) {
-            return const Center(child: CircularProgressIndicator());
-          }
-          final list = snapshot.data ?? [];
-          if (list.isEmpty) {
-            return Center(
-              child: Text(
-                'No email templates.',
-                style: theme.textTheme.bodyLarge?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+      future: _listFuture,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting && !snapshot.hasData) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        final list = snapshot.data ?? [];
+        if (list.isEmpty) {
+          return Center(
+            child: Text(
+              'No email templates.',
+              style: theme.textTheme.bodyLarge?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+            ),
+          );
+        }
+        return ListView.builder(
+          padding: const EdgeInsets.all(16),
+          itemCount: list.length,
+          itemBuilder: (context, index) {
+            final t = list[index];
+            final bodyPreview = t.body.isNotEmpty
+                ? (t.body.length > 80 ? '${t.body.substring(0, 80)}…' : t.body)
+                : null;
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 10),
+              child: AdminListCard(
+                title: t.name,
+                subtitle: bodyPreview != null ? '${t.subject} · $bodyPreview' : t.subject,
+                badges: const [AdminBadgeData('Template')],
+                leading: Container(
+                  width: 48,
+                  height: 48,
+                  decoration: BoxDecoration(
+                    color: AppTheme.specGold.withValues(alpha: 0.2),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(Icons.email_rounded, color: AppTheme.specNavy, size: 26),
+                ),
+                onTap: () => _openSlideOut(context, template: t),
               ),
             );
-          }
-          return ListView.builder(
-            padding: const EdgeInsets.all(16),
-            itemCount: list.length,
-            itemBuilder: (context, index) {
-              final t = list[index];
-              final bodyPreview = t.body.isNotEmpty
-                  ? (t.body.length > 80 ? '${t.body.substring(0, 80)}…' : t.body)
-                  : null;
-              return Padding(
-                padding: const EdgeInsets.only(bottom: 10),
-                child: AdminListCard(
-                  title: t.name,
-                  subtitle: bodyPreview != null ? '${t.subject} · $bodyPreview' : t.subject,
-                  badges: const [AdminBadgeData('Template')],
-                  leading: Container(
-                    width: 48,
-                    height: 48,
-                    decoration: BoxDecoration(
-                      color: AppTheme.specGold.withValues(alpha: 0.2),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: const Icon(Icons.email_rounded, color: AppTheme.specNavy, size: 26),
-                  ),
-                  onTap: () => _openSlideOut(context, template: t),
-                ),
-              );
-            },
-          );
-        },
+          },
+        );
+      },
     );
   }
 
@@ -124,13 +124,8 @@ class _AdminEmailTemplatesScreenState extends State<AdminEmailTemplatesScreen> {
 }
 
 /// Slide-out panel: view (read-only) or edit template, with CRUD and "Send test email".
-class EmailTemplateSlideOut extends StatefulWidget {
-  const EmailTemplateSlideOut({
-    super.key,
-    required this.initialTemplate,
-    required this.onClose,
-    required this.onSaved,
-  });
+class EmailTemplateSlideOut extends ConsumerStatefulWidget {
+  const EmailTemplateSlideOut({super.key, required this.initialTemplate, required this.onClose, required this.onSaved});
 
   final EmailTemplate? initialTemplate;
   final VoidCallback onClose;
@@ -148,9 +143,10 @@ class EmailTemplateSlideOut extends StatefulWidget {
       barrierDismissible: true,
       transitionBuilder: (ctx, a1, a2, child) {
         return SlideTransition(
-          position: Tween<Offset>(begin: const Offset(1, 0), end: Offset.zero).animate(
-            CurvedAnimation(parent: a1, curve: Curves.easeOutCubic),
-          ),
+          position: Tween<Offset>(
+            begin: const Offset(1, 0),
+            end: Offset.zero,
+          ).animate(CurvedAnimation(parent: a1, curve: Curves.easeOutCubic)),
           child: child,
         );
       },
@@ -162,29 +158,23 @@ class EmailTemplateSlideOut extends StatefulWidget {
             color: AppTheme.specOffWhite,
             elevation: 24,
             child: ConstrainedBox(
-              constraints: BoxConstraints(
-                maxWidth: (MediaQuery.sizeOf(ctx).width * 0.92).clamp(0.0, 420.0),
-              ),
+              constraints: BoxConstraints(maxWidth: (MediaQuery.sizeOf(ctx).width * 0.92).clamp(0.0, 420.0)),
               child: SizedBox(
                 width: double.infinity,
-                child: EmailTemplateSlideOut(
-                initialTemplate: initialTemplate,
-                onClose: onClose,
-                onSaved: onSaved,
+                child: EmailTemplateSlideOut(initialTemplate: initialTemplate, onClose: onClose, onSaved: onSaved),
               ),
             ),
           ),
         ),
       ),
-    ),
     );
   }
 
   @override
-  State<EmailTemplateSlideOut> createState() => _EmailTemplateSlideOutState();
+  ConsumerState<EmailTemplateSlideOut> createState() => _EmailTemplateSlideOutState();
 }
 
-class _EmailTemplateSlideOutState extends State<EmailTemplateSlideOut> {
+class _EmailTemplateSlideOutState extends ConsumerState<EmailTemplateSlideOut> {
   late final TextEditingController _nameController;
   late final TextEditingController _subjectController;
   late final TextEditingController _bodyController;
@@ -193,8 +183,10 @@ class _EmailTemplateSlideOutState extends State<EmailTemplateSlideOut> {
   bool _sendingTest = false;
   String? _message;
   bool _messageSuccess = false;
+
   /// When true and we have an existing template, show read-only view. Tapping Edit switches to form.
   bool _isViewMode = true;
+
   /// After save, we show this in view mode so view reflects latest data.
   EmailTemplate? _currentTemplate;
   bool get _isCreate => widget.initialTemplate == null;
@@ -263,23 +255,17 @@ class _EmailTemplateSlideOutState extends State<EmailTemplateSlideOut> {
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Delete template'),
-        content: Text(
-          'Permanently delete the template "${widget.initialTemplate!.name}"? This cannot be undone.',
-        ),
+        content: Text('Permanently delete the template "${widget.initialTemplate!.name}"? This cannot be undone.'),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('Cancel'),
-          ),
-          AppDangerButton(
-            onPressed: () => Navigator.of(ctx).pop(true),
-            child: const Text('Delete'),
-          ),
+          TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Cancel')),
+          AppDangerButton(onPressed: () => Navigator.of(ctx).pop(true), child: const Text('Delete')),
         ],
       ),
     );
     if (confirmed != true || !mounted) return;
-    setState(() { _saving = true; });
+    setState(() {
+      _saving = true;
+    });
     try {
       await EmailTemplatesRepository().delete(widget.initialTemplate!.name);
       if (mounted) {
@@ -306,12 +292,12 @@ class _EmailTemplateSlideOutState extends State<EmailTemplateSlideOut> {
       });
       return;
     }
-    final email = Supabase.instance.client.auth.currentUser?.email;
+    final email = ref.read(authNotifierProvider).valueOrNull?.email;
     if (email == null || email.isEmpty) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Sign in with an email to send a test.')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Sign in with an email to send a test.')));
       }
       return;
     }
@@ -320,11 +306,7 @@ class _EmailTemplateSlideOutState extends State<EmailTemplateSlideOut> {
       _sendingTest = true;
     });
     try {
-      await SendEmailService().send(
-        to: email,
-        template: name,
-        variables: {},
-      );
+      /* await SendEmailService().send(to: email, template: name, variables: {}); // TODO: Implement backend email notification */
       if (mounted) {
         setState(() {
           _sendingTest = false;
@@ -360,25 +342,16 @@ class _EmailTemplateSlideOutState extends State<EmailTemplateSlideOut> {
                   _isCreate
                       ? 'New email template'
                       : showView
-                          ? 'Template'
-                          : 'Edit template',
-                  style: theme.textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.w700,
-                    color: nav,
-                  ),
+                      ? 'Template'
+                      : 'Edit template',
+                  style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700, color: nav),
                 ),
               ),
-              IconButton(
-                onPressed: widget.onClose,
-                icon: const Icon(Icons.close_rounded),
-                color: nav,
-              ),
+              IconButton(onPressed: widget.onClose, icon: const Icon(Icons.close_rounded), color: nav),
             ],
           ),
         ),
-        Expanded(
-          child: showView ? _buildViewContent(theme, nav) : _buildFormContent(theme, nav),
-        ),
+        Expanded(child: showView ? _buildViewContent(theme, nav) : _buildFormContent(theme, nav)),
       ],
     );
   }
@@ -402,11 +375,7 @@ class _EmailTemplateSlideOutState extends State<EmailTemplateSlideOut> {
               borderRadius: BorderRadius.circular(16),
               border: Border.all(color: nav.withValues(alpha: 0.15)),
               boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.06),
-                  blurRadius: 12,
-                  offset: const Offset(0, 4),
-                ),
+                BoxShadow(color: Colors.black.withValues(alpha: 0.06), blurRadius: 12, offset: const Offset(0, 4)),
               ],
             ),
             child: Column(
@@ -423,17 +392,11 @@ class _EmailTemplateSlideOutState extends State<EmailTemplateSlideOut> {
                 const SizedBox(height: 6),
                 Text(
                   t.name,
-                  style: theme.textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.w700,
-                    color: nav,
-                  ),
+                  style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700, color: nav),
                 ),
                 if (updatedStr != null) ...[
                   const SizedBox(height: 8),
-                  Text(
-                    updatedStr,
-                    style: theme.textTheme.bodySmall?.copyWith(color: sub),
-                  ),
+                  Text(updatedStr, style: theme.textTheme.bodySmall?.copyWith(color: sub)),
                 ],
                 const SizedBox(height: 20),
                 Text(
@@ -447,10 +410,7 @@ class _EmailTemplateSlideOutState extends State<EmailTemplateSlideOut> {
                 const SizedBox(height: 6),
                 Text(
                   t.subject.isEmpty ? '(empty)' : t.subject,
-                  style: theme.textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w600,
-                    color: nav,
-                  ),
+                  style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600, color: nav),
                 ),
                 const SizedBox(height: 16),
                 Text(
@@ -472,10 +432,7 @@ class _EmailTemplateSlideOutState extends State<EmailTemplateSlideOut> {
                   ),
                   child: SelectableText(
                     t.body.isEmpty ? '(No body)' : t.body,
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      color: nav.withValues(alpha: 0.9),
-                      height: 1.5,
-                    ),
+                    style: theme.textTheme.bodyMedium?.copyWith(color: nav.withValues(alpha: 0.9), height: 1.5),
                   ),
                 ),
               ],
@@ -489,11 +446,7 @@ class _EmailTemplateSlideOutState extends State<EmailTemplateSlideOut> {
                   onPressed: _sendingTest ? null : _sendTestEmail,
                   expanded: true,
                   icon: _sendingTest
-                      ? const SizedBox(
-                          width: 18,
-                          height: 18,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
+                      ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
                       : const Icon(Icons.send_rounded, size: 20),
                   label: const Text('Send test'),
                 ),
@@ -522,9 +475,7 @@ class _EmailTemplateSlideOutState extends State<EmailTemplateSlideOut> {
             const SizedBox(height: 16),
             Text(
               _message!,
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: _messageSuccess ? Colors.green : AppTheme.specRed,
-              ),
+              style: theme.textTheme.bodySmall?.copyWith(color: _messageSuccess ? Colors.green : AppTheme.specRed),
             ),
           ],
         ],
@@ -592,10 +543,7 @@ class _EmailTemplateSlideOutState extends State<EmailTemplateSlideOut> {
             const SizedBox(height: 20),
             Text(
               'Preview',
-              style: theme.textTheme.titleSmall?.copyWith(
-                fontWeight: FontWeight.w700,
-                color: nav,
-              ),
+              style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700, color: nav),
             ),
             const SizedBox(height: 8),
             Container(
@@ -611,18 +559,12 @@ class _EmailTemplateSlideOutState extends State<EmailTemplateSlideOut> {
                 children: [
                   Text(
                     'Subject: ${_subjectController.text.isEmpty ? "(empty)" : _subjectController.text}',
-                    style: theme.textTheme.labelLarge?.copyWith(
-                      color: nav,
-                      fontWeight: FontWeight.w600,
-                    ),
+                    style: theme.textTheme.labelLarge?.copyWith(color: nav, fontWeight: FontWeight.w600),
                   ),
                   const SizedBox(height: 8),
                   Text(
                     _bodyController.text.isEmpty ? '(No body)' : _bodyController.text,
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: nav.withValues(alpha: 0.85),
-                      height: 1.4,
-                    ),
+                    style: theme.textTheme.bodySmall?.copyWith(color: nav.withValues(alpha: 0.85), height: 1.4),
                   ),
                 ],
               ),
@@ -631,9 +573,7 @@ class _EmailTemplateSlideOutState extends State<EmailTemplateSlideOut> {
               const SizedBox(height: 16),
               Text(
                 _message!,
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: _messageSuccess ? Colors.green : AppTheme.specRed,
-                ),
+                style: theme.textTheme.bodySmall?.copyWith(color: _messageSuccess ? Colors.green : AppTheme.specRed),
               ),
             ],
             const SizedBox(height: 24),
@@ -644,11 +584,7 @@ class _EmailTemplateSlideOutState extends State<EmailTemplateSlideOut> {
                     onPressed: _sendingTest ? null : _sendTestEmail,
                     expanded: true,
                     icon: _sendingTest
-                        ? const SizedBox(
-                            width: 18,
-                            height: 18,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
+                        ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
                         : const Icon(Icons.send_rounded, size: 20),
                     label: const Text('Send test email'),
                   ),
@@ -677,9 +613,7 @@ class _EmailTemplateSlideOutState extends State<EmailTemplateSlideOut> {
                   onPressed: _saving ? null : _deleteTemplate,
                   icon: const Icon(Icons.delete_outline_rounded, size: 20),
                   label: const Text('Delete template'),
-                  style: TextButton.styleFrom(
-                    foregroundColor: AppTheme.specRed,
-                  ),
+                  style: TextButton.styleFrom(foregroundColor: AppTheme.specRed),
                 ),
               ),
             ],

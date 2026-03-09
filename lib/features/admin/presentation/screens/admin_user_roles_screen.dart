@@ -1,6 +1,6 @@
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
-import 'package:my_app/core/auth/auth_repository.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:my_app/core/data/models/business.dart';
 import 'package:my_app/core/data/models/profile.dart';
 import 'package:my_app/core/data/models/user_plan.dart';
@@ -8,26 +8,28 @@ import 'package:my_app/core/data/models/user_role.dart';
 import 'package:my_app/core/data/models/user_subscription.dart';
 import 'package:my_app/core/data/repositories/business_managers_repository.dart';
 import 'package:my_app/core/data/repositories/business_repository.dart';
+import 'package:my_app/core/data/repositories/profiles_repository.dart';
 import 'package:my_app/core/data/repositories/user_notification_preferences_repository.dart';
 import 'package:my_app/core/data/repositories/user_plans_repository.dart';
 import 'package:my_app/core/data/repositories/user_roles_repository.dart';
 import 'package:my_app/core/data/repositories/user_subscriptions_repository.dart';
+import 'package:my_app/core/data/repositories/users_repository.dart';
 import 'package:my_app/core/data/services/app_storage_service.dart';
 import 'package:my_app/core/data/services/storage_upload_constants.dart';
 import 'package:my_app/core/theme/theme.dart';
 import 'package:my_app/shared/widgets/app_buttons.dart';
 import 'package:my_app/features/admin/presentation/widgets/admin_shared.dart';
 
-class AdminUserRolesScreen extends StatefulWidget {
+class AdminUserRolesScreen extends ConsumerStatefulWidget {
   const AdminUserRolesScreen({super.key, this.embeddedInShell = false});
 
   final bool embeddedInShell;
 
   @override
-  State<AdminUserRolesScreen> createState() => _AdminUserRolesScreenState();
+  ConsumerState<AdminUserRolesScreen> createState() => _AdminUserRolesScreenState();
 }
 
-class _AdminUserRolesScreenState extends State<AdminUserRolesScreen> {
+class _AdminUserRolesScreenState extends ConsumerState<AdminUserRolesScreen> {
   int _refreshKey = 0;
 
   static String _displayLabel(UserRole ur, Map<String, Profile> profileByUserId) {
@@ -42,7 +44,7 @@ class _AdminUserRolesScreenState extends State<AdminUserRolesScreen> {
   Widget _buildBody(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
-    final authRepo = AuthRepository();
+    final profilesRepo = ref.read(profilesRepositoryProvider);
     final rolesRepo = UserRolesRepository();
     return FutureBuilder<List<UserRole>>(
       key: ValueKey(_refreshKey),
@@ -58,7 +60,7 @@ class _AdminUserRolesScreenState extends State<AdminUserRolesScreen> {
           );
         }
         return FutureBuilder<List<Profile>>(
-          future: authRepo.listProfilesForAdmin(),
+          future: profilesRepo.listProfilesForAdmin(),
           builder: (context, profilesSnapshot) {
             if (profilesSnapshot.connectionState == ConnectionState.waiting && !profilesSnapshot.hasData) {
               return const Center(child: CircularProgressIndicator());
@@ -147,7 +149,7 @@ class _AdminUserRolesScreenState extends State<AdminUserRolesScreen> {
   }
 }
 
-class _UserEditPanelContent extends StatefulWidget {
+class _UserEditPanelContent extends ConsumerStatefulWidget {
   const _UserEditPanelContent({
     required this.userId,
     required this.initialName,
@@ -165,10 +167,10 @@ class _UserEditPanelContent extends StatefulWidget {
   final String? initialAvatarUrl;
 
   @override
-  State<_UserEditPanelContent> createState() => _UserEditPanelContentState();
+  ConsumerState<_UserEditPanelContent> createState() => _UserEditPanelContentState();
 }
 
-class _UserEditPanelContentState extends State<_UserEditPanelContent> {
+class _UserEditPanelContentState extends ConsumerState<_UserEditPanelContent> {
   late TextEditingController _nameController;
   late String _role;
   List<String> _managedBusinessIds = [];
@@ -264,7 +266,7 @@ class _UserEditPanelContentState extends State<_UserEditPanelContent> {
       final name = result.files.single.name;
       final ext = name.contains('.') ? name.split('.').last : 'jpg';
       final url = await AppStorageService().uploadAvatar(userId: widget.userId, bytes: bytes, extension: ext);
-      await AuthRepository().updateProfileForAdmin(widget.userId, avatarUrl: url);
+      await ref.read(profilesRepositoryProvider).updateProfileForAdmin(widget.userId, avatarUrl: url);
       if (mounted) {
         setState(() {
           _avatarUrl = url;
@@ -350,7 +352,7 @@ class _UserEditPanelContentState extends State<_UserEditPanelContent> {
     );
     if (ok != true || !mounted) return;
     try {
-      await AuthRepository().removeUserFromApp(widget.userId);
+      await ref.read(usersRepositoryProvider).removeUserFromApp(widget.userId);
       if (mounted) {
         widget.onSaved();
         ScaffoldMessenger.of(
@@ -376,11 +378,11 @@ class _UserEditPanelContentState extends State<_UserEditPanelContent> {
       }
       return;
     }
-    final authRepo = AuthRepository();
+    final profilesRepo = ref.read(profilesRepositoryProvider);
     final rolesRepo = UserRolesRepository();
     try {
       final name = _nameController.text.trim();
-      await authRepo.updateProfileForAdmin(widget.userId, displayName: name.isEmpty ? null : name);
+      await profilesRepo.updateProfileForAdmin(widget.userId, displayName: name.isEmpty ? null : name);
       await rolesRepo.setRole(widget.userId, _role);
       if (mounted) widget.onSaved();
     } catch (e) {

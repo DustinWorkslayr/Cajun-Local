@@ -1,64 +1,48 @@
+import 'package:my_app/core/api/api_client.dart';
+import 'package:my_app/core/api/notification_banners_api.dart';
 import 'package:my_app/core/data/models/notification_banner.dart';
-import 'package:my_app/core/supabase/supabase_config.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:riverpod_annotation/riverpod_annotation.dart';
+
+part 'notification_banners_repository.g.dart';
 
 class NotificationBannersRepository {
-  NotificationBannersRepository();
-
-  SupabaseClient? get _client =>
-      SupabaseConfig.isConfigured ? Supabase.instance.client : null;
+  NotificationBannersRepository({NotificationBannersApi? api})
+    : _api = api ?? NotificationBannersApi(ApiClient.instance);
+  final NotificationBannersApi _api;
 
   Future<List<NotificationBanner>> list() async {
-    final client = _client;
-    if (client == null) return [];
-    final list = await client.from('notification_banners').select().order('created_at', ascending: false);
-    return (list as List).map((e) => NotificationBanner.fromJson(e as Map<String, dynamic>)).toList();
+    return _api.list();
   }
 
-  /// Returns banners that are active and currently within their date window (or unbounded if null).
-  /// Used for user-facing home/shell display.
+  /// Returns banners that are active and currently within their date window.
   Future<List<NotificationBanner>> listActive() async {
-    final client = _client;
-    if (client == null) return [];
-    final list = await client
-        .from('notification_banners')
-        .select()
-        .eq('is_active', true)
-        .order('created_at', ascending: false);
+    final list = await _api.list(activeOnly: true);
     final now = DateTime.now();
-    return (list as List)
-        .map((e) => NotificationBanner.fromJson(e as Map<String, dynamic>))
-        .where((b) {
-          if (b.startDate != null && b.startDate!.isAfter(now)) return false;
-          if (b.endDate != null && !b.endDate!.isAfter(now)) return false;
-          return true;
-        })
-        .toList();
+    return list.where((b) {
+      if (b.startDate != null && b.startDate!.isAfter(now)) return false;
+      if (b.endDate != null && !b.endDate!.isAfter(now)) return false;
+      return true;
+    }).toList();
   }
 
   Future<NotificationBanner?> getById(String id) async {
-    final client = _client;
-    if (client == null) return null;
-    final res = await client.from('notification_banners').select().eq('id', id).maybeSingle();
-    if (res == null) return null;
-    return NotificationBanner.fromJson(Map<String, dynamic>.from(res));
+    return _api.getById(id);
   }
 
   Future<void> insert(Map<String, dynamic> data) async {
-    final client = _client;
-    if (client == null) return;
-    await client.from('notification_banners').insert(data);
+    await _api.insert(data);
   }
 
   Future<void> update(String id, Map<String, dynamic> data) async {
-    final client = _client;
-    if (client == null) return;
-    await client.from('notification_banners').update(data).eq('id', id);
+    await _api.update(id, data);
   }
 
   Future<void> delete(String id) async {
-    final client = _client;
-    if (client == null) return;
-    await client.from('notification_banners').delete().eq('id', id);
+    await _api.delete(id);
   }
+}
+
+@riverpod
+NotificationBannersRepository notificationBannersRepository(NotificationBannersRepositoryRef ref) {
+  return NotificationBannersRepository(api: ref.watch(notificationBannersApiProvider));
 }

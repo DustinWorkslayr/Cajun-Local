@@ -1,0 +1,105 @@
+Analyzing Cajun-Local...                                        
+
+   info • Unnecessary use of multiple underscores • lib/app/app.dart:115:24 • unnecessary_underscores
+   info • Use the null-aware marker '?' rather than a null check via an 'if' • lib/core/api/audit_log_api.dart:17:57 • use_null_aware_elements
+   info • Use the null-aware marker '?' rather than a null check via an 'if' • lib/core/api/audit_log_api.dart:31:27 • use_null_aware_elements
+   info • Use the null-aware marker '?' rather than a null check via an 'if' • lib/core/api/blog_posts_api.dart:21:11 • use_null_aware_elements
+   info • Use the null-aware marker '?' rather than a null check via an 'if' • lib/core/api/blog_posts_api.dart:22:11 • use_null_aware_elements
+   info • Use the null-aware marker '?' rather than a null check via an 'if' • lib/core/api/business_ads_api.dart:66:11 • use_null_aware_elements
+   info • Use the null-aware marker '?' rather than a null check via an 'if' • lib/core/api/business_ads_api.dart:67:11 • use_null_aware_elements
+   info • Use the null-aware marker '?' rather than a null check via an 'if' • lib/core/api/business_ads_api.dart:83:27 • use_null_aware_elements
+   info • Use the null-aware marker '?' rather than a null check via an 'if' • lib/core/api/business_api.dart:24:11 • use_null_aware_elements
+   info • Use the null-aware marker '?' rather than a null check via an 'if' • lib/core/api/business_api.dart:113:11 • use_null_aware_elements
+   info • Use the null-aware marker '?' rather than a null check via an 'if' • lib/core/api/business_api.dart:114:11 • use_null_aware_elements
+   info • Use the null-aware marker '?' rather than a null check via an 'if' • lib/core/api/business_events_api.dart:21:11 • use_null_aware_elements
+   info • Use the null-aware marker '?' rather than a null check via an 'if' • lib/core/api/business_events_api.dart:22:11 • use_null_aware_elements
+   info • Use the null-aware marker '?' rather than a null check via an 'if' • lib/core/api/business_images_api.dart:21:11 • use_null_aware_elements
+   info • Use the null-aware marker '?' rather than a null check via an 'if' • lib/core/api/business_images_api.dart:22:11 • use_null_aware_elements
+   info • Use the null-aware marker '?' rather than a null check via an 'if' • lib/core/api/business_links_api.dart:15:27 • use_null_aware_elements
+warning • Unused import: 'package:my_app/core/data/models/business_subscription.dart' • lib/core/api/business_subscriptions_api.dart:3:8 • unused_import
+   info • Use the null-aware marker '?' rather than a null check via an 'if' • lib/core/api/category_banners_api.dart:18:11 • use_null_aware_elements
+   info • Use the null-aware marker '?' rather than a null check via an 'if' • lib/core/api/category_banners_api.dart:19:11 • use_null_aware_elements
+   info • Use the null-aware marker '?' rather than a null check via an 'if' • lib/core/api/deals_api.dart:18:11 • use_null_aware_elements
+   info • Use the null-aware marker '?' rather than a null check via an 'if' • lib/core/api/form_submissions_api.dart:49:27 • use_null_aware_elements
+   info • Use the null-aware marker '?' rather than a null check via an 'if' • lib/core/api/notifications_api.dart:17:27 • use_null_aware_elements
+   info • Use the null-aware marker '?' rather than a null check via an 'if' • lib/core/api/notifications_api.dart:68:27 • use_null_aware_elements
+   info • Use the null-aware marker '?' rather than a null check via an 'if' • lib/core/api/payment_history_api.dart:23:11 • use_null_aware_elements
+   info • Use the null-aware marker '?' rather than a null check via an 'if' • lib/core/api/payment_history_api.dart:24:11 • use_null_aware_elements
+   info • Use the null-aware marker '?' rather than a null check via an 'if' • lib/core/api/payment_history_api.dart:25:11 • use_null_aware_elements
+   info • Use the null-aware marker '?' rather than a null check via an 'if' • lib/core/api/reviews_api.dart:22:11 • use_null_aware_elements
+   info • Use the null-aware marker '?' rather than a null check via an 'if' • lib/core/api/reviews_api.dart:23:11 • use_null_aware_elements
+   info • Use the null-aware marker '?' rather than a null check via an 'if' • lib/core/api/reviews_api.dart:24:11 • use_null_aware_elements
+   info • The imported package 'http_parser' isn't a dependency of the importing package • lib/core/api/uploads_api.dart:5:8 • depend_on_referenced_packages
+   info • Use the null-aware marker '?' rather than a null check via an 'if' • lib/core/auth/api/auth_api.dart:94:9 • use_null_aware_elements
+   info • Use the null-aware marker '?' rather than a null check via an 'if' • lib/core/auth/api/auth_api.dart:95:9 • use_null_aware_elements
+   info • Statements in an if should be enclosed in a block • lib/core/data/listing_data_source.dart:93:7 • curly_braces_in_flow_control_structures
+   info • Use the null-aware marker '?' rather than a null check via an 'if' • lib/core/data/repositories/audit_log_repository.dart:35:7 • use_null_aware_elements
+   info • Use the null-aware marker '?' rather than a null check via an 'if' • lib/core/data/repositories/audit_log_repository.dart:36:7 • use_null_aware_elements
+   info • Use the null-aware marker '?' rather than a null check via an 'if' • lib/core/data/repositories/audit_log_repository.dart:37:7 • use_null_aware_elements
+   info • Use the null-aware marker '?' rather than a null check via an 'if' • lib/core/data/repositories/audit_log_repository.dart:38:7 • use_null_aware_elements
+   info • Use the null-aware marker '?' rather than a null check via an 'if' • lib/core/data/repositories/blog_posts_repository.dart:61:7 • use_null_aware_elements
+   info • Use the null-aware marker '?' rather than a null check via an 'if' • lib/core/data/repositories/blog_posts_repository.dart:62:7 • use_null_aware_elements
+warning • The value of the local variable 'sections' isn't used • lib/core/data/repositories/menu_repository.dart:23:11 • unused_local_variable
+   info • Use the null-aware marker '?' rather than a null check via an 'if' • lib/core/stripe/stripe_checkout_service.dart:30:11 • use_null_aware_elements
+   info • Use the null-aware marker '?' rather than a null check via an 'if' • lib/core/stripe/stripe_checkout_service.dart:31:11 • use_null_aware_elements
+   info • Use the null-aware marker '?' rather than a null check via an 'if' • lib/core/stripe/stripe_checkout_service.dart:32:11 • use_null_aware_elements
+   info • Use the null-aware marker '?' rather than a null check via an 'if' • lib/core/stripe/stripe_checkout_service.dart:70:16 • use_null_aware_elements
+   info • The import of 'package:my_app/core/data/repositories/business_repository.dart' is unnecessary because all of the used elements are also provided by the import of 'package:my_app/core/data/providers/app_data_providers.dart' • lib/features/admin/presentation/screens/admin_add_business_screen.dart:11:8 • unnecessary_import
+warning • Unused import: 'package:my_app/core/data/models/ad_package.dart' • lib/features/admin/presentation/screens/admin_business_ads_screen.dart:2:8 • unused_import
+warning • The value of the field '_savingFields' isn't used • lib/features/admin/presentation/screens/admin_business_ads_screen.dart:216:8 • unused_field
+warning • The value of the field '_saveError' isn't used • lib/features/admin/presentation/screens/admin_business_ads_screen.dart:217:11 • unused_field
+warning • The declaration '_saveFields' isn't referenced • lib/features/admin/presentation/screens/admin_business_ads_screen.dart:236:16 • unused_element
+warning • The declaration '_statusColor' isn't referenced • lib/features/admin/presentation/screens/admin_business_ads_screen.dart:322:9 • unused_element
+warning • The declaration '_formatDate' isn't referenced • lib/features/admin/presentation/screens/admin_business_ads_screen.dart:337:17 • unused_element
+warning • The value of the local variable 'daysLeft' isn't used • lib/features/admin/presentation/screens/admin_business_ads_screen.dart:357:10 • unused_local_variable
+warning • The value of the local variable 'progress' isn't used • lib/features/admin/presentation/screens/admin_business_ads_screen.dart:358:12 • unused_local_variable
+   info • Use the null-aware marker '?' rather than a null check via an 'if' • lib/features/admin/presentation/screens/admin_claims_screen.dart:190:21 • use_null_aware_elements
+warning • The value of the local variable 'businessName' isn't used • lib/features/admin/presentation/screens/admin_claims_screen.dart:308:15 • unused_local_variable
+warning • The value of the local variable 'displayName' isn't used • lib/features/admin/presentation/screens/admin_claims_screen.dart:309:15 • unused_local_variable
+warning • The value of the local variable 'businessName' isn't used • lib/features/admin/presentation/screens/admin_deal_detail_screen.dart:59:13 • unused_local_variable
+warning • The value of the local variable 'businessName' isn't used • lib/features/admin/presentation/screens/admin_deal_detail_screen.dart:234:15 • unused_local_variable
+   info • Statements in an if should be enclosed in a block • lib/features/admin/presentation/screens/admin_pending_approvals_screen.dart:443:7 • curly_braces_in_flow_control_structures
+   info • Statements in an if should be enclosed in a block • lib/features/admin/presentation/screens/admin_pending_approvals_screen.dart:446:7 • curly_braces_in_flow_control_structures
+warning • The value of the local variable 'businessName' isn't used • lib/features/admin/presentation/screens/admin_reviews_screen.dart:492:15 • unused_local_variable
+   info • Unnecessary use of multiple underscores • lib/features/auth/presentation/screens/sign_in_screen.dart:504:39 • unnecessary_underscores
+   info • Unnecessary use of multiple underscores • lib/features/auth/presentation/screens/sign_in_screen.dart:504:43 • unnecessary_underscores
+   info • The import of 'package:my_app/core/data/repositories/profiles_repository.dart' is unnecessary because all of the used elements are also provided by the import of 'package:my_app/core/data/providers/app_data_providers.dart' • lib/features/deals/presentation/screens/deals_screen.dart:19:8 • unnecessary_import
+warning • The value of the local variable 'claimerProfile' isn't used • lib/features/deals/presentation/screens/deals_screen.dart:616:51 • unused_local_variable
+   info • The import of 'package:my_app/core/data/repositories/business_claims_repository.dart' is unnecessary because all of the used elements are also provided by the import of 'package:my_app/core/data/providers/app_data_providers.dart' • lib/features/listing/presentation/screens/listing_detail_screen.dart:15:8 • unnecessary_import
+   info • The import of 'package:my_app/core/data/repositories/favorites_repository.dart' is unnecessary because all of the used elements are also provided by the import of 'package:my_app/core/data/providers/app_data_providers.dart' • lib/features/listing/presentation/screens/listing_detail_screen.dart:17:8 • unnecessary_import
+   info • The import of 'package:my_app/core/data/repositories/business_repository.dart' is unnecessary because all of the used elements are also provided by the import of 'package:my_app/core/data/providers/app_data_providers.dart' • lib/features/listing/presentation/screens/listing_detail_screen.dart:18:8 • unnecessary_import
+   info • The import of 'package:my_app/core/data/repositories/reviews_repository.dart' is unnecessary because all of the used elements are also provided by the import of 'package:my_app/core/data/providers/app_data_providers.dart' • lib/features/listing/presentation/screens/listing_detail_screen.dart:19:8 • unnecessary_import
+   info • The import of 'package:my_app/core/data/repositories/event_rsvps_repository.dart' is unnecessary because all of the used elements are also provided by the import of 'package:my_app/core/data/providers/app_data_providers.dart' • lib/features/listing/presentation/screens/listing_detail_screen.dart:20:8 • unnecessary_import
+   info • The import of 'package:my_app/core/data/repositories/business_images_repository.dart' is unnecessary because all of the used elements are also provided by the import of 'package:my_app/core/data/providers/app_data_providers.dart' • lib/features/listing/presentation/screens/listing_detail_screen.dart:22:8 • unnecessary_import
+   info • The import of 'package:my_app/core/data/repositories/business_subscriptions_repository.dart' is unnecessary because all of the used elements are also provided by the import of 'package:my_app/core/data/providers/app_data_providers.dart' • lib/features/listing/presentation/screens/listing_detail_screen.dart:23:8 • unnecessary_import
+warning • The '!' will have no effect because the receiver can't be null • lib/features/listing/presentation/screens/listing_detail_screen.dart:2449:61 • unnecessary_non_null_assertion
+warning • The value of the local variable 'claimerProfile' isn't used • lib/features/listing/presentation/screens/listing_detail_screen.dart:2451:35 • unused_local_variable
+   info • The import of 'package:my_app/core/data/repositories/business_repository.dart' is unnecessary because all of the used elements are also provided by the import of 'package:my_app/core/data/providers/app_data_providers.dart' • lib/features/local_events/presentation/screens/local_events_screen.dart:9:8 • unnecessary_import
+warning • The value of the local variable 'sub' isn't used • lib/features/my_listings/presentation/screens/business_ads_screen.dart:269:11 • unused_local_variable
+warning • The value of the local variable 'daysLeft' isn't used • lib/features/my_listings/presentation/screens/business_ads_screen.dart:274:10 • unused_local_variable
+warning • The value of the local variable 'progress' isn't used • lib/features/my_listings/presentation/screens/business_ads_screen.dart:275:12 • unused_local_variable
+warning • The value of the local variable 'ctr' isn't used • lib/features/my_listings/presentation/screens/business_ads_screen.dart:290:11 • unused_local_variable
+warning • The declaration '_StatChip' isn't referenced • lib/features/my_listings/presentation/screens/business_ads_screen.dart:388:7 • unused_element
+   info • Statements in an if should be enclosed in a block • lib/features/my_listings/presentation/screens/create_business_item_screen.dart:524:9 • curly_braces_in_flow_control_structures
+   info • The import of 'package:my_app/core/data/repositories/business_repository.dart' is unnecessary because all of the used elements are also provided by the import of 'package:my_app/core/data/providers/app_data_providers.dart' • lib/features/my_listings/presentation/screens/create_listing_screen.dart:8:8 • unnecessary_import
+warning • Dead code • lib/features/my_listings/presentation/screens/form_submissions_inbox_screen.dart:208:42 • dead_code
+warning • The left operand can't be null, so the right operand is never executed • lib/features/my_listings/presentation/screens/form_submissions_inbox_screen.dart:208:45 • dead_null_aware_expression
+   info • The import of 'package:my_app/core/data/repositories/business_images_repository.dart' is unnecessary because all of the used elements are also provided by the import of 'package:my_app/core/data/providers/app_data_providers.dart' • lib/features/my_listings/presentation/screens/listing_edit_screen.dart:13:8 • unnecessary_import
+   info • The import of 'package:my_app/core/data/repositories/business_repository.dart' is unnecessary because all of the used elements are also provided by the import of 'package:my_app/core/data/providers/app_data_providers.dart' • lib/features/my_listings/presentation/screens/listing_edit_screen.dart:15:8 • unnecessary_import
+   info • The import of 'package:my_app/core/data/repositories/business_subscriptions_repository.dart' is unnecessary because all of the used elements are also provided by the import of 'package:my_app/core/data/providers/app_data_providers.dart' • lib/features/my_listings/presentation/screens/listing_edit_screen.dart:16:8 • unnecessary_import
+warning • Dead code • lib/features/my_listings/presentation/screens/listing_edit_screen.dart:3020:17 • dead_code
+warning • Dead code • lib/shared/widgets/contact_form_widget.dart:50:16 • dead_code
+   info • The imported package 'supabase' isn't a dependency of the importing package • scripts/seed_database.dart:13:8 • depend_on_referenced_packages
+  error • Target of URI doesn't exist: 'package:supabase/supabase.dart' • scripts/seed_database.dart:13:8 • uri_does_not_exist
+  error • The function 'SupabaseClient' isn't defined • scripts/seed_database.dart:34:18 • undefined_function
+  error • Undefined class 'SupabaseClient' • scripts/seed_database.dart:56:30 • undefined_class
+  error • Undefined class 'SupabaseClient' • scripts/seed_database.dart:65:33 • undefined_class
+  error • Undefined class 'SupabaseClient' • scripts/seed_database.dart:75:30 • undefined_class
+  error • Undefined class 'SupabaseClient' • scripts/seed_database.dart:120:36 • undefined_class
+  error • Undefined class 'SupabaseClient' • scripts/seed_database.dart:129:41 • undefined_class
+  error • Undefined class 'SupabaseClient' • scripts/seed_database.dart:139:33 • undefined_class
+  error • Undefined class 'SupabaseClient' • scripts/seed_database.dart:169:37 • undefined_class
+  error • Undefined class 'SupabaseClient' • scripts/seed_database.dart:199:25 • undefined_class
+  error • Undefined class 'SupabaseClient' • scripts/seed_database.dart:212:29 • undefined_class
+  error • Undefined class 'SupabaseClient' • scripts/seed_database.dart:221:39 • undefined_class
+

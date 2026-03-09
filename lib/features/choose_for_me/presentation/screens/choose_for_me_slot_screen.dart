@@ -3,8 +3,9 @@ import 'dart:math';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:my_app/core/data/app_data_scope.dart';
+import 'package:my_app/core/data/providers/app_data_providers.dart';
 import 'package:my_app/core/data/mock_data.dart';
 import 'package:my_app/core/theme/theme.dart';
 import 'package:my_app/shared/widgets/app_buttons.dart';
@@ -44,7 +45,7 @@ void showChooseForMeSlotDialog({
 
 /// Step 2 of "Choose for me": slot-machine style randomizer using Explore-style listing cards.
 /// Shown in a popup; cards spin vertically and land on the winner.
-class ChooseForMeSlotScreen extends StatefulWidget {
+class ChooseForMeSlotScreen extends ConsumerStatefulWidget {
   const ChooseForMeSlotScreen({
     super.key,
     required this.parishIds,
@@ -57,11 +58,10 @@ class ChooseForMeSlotScreen extends StatefulWidget {
   final Set<String> subcategoryIds;
 
   @override
-  State<ChooseForMeSlotScreen> createState() => _ChooseForMeSlotScreenState();
+  ConsumerState<ChooseForMeSlotScreen> createState() => _ChooseForMeSlotScreenState();
 }
 
-class _ChooseForMeSlotScreenState extends State<ChooseForMeSlotScreen>
-    with TickerProviderStateMixin {
+class _ChooseForMeSlotScreenState extends ConsumerState<ChooseForMeSlotScreen> with TickerProviderStateMixin {
   static const double _cardHeight = 100;
   static const double _viewportHeight = 120;
   static const int _slotItemsBeforeWinner = 28;
@@ -70,6 +70,7 @@ class _ChooseForMeSlotScreenState extends State<ChooseForMeSlotScreen>
 
   MockListing? _winner;
   bool _loadFailed = false;
+
   /// 'empty' = 0 results after fallbacks; 'error' = request threw (timeout/connection).
   String? _loadFailureReason;
   bool _loading = true;
@@ -77,9 +78,11 @@ class _ChooseForMeSlotScreenState extends State<ChooseForMeSlotScreen>
   bool _showResult = false;
   List<MockListing> _slotList = [];
   int _winnerSlotIndex = 0;
+
   /// Seconds remaining before "Spin again" is enabled (null = no cooldown).
   int? _spinAgainCooldownRemaining;
   Timer? _cooldownTimer;
+
   /// Revealed after a short delay when result is shown (for staggered fade-in).
   bool _resultActionsRevealed = false;
   late ScrollController _scrollController;
@@ -113,14 +116,8 @@ class _ChooseForMeSlotScreenState extends State<ChooseForMeSlotScreen>
   void initState() {
     super.initState();
     _scrollController = ScrollController();
-    _slotController = AnimationController(
-      vsync: this,
-      duration: _slotDuration,
-    );
-    _slotCurve = CurvedAnimation(
-      parent: _slotController,
-      curve: Curves.easeOut,
-    );
+    _slotController = AnimationController(vsync: this, duration: _slotDuration);
+    _slotCurve = CurvedAnimation(parent: _slotController, curve: Curves.easeOut);
     _slotController.addStatusListener((status) {
       if (status == AnimationStatus.completed || status == AnimationStatus.dismissed) {
         if (_slotTickListener != null) {
@@ -158,9 +155,11 @@ class _ChooseForMeSlotScreenState extends State<ChooseForMeSlotScreen>
 
   /// Fetch listings for category + parish + subcategory. If parish filter yields none, retries without parish; if tags yield none, retries without subcategory.
   Future<List<MockListing>> _fetchListingsForSlot() async {
-    final ds = AppDataScope.of(context).dataSource;
+    final ds = ref.read(listingDataSourceProvider);
     if (kDebugMode) {
-      debugPrint('[ChooseForMe] fetch: categoryIds=${widget.categoryIds}, parishIds=${widget.parishIds}, subcategoryIds=${widget.subcategoryIds}');
+      debugPrint(
+        '[ChooseForMe] fetch: categoryIds=${widget.categoryIds}, parishIds=${widget.parishIds}, subcategoryIds=${widget.subcategoryIds}',
+      );
     }
     ListingFilters filters = ListingFilters(
       categoryIds: widget.categoryIds,
@@ -168,35 +167,24 @@ class _ChooseForMeSlotScreenState extends State<ChooseForMeSlotScreen>
       subcategoryIds: widget.subcategoryIds,
     );
     try {
-      List<MockListing> listings = await ds.filterListings(filters).timeout(
-        _loadTimeout,
-        onTimeout: () => throw TimeoutException('Load timed out'),
-      );
+      List<MockListing> listings = await ds
+          .filterListings(filters)
+          .timeout(_loadTimeout, onTimeout: () => throw TimeoutException('Load timed out'));
       if (kDebugMode) debugPrint('[ChooseForMe] first fetch: ${listings.length} listings');
       if (listings.isNotEmpty) return listings;
       if (widget.parishIds.isNotEmpty) {
-        filters = ListingFilters(
-          categoryIds: widget.categoryIds,
-          parishIds: {},
-          subcategoryIds: widget.subcategoryIds,
-        );
-        listings = await ds.filterListings(filters).timeout(
-          _loadTimeout,
-          onTimeout: () => throw TimeoutException('Load timed out'),
-        );
+        filters = ListingFilters(categoryIds: widget.categoryIds, parishIds: {}, subcategoryIds: widget.subcategoryIds);
+        listings = await ds
+            .filterListings(filters)
+            .timeout(_loadTimeout, onTimeout: () => throw TimeoutException('Load timed out'));
         if (kDebugMode) debugPrint('[ChooseForMe] after parish fallback: ${listings.length} listings');
         if (listings.isNotEmpty) return listings;
       }
       if (widget.subcategoryIds.isNotEmpty) {
-        filters = ListingFilters(
-          categoryIds: widget.categoryIds,
-          parishIds: widget.parishIds,
-          subcategoryIds: {},
-        );
-        listings = await ds.filterListings(filters).timeout(
-          _loadTimeout,
-          onTimeout: () => throw TimeoutException('Load timed out'),
-        );
+        filters = ListingFilters(categoryIds: widget.categoryIds, parishIds: widget.parishIds, subcategoryIds: {});
+        listings = await ds
+            .filterListings(filters)
+            .timeout(_loadTimeout, onTimeout: () => throw TimeoutException('Load timed out'));
         if (kDebugMode) debugPrint('[ChooseForMe] after subcategory fallback: ${listings.length} listings');
       }
       return listings;
@@ -289,6 +277,7 @@ class _ChooseForMeSlotScreenState extends State<ChooseForMeSlotScreen>
           if (retriesLeft > 0) scheduleStartAnimation(retriesLeft - 1);
         });
       }
+
       scheduleStartAnimation(20);
     } catch (_) {
       if (mounted) {
@@ -328,11 +317,7 @@ class _ChooseForMeSlotScreenState extends State<ChooseForMeSlotScreen>
         appBar: AppBar(
           title: Text(
             'Choose for me',
-            style: GoogleFonts.dancingScript(
-              fontSize: 26,
-              fontWeight: FontWeight.w700,
-              color: nav,
-            ),
+            style: GoogleFonts.dancingScript(fontSize: 26, fontWeight: FontWeight.w700, color: nav),
           ),
           centerTitle: true,
           backgroundColor: AppTheme.specOffWhite,
@@ -349,10 +334,7 @@ class _ChooseForMeSlotScreenState extends State<ChooseForMeSlotScreen>
                 Text(
                   'No data',
                   textAlign: TextAlign.center,
-                  style: theme.textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w600,
-                    color: nav,
-                  ),
+                  style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600, color: nav),
                 ),
                 const SizedBox(height: 8),
                 Text(
@@ -363,10 +345,7 @@ class _ChooseForMeSlotScreenState extends State<ChooseForMeSlotScreen>
                   style: theme.textTheme.bodyMedium?.copyWith(color: sub),
                 ),
                 const SizedBox(height: 24),
-                AppPrimaryButton(
-                  onPressed: () => Navigator.of(context).pop(),
-                  label: const Text('Back'),
-                ),
+                AppPrimaryButton(onPressed: () => Navigator.of(context).pop(), label: const Text('Back')),
               ],
             ),
           ),
@@ -381,11 +360,7 @@ class _ChooseForMeSlotScreenState extends State<ChooseForMeSlotScreen>
       appBar: AppBar(
         title: Text(
           'Choose for me',
-          style: GoogleFonts.dancingScript(
-            fontSize: 26,
-            fontWeight: FontWeight.w700,
-            color: nav,
-          ),
+          style: GoogleFonts.dancingScript(fontSize: 26, fontWeight: FontWeight.w700, color: nav),
         ),
         centerTitle: true,
         backgroundColor: AppTheme.specOffWhite,
@@ -397,9 +372,7 @@ class _ChooseForMeSlotScreenState extends State<ChooseForMeSlotScreen>
           children: [
             const SizedBox(height: 16),
             Text(
-              _loading
-                  ? 'Find local businesses with heart'
-                  : (_spinning ? 'Spinning…' : 'We chose…'),
+              _loading ? 'Find local businesses with heart' : (_spinning ? 'Spinning…' : 'We chose…'),
               style: theme.textTheme.titleMedium?.copyWith(
                 fontWeight: FontWeight.w700,
                 color: _loading || _spinning ? sub : AppTheme.specGold,
@@ -416,58 +389,52 @@ class _ChooseForMeSlotScreenState extends State<ChooseForMeSlotScreen>
                     children: [
                       if (_loading || !showSlot)
                         Center(
-                          child: _LoadingLocalBusinesses(
-                            textColor: sub,
-                            heartColor: nav,
-                            showLabel: false,
-                          ),
+                          child: _LoadingLocalBusinesses(textColor: sub, heartColor: nav, showLabel: false),
                         )
                       else
                         ClipRRect(
                           borderRadius: BorderRadius.circular(16),
                           child: ListView.builder(
-                        controller: _scrollController,
-                        physics: const NeverScrollableScrollPhysics(),
-                        padding: EdgeInsets.only(
-                          top: (_viewportHeight - _cardHeight) / 2,
-                          bottom: (_viewportHeight - _cardHeight) / 2,
-                        ),
-                        itemCount: _slotList.length,
-                        itemBuilder: (context, index) {
-                          final isWinner = index == _winnerSlotIndex && _showResult && !_spinning;
-                          final card = Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 20),
-                            child: SizedBox(
-                              height: _cardHeight,
-                              child: ChooseForMeListingCard(
-                                listing: _slotList[index],
-                                cardHeight: _cardHeight - 8,
-                                onTap: null,
-                              ),
+                            controller: _scrollController,
+                            physics: const NeverScrollableScrollPhysics(),
+                            padding: EdgeInsets.only(
+                              top: (_viewportHeight - _cardHeight) / 2,
+                              bottom: (_viewportHeight - _cardHeight) / 2,
                             ),
-                          );
-                          if (isWinner) {
-                            return TweenAnimationBuilder<double>(
-                              tween: Tween(begin: 1.0, end: 1.08),
-                              duration: const Duration(milliseconds: 450),
-                              curve: Curves.elasticOut,
-                              builder: (context, scale, child) => Transform.scale(
-                                scale: scale,
-                                alignment: Alignment.center,
-                                child: _WinnerHighlight(child: child!),
-                              ),
-                              child: card,
-                            );
-                          }
-                          return card;
-                        },
-                      ),
-                    ),
+                            itemCount: _slotList.length,
+                            itemBuilder: (context, index) {
+                              final isWinner = index == _winnerSlotIndex && _showResult && !_spinning;
+                              final card = Padding(
+                                padding: const EdgeInsets.symmetric(horizontal: 20),
+                                child: SizedBox(
+                                  height: _cardHeight,
+                                  child: ChooseForMeListingCard(
+                                    listing: _slotList[index],
+                                    cardHeight: _cardHeight - 8,
+                                    onTap: null,
+                                  ),
+                                ),
+                              );
+                              if (isWinner) {
+                                return TweenAnimationBuilder<double>(
+                                  tween: Tween(begin: 1.0, end: 1.08),
+                                  duration: const Duration(milliseconds: 450),
+                                  curve: Curves.elasticOut,
+                                  builder: (context, scale, child) => Transform.scale(
+                                    scale: scale,
+                                    alignment: Alignment.center,
+                                    child: _WinnerHighlight(child: child!),
+                                  ),
+                                  child: card,
+                                );
+                              }
+                              return card;
+                            },
+                          ),
+                        ),
                       if (_showResult && _winner != null)
                         Positioned.fill(
-                          child: IgnorePointer(
-                            child: _CelebrationOverlay(size: slotSize),
-                          ),
+                          child: IgnorePointer(child: _CelebrationOverlay(size: slotSize)),
                         ),
                     ],
                   );
@@ -493,7 +460,7 @@ class _ChooseForMeSlotScreenState extends State<ChooseForMeSlotScreen>
 }
 
 /// Slot content used inside the popup dialog: Explore-style cards that spin in place.
-class ChooseForMeSlotContent extends StatefulWidget {
+class ChooseForMeSlotContent extends ConsumerStatefulWidget {
   const ChooseForMeSlotContent({
     super.key,
     required this.parishIds,
@@ -508,11 +475,10 @@ class ChooseForMeSlotContent extends StatefulWidget {
   final VoidCallback? onClose;
 
   @override
-  State<ChooseForMeSlotContent> createState() => _ChooseForMeSlotContentState();
+  ConsumerState<ChooseForMeSlotContent> createState() => _ChooseForMeSlotContentState();
 }
 
-class _ChooseForMeSlotContentState extends State<ChooseForMeSlotContent>
-    with TickerProviderStateMixin {
+class _ChooseForMeSlotContentState extends ConsumerState<ChooseForMeSlotContent> with TickerProviderStateMixin {
   static const double _cardHeight = 106;
   static const double _viewportHeight = 130;
   static const int _slotItemsBeforeWinner = 28;
@@ -522,6 +488,7 @@ class _ChooseForMeSlotContentState extends State<ChooseForMeSlotContent>
 
   MockListing? _winner;
   bool _loadFailed = false;
+
   /// 'empty' = 0 results after fallbacks; 'error' = request threw (timeout/connection).
   String? _loadFailureReason;
   bool _loading = true;
@@ -531,9 +498,11 @@ class _ChooseForMeSlotContentState extends State<ChooseForMeSlotContent>
   Map<String, String> _subcategoryNames = {};
   int _winnerSlotIndex = 0;
   double _scrollOffset = 0;
+
   /// Seconds remaining before "Spin again" is enabled (null = no cooldown).
   int? _spinAgainCooldownRemaining;
   Timer? _cooldownTimer;
+
   /// Revealed after a short delay when result is shown (for staggered fade-in).
   bool _resultActionsRevealed = false;
   late ScrollController _scrollController;
@@ -567,14 +536,8 @@ class _ChooseForMeSlotContentState extends State<ChooseForMeSlotContent>
   void initState() {
     super.initState();
     _scrollController = ScrollController();
-    _slotController = AnimationController(
-      vsync: this,
-      duration: _slotDuration,
-    );
-    _slotCurve = CurvedAnimation(
-      parent: _slotController,
-      curve: Curves.easeOut,
-    );
+    _slotController = AnimationController(vsync: this, duration: _slotDuration);
+    _slotCurve = CurvedAnimation(parent: _slotController, curve: Curves.easeOut);
     _slotController.addStatusListener((status) {
       if (status == AnimationStatus.completed || status == AnimationStatus.dismissed) {
         if (_slotTickListener != null) {
@@ -617,9 +580,11 @@ class _ChooseForMeSlotContentState extends State<ChooseForMeSlotContent>
       _loading = true;
     });
     try {
-      final ds = AppDataScope.of(context).dataSource;
+      final ds = ref.read(listingDataSourceProvider);
       if (kDebugMode) {
-        debugPrint('[ChooseForMe] dialog fetch: categoryIds=${widget.categoryIds}, parishIds=${widget.parishIds}, subcategoryIds=${widget.subcategoryIds}');
+        debugPrint(
+          '[ChooseForMe] dialog fetch: categoryIds=${widget.categoryIds}, parishIds=${widget.parishIds}, subcategoryIds=${widget.subcategoryIds}',
+        );
       }
       try {
         final categories = await ds.getCategories();
@@ -643,10 +608,9 @@ class _ChooseForMeSlotContentState extends State<ChooseForMeSlotContent>
       );
       List<MockListing> listings;
       try {
-        listings = await ds.filterListings(filters).timeout(
-          _loadTimeout,
-          onTimeout: () => throw TimeoutException('Load timed out'),
-        );
+        listings = await ds
+            .filterListings(filters)
+            .timeout(_loadTimeout, onTimeout: () => throw TimeoutException('Load timed out'));
         if (kDebugMode) debugPrint('[ChooseForMe] dialog first fetch: ${listings.length} listings');
       } catch (e, st) {
         if (kDebugMode) {
@@ -669,10 +633,9 @@ class _ChooseForMeSlotContentState extends State<ChooseForMeSlotContent>
             parishIds: {},
             subcategoryIds: widget.subcategoryIds,
           );
-          listings = await ds.filterListings(filters).timeout(
-            _loadTimeout,
-            onTimeout: () => throw TimeoutException('Load timed out'),
-          );
+          listings = await ds
+              .filterListings(filters)
+              .timeout(_loadTimeout, onTimeout: () => throw TimeoutException('Load timed out'));
           if (kDebugMode) debugPrint('[ChooseForMe] dialog after parish fallback: ${listings.length} listings');
         } catch (_) {
           listings = [];
@@ -681,15 +644,10 @@ class _ChooseForMeSlotContentState extends State<ChooseForMeSlotContent>
       if (!mounted) return;
       if (listings.isEmpty && widget.subcategoryIds.isNotEmpty) {
         try {
-          filters = ListingFilters(
-            categoryIds: widget.categoryIds,
-            parishIds: widget.parishIds,
-            subcategoryIds: {},
-          );
-          listings = await ds.filterListings(filters).timeout(
-            _loadTimeout,
-            onTimeout: () => throw TimeoutException('Load timed out'),
-          );
+          filters = ListingFilters(categoryIds: widget.categoryIds, parishIds: widget.parishIds, subcategoryIds: {});
+          listings = await ds
+              .filterListings(filters)
+              .timeout(_loadTimeout, onTimeout: () => throw TimeoutException('Load timed out'));
           if (kDebugMode) debugPrint('[ChooseForMe] dialog after subcategory fallback: ${listings.length} listings');
         } catch (_) {
           listings = [];
@@ -761,6 +719,7 @@ class _ChooseForMeSlotContentState extends State<ChooseForMeSlotContent>
           if (retriesLeft > 0) scheduleStartAnimation(retriesLeft - 1);
         });
       }
+
       scheduleStartAnimation(20);
     } catch (e, st) {
       if (kDebugMode) {
@@ -821,17 +780,9 @@ class _ChooseForMeSlotContentState extends State<ChooseForMeSlotContent>
                 children: [
                   Text(
                     'Choose for me',
-                    style: GoogleFonts.dancingScript(
-                      fontSize: 22,
-                      fontWeight: FontWeight.w700,
-                      color: nav,
-                    ),
+                    style: GoogleFonts.dancingScript(fontSize: 22, fontWeight: FontWeight.w700, color: nav),
                   ),
-                  IconButton(
-                    onPressed: widget.onClose,
-                    icon: const Icon(Icons.close_rounded),
-                    color: nav,
-                  ),
+                  IconButton(onPressed: widget.onClose, icon: const Icon(Icons.close_rounded), color: nav),
                 ],
               ),
               const SizedBox(height: 24),
@@ -840,10 +791,7 @@ class _ChooseForMeSlotContentState extends State<ChooseForMeSlotContent>
               Text(
                 'No places match',
                 textAlign: TextAlign.center,
-                style: theme.textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.w600,
-                  color: nav,
-                ),
+                style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600, color: nav),
               ),
               const SizedBox(height: 8),
               Text(
@@ -854,10 +802,7 @@ class _ChooseForMeSlotContentState extends State<ChooseForMeSlotContent>
                 style: theme.textTheme.bodyMedium?.copyWith(color: sub),
               ),
               const SizedBox(height: 24),
-              AppPrimaryButton(
-                onPressed: widget.onClose,
-                label: const Text('Close'),
-              ),
+              AppPrimaryButton(onPressed: widget.onClose, label: const Text('Close')),
             ],
           ),
         ),
@@ -880,24 +825,14 @@ class _ChooseForMeSlotContentState extends State<ChooseForMeSlotContent>
                 children: [
                   Text(
                     'Choose for me',
-                    style: GoogleFonts.dancingScript(
-                      fontSize: 22,
-                      fontWeight: FontWeight.w700,
-                      color: nav,
-                    ),
+                    style: GoogleFonts.dancingScript(fontSize: 22, fontWeight: FontWeight.w700, color: nav),
                   ),
-                  IconButton(
-                    onPressed: widget.onClose,
-                    icon: const Icon(Icons.close_rounded),
-                    color: nav,
-                  ),
+                  IconButton(onPressed: widget.onClose, icon: const Icon(Icons.close_rounded), color: nav),
                 ],
               ),
               const SizedBox(height: 8),
               Text(
-                _loading
-                    ? 'Find local businesses with heart'
-                    : (_spinning ? 'Spinning…' : 'We chose…'),
+                _loading ? 'Find local businesses with heart' : (_spinning ? 'Spinning…' : 'We chose…'),
                 style: theme.textTheme.titleMedium?.copyWith(
                   fontWeight: FontWeight.w700,
                   color: _loading || _spinning ? sub : AppTheme.specGold,
@@ -914,11 +849,7 @@ class _ChooseForMeSlotContentState extends State<ChooseForMeSlotContent>
                       children: [
                         if (_loading || !showSlot)
                           Center(
-                            child: _LoadingLocalBusinesses(
-                              textColor: sub,
-                              heartColor: nav,
-                              showLabel: false,
-                            ),
+                            child: _LoadingLocalBusinesses(textColor: sub, heartColor: nav, showLabel: false),
                           )
                         else
                           ClipRRect(
@@ -934,47 +865,45 @@ class _ChooseForMeSlotContentState extends State<ChooseForMeSlotContent>
                               itemBuilder: (context, index) {
                                 final tilt = _tiltForIndex(index);
                                 final isWinner = index == _winnerSlotIndex && _showResult && !_spinning;
-                            final card = Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 12),
-                              child: SizedBox(
-                                height: _cardHeight,
-                                child: Transform(
-                                  alignment: Alignment.center,
-                                  transform: Matrix4.identity()
-                                    ..setEntry(3, 2, 0.001)
-                                    ..rotateX(tilt),
-                                  child: ExploreStyleListingCard(
-                                    listing: _slotList[index],
-                                    subcategoryNames: _subcategoryNames,
-                                    cardHeight: _cardHeight - 6,
-                                    cardRadius: 14,
-                                    onTap: null,
+                                final card = Padding(
+                                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                                  child: SizedBox(
+                                    height: _cardHeight,
+                                    child: Transform(
+                                      alignment: Alignment.center,
+                                      transform: Matrix4.identity()
+                                        ..setEntry(3, 2, 0.001)
+                                        ..rotateX(tilt),
+                                      child: ExploreStyleListingCard(
+                                        listing: _slotList[index],
+                                        subcategoryNames: _subcategoryNames,
+                                        cardHeight: _cardHeight - 6,
+                                        cardRadius: 14,
+                                        onTap: null,
+                                      ),
+                                    ),
                                   ),
-                                ),
-                              ),
-                            );
-                            if (isWinner) {
-                              return TweenAnimationBuilder<double>(
-                                tween: Tween(begin: 1.0, end: 1.08),
-                                duration: const Duration(milliseconds: 450),
-                                curve: Curves.elasticOut,
-                                builder: (context, scale, child) => Transform.scale(
-                                  scale: scale,
-                                  alignment: Alignment.center,
-                                  child: _WinnerHighlight(child: child!),
-                                ),
-                                child: card,
-                              );
-                            }
-                            return card;
-                          },
-                        ),
-                      ),
+                                );
+                                if (isWinner) {
+                                  return TweenAnimationBuilder<double>(
+                                    tween: Tween(begin: 1.0, end: 1.08),
+                                    duration: const Duration(milliseconds: 450),
+                                    curve: Curves.elasticOut,
+                                    builder: (context, scale, child) => Transform.scale(
+                                      scale: scale,
+                                      alignment: Alignment.center,
+                                      child: _WinnerHighlight(child: child!),
+                                    ),
+                                    child: card,
+                                  );
+                                }
+                                return card;
+                              },
+                            ),
+                          ),
                         if (_showResult && _winner != null)
                           Positioned.fill(
-                            child: IgnorePointer(
-                              child: _CelebrationOverlay(size: slotSize),
-                            ),
+                            child: IgnorePointer(child: _CelebrationOverlay(size: slotSize)),
                           ),
                       ],
                     );
@@ -1003,14 +932,11 @@ class _ChooseForMeSlotContentState extends State<ChooseForMeSlotContent>
 
 /// User-friendly loading state for Choose for me: optional label + pulsing heart.
 class _LoadingLocalBusinesses extends StatefulWidget {
-  const _LoadingLocalBusinesses({
-    this.textColor,
-    this.heartColor,
-    this.showLabel = true,
-  });
+  const _LoadingLocalBusinesses({this.textColor, this.heartColor, this.showLabel = true});
 
   final Color? textColor;
   final Color? heartColor;
+
   /// When false, only the pulsing heart is shown (title shows "Find local businesses with heart").
   final bool showLabel;
 
@@ -1018,21 +944,18 @@ class _LoadingLocalBusinesses extends StatefulWidget {
   State<_LoadingLocalBusinesses> createState() => _LoadingLocalBusinessesState();
 }
 
-class _LoadingLocalBusinessesState extends State<_LoadingLocalBusinesses>
-    with SingleTickerProviderStateMixin {
+class _LoadingLocalBusinessesState extends State<_LoadingLocalBusinesses> with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _pulse;
 
   @override
   void initState() {
     super.initState();
-    _controller = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 900),
-    )..repeat(reverse: true);
-    _pulse = Tween<double>(begin: 0.85, end: 1.15).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
-    );
+    _controller = AnimationController(vsync: this, duration: const Duration(milliseconds: 900))..repeat(reverse: true);
+    _pulse = Tween<double>(
+      begin: 0.85,
+      end: 1.15,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
   }
 
   @override
@@ -1053,10 +976,7 @@ class _LoadingLocalBusinessesState extends State<_LoadingLocalBusinesses>
         if (widget.showLabel) ...[
           Text(
             'Loading local businesses',
-            style: theme.textTheme.titleSmall?.copyWith(
-              fontWeight: FontWeight.w600,
-              color: textColor,
-            ),
+            style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600, color: textColor),
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 16),
@@ -1066,11 +986,7 @@ class _LoadingLocalBusinessesState extends State<_LoadingLocalBusinesses>
           builder: (context, child) {
             return Transform.scale(
               scale: _pulse.value,
-              child: Icon(
-                Icons.favorite_rounded,
-                size: 40,
-                color: heartColor,
-              ),
+              child: Icon(Icons.favorite_rounded, size: 40, color: heartColor),
             );
           },
         ),
@@ -1089,8 +1005,7 @@ class _WinnerHighlight extends StatefulWidget {
   State<_WinnerHighlight> createState() => _WinnerHighlightState();
 }
 
-class _WinnerHighlightState extends State<_WinnerHighlight>
-    with SingleTickerProviderStateMixin {
+class _WinnerHighlightState extends State<_WinnerHighlight> with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _scale;
   late Animation<double> _glow;
@@ -1098,16 +1013,12 @@ class _WinnerHighlightState extends State<_WinnerHighlight>
   @override
   void initState() {
     super.initState();
-    _controller = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 900),
-    )..repeat(reverse: true);
-    _scale = Tween<double>(begin: 1.0, end: 1.06).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
-    );
-    _glow = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
-    );
+    _controller = AnimationController(vsync: this, duration: const Duration(milliseconds: 900))..repeat(reverse: true);
+    _scale = Tween<double>(
+      begin: 1.0,
+      end: 1.06,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
+    _glow = Tween<double>(begin: 0.0, end: 1.0).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
   }
 
   @override
@@ -1132,10 +1043,7 @@ class _WinnerHighlightState extends State<_WinnerHighlight>
           child: Container(
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(20),
-              border: Border.all(
-                color: gold,
-                width: borderWidth,
-              ),
+              border: Border.all(color: gold, width: borderWidth),
               boxShadow: [
                 BoxShadow(
                   color: gold.withValues(alpha: shadowOpacity),
@@ -1149,10 +1057,7 @@ class _WinnerHighlightState extends State<_WinnerHighlight>
                 ),
               ],
             ),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(17),
-              child: child,
-            ),
+            child: ClipRRect(borderRadius: BorderRadius.circular(17), child: child),
           ),
         );
       },
@@ -1162,16 +1067,12 @@ class _WinnerHighlightState extends State<_WinnerHighlight>
 }
 
 class _ResultActions extends StatelessWidget {
-  const _ResultActions({
-    required this.winner,
-    required this.onSpinAgain,
-    this.onClose,
-    this.cooldownSecondsRemaining,
-  });
+  const _ResultActions({required this.winner, required this.onSpinAgain, this.onClose, this.cooldownSecondsRemaining});
 
   final MockListing winner;
   final VoidCallback onSpinAgain;
   final VoidCallback? onClose;
+
   /// When non-null and > 0, "Spin again" is disabled and shows countdown.
   final int? cooldownSecondsRemaining;
 
@@ -1196,11 +1097,7 @@ class _ResultActions extends StatelessWidget {
             onPressed: () {
               final navigator = Navigator.of(context);
               onClose?.call();
-              navigator.push(
-                MaterialPageRoute<void>(
-                  builder: (_) => ListingDetailScreen(listingId: winner.id),
-                ),
-              );
+              navigator.push(MaterialPageRoute<void>(builder: (_) => ListingDetailScreen(listingId: winner.id)));
             },
             expanded: false,
             icon: const Icon(Icons.arrow_forward_rounded, size: 20),
@@ -1222,8 +1119,7 @@ class _CelebrationOverlay extends StatefulWidget {
   State<_CelebrationOverlay> createState() => _CelebrationOverlayState();
 }
 
-class _CelebrationOverlayState extends State<_CelebrationOverlay>
-    with SingleTickerProviderStateMixin {
+class _CelebrationOverlayState extends State<_CelebrationOverlay> with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late List<_ConfettiParticle> _particles;
 
@@ -1239,23 +1135,14 @@ class _CelebrationOverlayState extends State<_CelebrationOverlay>
   @override
   void initState() {
     super.initState();
-    _controller = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 2500),
-    )..repeat();
+    _controller = AnimationController(vsync: this, duration: const Duration(milliseconds: 2500))..repeat();
     final rng = Random();
     final w = widget.size.width;
     _particles = List.generate(90, (_) {
       final isRect = rng.nextBool();
       return _ConfettiParticle(
-        offset: Offset(
-          rng.nextDouble() * w,
-          -20 - rng.nextDouble() * 60,
-        ),
-        velocity: Offset(
-          (rng.nextDouble() - 0.5) * 180,
-          120 + rng.nextDouble() * 140,
-        ),
+        offset: Offset(rng.nextDouble() * w, -20 - rng.nextDouble() * 60),
+        velocity: Offset((rng.nextDouble() - 0.5) * 180, 120 + rng.nextDouble() * 140),
         color: _celebratoryColors[rng.nextInt(_celebratoryColors.length)],
         radius: 2.5 + rng.nextDouble() * 4,
         phase: rng.nextDouble(),
@@ -1361,6 +1248,5 @@ class _ConfettiPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(covariant _ConfettiPainter oldDelegate) =>
-      oldDelegate.progress != progress;
+  bool shouldRepaint(covariant _ConfettiPainter oldDelegate) => oldDelegate.progress != progress;
 }

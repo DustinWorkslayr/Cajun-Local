@@ -1,17 +1,15 @@
 import 'dart:typed_data';
-
+import 'package:my_app/core/api/api_client.dart';
+import 'package:my_app/core/api/uploads_api.dart';
 import 'package:my_app/core/data/services/storage_upload_constants.dart';
-import 'package:my_app/core/supabase/supabase_config.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:riverpod_annotation/riverpod_annotation.dart';
+
+part 'app_storage_service.g.dart';
 
 /// Central storage for all app buckets (backend-cheatsheet §12).
-/// Path conventions: avatars/{user_id}/{filename}, business-images/{business_id}/{filename},
-/// ad-images/{business_id}/{filename}, event-images/{business_id}/{filename},
-/// menu-images/{business_id}/{filename}, blog-images/{any}/{filename},
-/// category-banners/{any}/{filename}.
-/// All buckets are public for read; RLS on storage.objects scopes upload/delete.
 class AppStorageService {
-  AppStorageService();
+  AppStorageService({UploadsApi? api}) : _api = api ?? UploadsApi(ApiClient.instance);
+  final UploadsApi _api;
 
   static const String bucketAvatars = 'avatars';
   static const String bucketBusinessImages = 'business-images';
@@ -21,63 +19,25 @@ class AppStorageService {
   static const String bucketBlogImages = 'blog-images';
   static const String bucketCategoryBanners = 'category-banners';
 
-  SupabaseClient? get _client =>
-      SupabaseConfig.isConfigured ? Supabase.instance.client : null;
-
-  /// Upload bytes to a bucket and return the public URL.
-  /// Restricts to allowed image types and max size (see [storage_upload_constants]).
-  Future<String> _upload({
-    required String bucket,
-    required String path,
-    required Uint8List bytes,
-    required String extension,
-  }) async {
-    final client = _client;
-    if (client == null) throw StateError('Supabase not configured');
+  /// avatars/{user_id}/{filename} — profiles.avatar_url. Own user only.
+  Future<String> uploadAvatar({required String userId, required Uint8List bytes, required String extension}) async {
     validateImageUpload(bytes, extension);
     final safeExt = normalizeAllowedImageExtension(extension) ?? 'jpg';
-    final fullPath = path.endsWith('.$safeExt') ? path : '$path.$safeExt';
-    final contentType = _contentTypeForExtension(safeExt);
-    await client.storage.from(bucket).uploadBinary(
-          fullPath,
-          bytes,
-          fileOptions: FileOptions(contentType: contentType, upsert: true),
-        );
-    return client.storage.from(bucket).getPublicUrl(fullPath);
-  }
-
-  /// avatars/{user_id}/{filename} — profiles.avatar_url. Own user only.
-  Future<String> uploadAvatar({
-    required String userId,
-    required Uint8List bytes,
-    required String extension,
-  }) async {
-    final name = '${DateTime.now().millisecondsSinceEpoch}-${bytes.hashCode.abs()}';
-    return _upload(
-      bucket: bucketAvatars,
-      path: '$userId/$name',
-      bytes: bytes,
-      extension: extension,
-    );
+    final mimeType = _contentTypeForExtension(safeExt);
+    return _api.uploadImage(bytes: bytes, filename: 'avatar.$safeExt', mimeType: mimeType, folder: bucketAvatars);
   }
 
   /// business-images/{business_id}/{filename} — businesses.logo, businesses.banner, business_images.
-  /// [type] 'logo' -> {id}/logo, 'banner' -> {id}/banner, else -> {id}/gallery/{unique}
   Future<String> uploadBusinessImage({
     required String businessId,
     required String type,
     required Uint8List bytes,
     required String extension,
   }) async {
-    final String path;
-    if (type == 'logo') {
-      path = '$businessId/logo';
-    } else if (type == 'banner') {
-      path = '$businessId/banner';
-    } else {
-      path = '$businessId/gallery/${DateTime.now().millisecondsSinceEpoch}-${bytes.hashCode.abs()}';
-    }
-    return _upload(bucket: bucketBusinessImages, path: path, bytes: bytes, extension: extension);
+    validateImageUpload(bytes, extension);
+    final safeExt = normalizeAllowedImageExtension(extension) ?? 'jpg';
+    final mimeType = _contentTypeForExtension(safeExt);
+    return _api.uploadImage(bytes: bytes, filename: '$type.$safeExt', mimeType: mimeType, folder: bucketBusinessImages);
   }
 
   /// ad-images/{business_id}/{filename} — business_ads.image_url.
@@ -86,13 +46,10 @@ class AppStorageService {
     required Uint8List bytes,
     required String extension,
   }) async {
-    final name = '${DateTime.now().millisecondsSinceEpoch}-${bytes.hashCode.abs()}';
-    return _upload(
-      bucket: bucketAdImages,
-      path: '$businessId/$name',
-      bytes: bytes,
-      extension: extension,
-    );
+    validateImageUpload(bytes, extension);
+    final safeExt = normalizeAllowedImageExtension(extension) ?? 'jpg';
+    final mimeType = _contentTypeForExtension(safeExt);
+    return _api.uploadImage(bytes: bytes, filename: 'ad.$safeExt', mimeType: mimeType, folder: bucketAdImages);
   }
 
   /// event-images/{business_id}/{filename} — business_events.image_url.
@@ -101,13 +58,10 @@ class AppStorageService {
     required Uint8List bytes,
     required String extension,
   }) async {
-    final name = '${DateTime.now().millisecondsSinceEpoch}-${bytes.hashCode.abs()}';
-    return _upload(
-      bucket: bucketEventImages,
-      path: '$businessId/$name',
-      bytes: bytes,
-      extension: extension,
-    );
+    validateImageUpload(bytes, extension);
+    final safeExt = normalizeAllowedImageExtension(extension) ?? 'jpg';
+    final mimeType = _contentTypeForExtension(safeExt);
+    return _api.uploadImage(bytes: bytes, filename: 'event.$safeExt', mimeType: mimeType, folder: bucketEventImages);
   }
 
   /// menu-images/{business_id}/{filename} — menu_items.image_url.
@@ -116,13 +70,10 @@ class AppStorageService {
     required Uint8List bytes,
     required String extension,
   }) async {
-    final name = '${DateTime.now().millisecondsSinceEpoch}-${bytes.hashCode.abs()}';
-    return _upload(
-      bucket: bucketMenuImages,
-      path: '$businessId/$name',
-      bytes: bytes,
-      extension: extension,
-    );
+    validateImageUpload(bytes, extension);
+    final safeExt = normalizeAllowedImageExtension(extension) ?? 'jpg';
+    final mimeType = _contentTypeForExtension(safeExt);
+    return _api.uploadImage(bytes: bytes, filename: 'menu.$safeExt', mimeType: mimeType, folder: bucketMenuImages);
   }
 
   /// blog-images/{any}/{filename} — blog_posts.cover_image_url. Admin only.
@@ -131,13 +82,10 @@ class AppStorageService {
     required Uint8List bytes,
     required String extension,
   }) async {
-    final name = '${DateTime.now().millisecondsSinceEpoch}-${bytes.hashCode.abs()}';
-    return _upload(
-      bucket: bucketBlogImages,
-      path: '$pathSegment/$name',
-      bytes: bytes,
-      extension: extension,
-    );
+    validateImageUpload(bytes, extension);
+    final safeExt = normalizeAllowedImageExtension(extension) ?? 'jpg';
+    final mimeType = _contentTypeForExtension(safeExt);
+    return _api.uploadImage(bytes: bytes, filename: 'blog.$safeExt', mimeType: mimeType, folder: bucketBlogImages);
   }
 
   /// category-banners/{any}/{filename} — category_banners.image_url. Admin only.
@@ -146,12 +94,14 @@ class AppStorageService {
     required Uint8List bytes,
     required String extension,
   }) async {
-    final name = '${DateTime.now().millisecondsSinceEpoch}-${bytes.hashCode.abs()}';
-    return _upload(
-      bucket: bucketCategoryBanners,
-      path: '$pathSegment/$name',
+    validateImageUpload(bytes, extension);
+    final safeExt = normalizeAllowedImageExtension(extension) ?? 'jpg';
+    final mimeType = _contentTypeForExtension(safeExt);
+    return _api.uploadImage(
       bytes: bytes,
-      extension: extension,
+      filename: 'banner.$safeExt',
+      mimeType: mimeType,
+      folder: bucketCategoryBanners,
     );
   }
 }
@@ -170,4 +120,9 @@ String _contentTypeForExtension(String ext) {
     default:
       return 'image/jpeg';
   }
+}
+
+@riverpod
+AppStorageService appStorageService(AppStorageServiceRef ref) {
+  return AppStorageService(api: ref.watch(uploadsApiProvider));
 }

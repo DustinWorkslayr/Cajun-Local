@@ -25,4 +25,14 @@ class BusinessHours {
       isClosed: json['is_closed'] as bool?,
     );
   }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'business_id': businessId,
+      'day_of_week': dayOfWeek,
+      'open_time': openTime,
+      'close_time': closeTime,
+      'is_closed': isClosed,
+    };
+  }
 }

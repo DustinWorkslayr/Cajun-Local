@@ -1,36 +1,42 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:my_app/core/data/app_data_scope.dart';
+import 'package:my_app/core/data/providers/app_data_providers.dart';
 import 'package:my_app/core/data/mock_data.dart';
 import 'package:my_app/core/preferences/user_parish_preferences.dart';
 import 'package:my_app/core/theme/theme.dart';
 import 'package:my_app/shared/widgets/app_buttons.dart';
-import 'package:my_app/features/choose_for_me/presentation/screens/choose_for_me_slot_screen.dart' show showChooseForMeSlotDialog;
+import 'package:my_app/features/choose_for_me/presentation/screens/choose_for_me_slot_screen.dart'
+    show showChooseForMeSlotDialog;
 
 /// Asset for the Choose for me hero illustration (selection screen).
 const String _kChooseForMeAsset = 'assets/images/chooseforme.png';
 
 /// "Choose for me" flow: step 1 = preferred parish + category + optional tags (subcategories);
 /// step 2 = popup with slot-machine style randomizer using Explore-style listing cards.
-class ChooseForMeScreen extends StatefulWidget {
+class ChooseForMeScreen extends ConsumerStatefulWidget {
   const ChooseForMeScreen({super.key});
 
   @override
-  State<ChooseForMeScreen> createState() => _ChooseForMeScreenState();
+  ConsumerState<ChooseForMeScreen> createState() => _ChooseForMeScreenState();
 }
 
-class _ChooseForMeScreenState extends State<ChooseForMeScreen> with TickerProviderStateMixin {
+class _ChooseForMeScreenState extends ConsumerState<ChooseForMeScreen> with TickerProviderStateMixin {
   Set<String> _parishIds = {};
   List<MockParish> _parishes = [];
+
   /// Single category selection (one category only).
   String? _selectedCategoryId;
   Set<String> _subcategoryIds = {};
   bool _parishesLoaded = false;
+
   /// True once getCategories() has completed (success or failure).
   bool _categoriesLoaded = false;
+
   /// All categories (any bucket) for dynamic category select.
   List<MockCategory> _allCategories = [];
+
   /// Set when getCategories() throws (e.g. network, RLS); user can retry.
   bool _categoriesLoadFailed = false;
 
@@ -40,14 +46,9 @@ class _ChooseForMeScreenState extends State<ChooseForMeScreen> with TickerProvid
   @override
   void initState() {
     super.initState();
-    _entranceController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 1000),
-    );
-    _pulseController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 1200),
-    )..repeat(reverse: true);
+    _entranceController = AnimationController(vsync: this, duration: const Duration(milliseconds: 1000));
+    _pulseController = AnimationController(vsync: this, duration: const Duration(milliseconds: 1200))
+      ..repeat(reverse: true);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       _entranceController.forward();
@@ -66,7 +67,7 @@ class _ChooseForMeScreenState extends State<ChooseForMeScreen> with TickerProvid
 
   Future<void> _loadPreferredParishes() async {
     try {
-      final ds = AppDataScope.of(context).dataSource;
+      final ds = ref.read(listingDataSourceProvider);
       final ids = await UserParishPreferences.getPreferredParishIds();
       final list = await ds.getParishes();
       if (!mounted) return;
@@ -95,7 +96,7 @@ class _ChooseForMeScreenState extends State<ChooseForMeScreen> with TickerProvid
       _categoriesLoaded = false;
     });
     try {
-      final ds = AppDataScope.of(context).dataSource;
+      final ds = ref.read(listingDataSourceProvider);
       final categories = await ds.getCategories();
       if (!mounted) return;
       setState(() {
@@ -128,15 +129,11 @@ class _ChooseForMeScreenState extends State<ChooseForMeScreen> with TickerProvid
 
   void _goToSlot() {
     if (_parishIds.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Select at least one preferred area.')),
-      );
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Select at least one preferred area.')));
       return;
     }
     if (_selectedCategoryId == null || _selectedCategoryId!.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Select a category.')),
-      );
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Select a category.')));
       return;
     }
     final parishIds = _parishIds;
@@ -179,11 +176,7 @@ class _ChooseForMeScreenState extends State<ChooseForMeScreen> with TickerProvid
       appBar: AppBar(
         title: Text(
           'Choose for me',
-          style: GoogleFonts.dancingScript(
-            fontSize: 26,
-            fontWeight: FontWeight.w700,
-            color: nav,
-          ),
+          style: GoogleFonts.dancingScript(fontSize: 26, fontWeight: FontWeight.w700, color: nav),
         ),
         centerTitle: true,
         backgroundColor: AppTheme.specOffWhite,
@@ -202,10 +195,7 @@ class _ChooseForMeScreenState extends State<ChooseForMeScreen> with TickerProvid
                 builder: (context, child) {
                   return Transform.translate(
                     offset: Offset(0, 16 * (1 - tHero)),
-                    child: Transform.scale(
-                      scale: 0.92 + 0.08 * tHero,
-                      child: child,
-                    ),
+                    child: Transform.scale(scale: 0.92 + 0.08 * tHero, child: child),
                   );
                 },
                 child: Padding(
@@ -225,27 +215,18 @@ class _ChooseForMeScreenState extends State<ChooseForMeScreen> with TickerProvid
               AnimatedBuilder(
                 animation: _entranceController,
                 builder: (context, child) {
-                  return Transform.translate(
-                    offset: Offset(0, 12 * (1 - tSubtitle)),
-                    child: child,
-                  );
+                  return Transform.translate(offset: Offset(0, 12 * (1 - tSubtitle)), child: child);
                 },
                 child: Text(
                   'Pick your preferred area, category, and optional tags—then tap to spin.',
-                  style: theme.textTheme.bodyLarge?.copyWith(
-                    color: sub,
-                    fontWeight: FontWeight.w500,
-                  ),
+                  style: theme.textTheme.bodyLarge?.copyWith(color: sub, fontWeight: FontWeight.w500),
                 ),
               ),
               const SizedBox(height: 24),
               AnimatedBuilder(
                 animation: _entranceController,
                 builder: (context, child) {
-                  return Transform.translate(
-                    offset: Offset(0, 14 * (1 - tArea)),
-                    child: child,
-                  );
+                  return Transform.translate(offset: Offset(0, 14 * (1 - tArea)), child: child);
                 },
                 child: Theme(
                   data: theme.copyWith(dividerColor: Colors.transparent),
@@ -256,23 +237,17 @@ class _ChooseForMeScreenState extends State<ChooseForMeScreen> with TickerProvid
                     title: Text(
                       _parishesLoaded
                           ? (_parishIds.isEmpty
-                              ? 'Preferred parish — Select at least one'
-                              : _parishIds.length == 1
-                                  ? 'Preferred parish — 1 selected'
-                                  : 'Preferred parish — ${_parishIds.length} selected')
+                                ? 'Preferred parish — Select at least one'
+                                : _parishIds.length == 1
+                                ? 'Preferred parish — 1 selected'
+                                : 'Preferred parish — ${_parishIds.length} selected')
                           : 'Preferred parish',
-                      style: theme.textTheme.titleSmall?.copyWith(
-                        fontWeight: FontWeight.w700,
-                        color: nav,
-                      ),
+                      style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700, color: nav),
                     ),
                     subtitle: _parishesLoaded && _parishIds.isNotEmpty
                         ? Padding(
                             padding: const EdgeInsets.only(top: 4),
-                            child: Text(
-                              'Tap to change areas',
-                              style: theme.textTheme.bodySmall?.copyWith(color: sub),
-                            ),
+                            child: Text('Tap to change areas', style: theme.textTheme.bodySmall?.copyWith(color: sub)),
                           )
                         : null,
                     children: [
@@ -280,11 +255,7 @@ class _ChooseForMeScreenState extends State<ChooseForMeScreen> with TickerProvid
                         const Center(
                           child: Padding(
                             padding: EdgeInsets.symmetric(vertical: 16),
-                            child: SizedBox(
-                              width: 28,
-                              height: 28,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            ),
+                            child: SizedBox(width: 28, height: 28, child: CircularProgressIndicator(strokeWidth: 2)),
                           ),
                         )
                       else
@@ -297,10 +268,7 @@ class _ChooseForMeScreenState extends State<ChooseForMeScreen> with TickerProvid
                               key: ValueKey('${p.id}-$selected'),
                               tween: Tween(begin: 1, end: selected ? 1.04 : 1),
                               duration: const Duration(milliseconds: 120),
-                              builder: (context, scale, child) => Transform.scale(
-                                scale: scale,
-                                child: child,
-                              ),
+                              builder: (context, scale, child) => Transform.scale(scale: scale, child: child),
                               child: FilterChip(
                                 label: Text(
                                   p.name,
@@ -349,30 +317,21 @@ class _ChooseForMeScreenState extends State<ChooseForMeScreen> with TickerProvid
                           style: theme.textTheme.bodySmall?.copyWith(color: sub),
                         ),
                       ),
-                      TextButton(
-                        onPressed: _loadCategories,
-                        child: const Text('Retry'),
-                      ),
+                      TextButton(onPressed: _loadCategories, child: const Text('Retry')),
                     ],
                   ),
                 ),
               AnimatedBuilder(
                 animation: _entranceController,
                 builder: (context, child) {
-                  return Transform.translate(
-                    offset: Offset(0, 12 * (1 - tCuisine)),
-                    child: child,
-                  );
+                  return Transform.translate(offset: Offset(0, 12 * (1 - tCuisine)), child: child);
                 },
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
                       'Category',
-                      style: theme.textTheme.titleSmall?.copyWith(
-                        fontWeight: FontWeight.w700,
-                        color: nav,
-                      ),
+                      style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700, color: nav),
                     ),
                     const SizedBox(height: 8),
                     if (!_categoriesLoaded)
@@ -380,16 +339,9 @@ class _ChooseForMeScreenState extends State<ChooseForMeScreen> with TickerProvid
                         padding: const EdgeInsets.symmetric(vertical: 12),
                         child: Row(
                           children: [
-                            const SizedBox(
-                              width: 24,
-                              height: 24,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            ),
+                            const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2)),
                             const SizedBox(width: 12),
-                            Text(
-                              'Loading categories…',
-                              style: theme.textTheme.bodyMedium?.copyWith(color: sub),
-                            ),
+                            Text('Loading categories…', style: theme.textTheme.bodyMedium?.copyWith(color: sub)),
                           ],
                         ),
                       )
@@ -407,19 +359,13 @@ class _ChooseForMeScreenState extends State<ChooseForMeScreen> with TickerProvid
                         decoration: BoxDecoration(
                           color: AppTheme.specWhite,
                           borderRadius: BorderRadius.circular(12),
-                          border: Border.all(
-                            color: nav.withValues(alpha: 0.25),
-                            width: 1,
-                          ),
+                          border: Border.all(color: nav.withValues(alpha: 0.25), width: 1),
                         ),
                         child: DropdownButtonHideUnderline(
                           child: DropdownButton<String>(
                             value: _selectedCategoryId,
                             isExpanded: true,
-                            hint: Text(
-                              'Select a category',
-                              style: theme.textTheme.bodyMedium?.copyWith(color: sub),
-                            ),
+                            hint: Text('Select a category', style: theme.textTheme.bodyMedium?.copyWith(color: sub)),
                             borderRadius: BorderRadius.circular(12),
                             dropdownColor: AppTheme.specWhite,
                             items: [
@@ -451,20 +397,14 @@ class _ChooseForMeScreenState extends State<ChooseForMeScreen> with TickerProvid
                 AnimatedBuilder(
                   animation: _entranceController,
                   builder: (context, child) {
-                    return Transform.translate(
-                      offset: Offset(0, 12 * (1 - tCuisine)),
-                      child: child,
-                    );
+                    return Transform.translate(offset: Offset(0, 12 * (1 - tCuisine)), child: child);
                   },
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
                         'Tags (optional)',
-                        style: theme.textTheme.titleSmall?.copyWith(
-                          fontWeight: FontWeight.w700,
-                          color: nav,
-                        ),
+                        style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700, color: nav),
                       ),
                       const SizedBox(height: 8),
                       Wrap(
@@ -476,10 +416,7 @@ class _ChooseForMeScreenState extends State<ChooseForMeScreen> with TickerProvid
                             key: ValueKey('${s.id}-$selected'),
                             tween: Tween(begin: 1, end: selected ? 1.04 : 1),
                             duration: const Duration(milliseconds: 120),
-                            builder: (context, scale, child) => Transform.scale(
-                              scale: scale,
-                              child: child,
-                            ),
+                            builder: (context, scale, child) => Transform.scale(scale: scale, child: child),
                             child: FilterChip(
                               label: Text(
                                 s.name,
@@ -516,22 +453,13 @@ class _ChooseForMeScreenState extends State<ChooseForMeScreen> with TickerProvid
                 builder: (context, child) {
                   return Transform.translate(
                     offset: Offset(0, 14 * (1 - tButton)),
-                    child: Transform.scale(
-                      scale: canGo ? pulseScale : 1,
-                      child: child,
-                    ),
+                    child: Transform.scale(scale: canGo ? pulseScale : 1, child: child),
                   );
                 },
                 child: AppSecondaryButton(
                   onPressed: !canGo ? null : _goToSlot,
                   icon: const Icon(Icons.casino_rounded, size: 24),
-                  label: Text(
-                    'Pick for me',
-                    style: const TextStyle(
-                      fontWeight: FontWeight.w700,
-                      fontSize: 16,
-                    ),
-                  ),
+                  label: Text('Pick for me', style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
                 ),
               ),
               const SizedBox(height: 32),

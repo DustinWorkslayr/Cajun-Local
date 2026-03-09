@@ -5,7 +5,6 @@ import 'package:my_app/core/data/models/parish.dart';
 import 'package:my_app/core/data/repositories/blog_posts_repository.dart';
 import 'package:my_app/core/data/repositories/parish_repository.dart';
 import 'package:my_app/core/preferences/user_parish_preferences.dart';
-import 'package:my_app/core/supabase/supabase_config.dart';
 import 'package:my_app/core/theme/app_layout.dart';
 import 'package:my_app/core/theme/theme.dart';
 import 'package:my_app/features/news/presentation/screens/news_post_detail_screen.dart';
@@ -77,15 +76,11 @@ class NewsScreen extends StatelessWidget {
           SliverPadding(
             padding: EdgeInsets.fromLTRB(padding.left, 16, padding.right, padding.right),
             sliver: FutureBuilder<(List<BlogPost>, List<Parish>)>(
-              future: SupabaseConfig.isConfigured
-                  ? UserParishPreferences.getPreferredParishIds().then((ids) async {
-                      final posts = await BlogPostsRepository().listApproved(
-                        forParishIds: ids.isEmpty ? null : ids,
-                      );
-                      final parishes = await ParishRepository().listParishes();
-                      return (posts, parishes);
-                    })
-                  : Future.value((<BlogPost>[], <Parish>[])),
+              future: UserParishPreferences.getPreferredParishIds().then((ids) async {
+                final posts = await BlogPostsRepository().listApproved(forParishIds: ids.isEmpty ? null : ids);
+                final parishes = await ParishRepository().listParishes();
+                return (posts, parishes);
+              }),
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting && !snapshot.hasData) {
                   return const SliverToBoxAdapter(
@@ -109,12 +104,16 @@ class NewsScreen extends StatelessWidget {
                             const SizedBox(height: 16),
                             Text(
                               'No news yet',
-                              style: theme.textTheme.titleMedium?.copyWith(color: AppTheme.specNavy.withValues(alpha: 0.8)),
+                              style: theme.textTheme.titleMedium?.copyWith(
+                                color: AppTheme.specNavy.withValues(alpha: 0.8),
+                              ),
                             ),
                             const SizedBox(height: 4),
                             Text(
                               'Check back soon for updates.',
-                              style: theme.textTheme.bodyMedium?.copyWith(color: AppTheme.specNavy.withValues(alpha: 0.6)),
+                              style: theme.textTheme.bodyMedium?.copyWith(
+                                color: AppTheme.specNavy.withValues(alpha: 0.6),
+                              ),
                             ),
                           ],
                         ),
@@ -123,29 +122,24 @@ class NewsScreen extends StatelessWidget {
                   );
                 }
                 return SliverList(
-                  delegate: SliverChildBuilderDelegate(
-                    (context, index) {
-                      final post = posts[index];
-                      final isFirst = index == 0;
-                      return Padding(
-                        padding: EdgeInsets.only(bottom: isFirst ? 28 : 24),
-                        child: _NewsCard(
-                          post: post,
-                          parishLabel: _parishLabel(post, idToName),
-                          featured: isFirst,
-                          bannerHeight: bannerHeight,
-                          onTap: () {
-                            Navigator.of(context).push(
-                              MaterialPageRoute<void>(
-                                builder: (_) => NewsPostDetailScreen(postId: post.id),
-                              ),
-                            );
-                          },
-                        ),
-                      );
-                    },
-                    childCount: posts.length,
-                  ),
+                  delegate: SliverChildBuilderDelegate((context, index) {
+                    final post = posts[index];
+                    final isFirst = index == 0;
+                    return Padding(
+                      padding: EdgeInsets.only(bottom: isFirst ? 28 : 24),
+                      child: _NewsCard(
+                        post: post,
+                        parishLabel: _parishLabel(post, idToName),
+                        featured: isFirst,
+                        bannerHeight: bannerHeight,
+                        onTap: () {
+                          Navigator.of(
+                            context,
+                          ).push(MaterialPageRoute<void>(builder: (_) => NewsPostDetailScreen(postId: post.id)));
+                        },
+                      ),
+                    );
+                  }, childCount: posts.length),
                 );
               },
             ),
@@ -180,19 +174,10 @@ class _NewsCard extends StatelessWidget {
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [
-            AppTheme.specNavy.withValues(alpha: 0.12),
-            AppTheme.specGold.withValues(alpha: 0.15),
-          ],
+          colors: [AppTheme.specNavy.withValues(alpha: 0.12), AppTheme.specGold.withValues(alpha: 0.15)],
         ),
       ),
-      child: Center(
-        child: Icon(
-          Icons.article_rounded,
-          size: 56,
-          color: AppTheme.specNavy.withValues(alpha: 0.2),
-        ),
-      ),
+      child: Center(child: Icon(Icons.article_rounded, size: 56, color: AppTheme.specNavy.withValues(alpha: 0.2))),
     );
   }
 
@@ -214,11 +199,7 @@ class _NewsCard extends StatelessWidget {
             color: AppTheme.specWhite,
             borderRadius: BorderRadius.circular(radius),
             boxShadow: [
-              BoxShadow(
-                color: AppTheme.specNavy.withValues(alpha: 0.08),
-                blurRadius: 20,
-                offset: const Offset(0, 6),
-              ),
+              BoxShadow(color: AppTheme.specNavy.withValues(alpha: 0.08), blurRadius: 20, offset: const Offset(0, 6)),
             ],
           ),
           clipBehavior: Clip.antiAlias,
@@ -253,10 +234,7 @@ class _NewsCard extends StatelessWidget {
                             gradient: LinearGradient(
                               begin: Alignment.topCenter,
                               end: Alignment.bottomCenter,
-                              colors: [
-                                Colors.transparent,
-                                Colors.black.withValues(alpha: 0.35),
-                              ],
+                              colors: [Colors.transparent, Colors.black.withValues(alpha: 0.35)],
                             ),
                           ),
                         ),
@@ -265,7 +243,12 @@ class _NewsCard extends StatelessWidget {
                 ),
               ),
               Padding(
-                padding: EdgeInsets.fromLTRB(featured ? 24 : 20, featured ? 22 : 18, featured ? 24 : 20, featured ? 24 : 20),
+                padding: EdgeInsets.fromLTRB(
+                  featured ? 24 : 20,
+                  featured ? 22 : 18,
+                  featured ? 24 : 20,
+                  featured ? 24 : 20,
+                ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [

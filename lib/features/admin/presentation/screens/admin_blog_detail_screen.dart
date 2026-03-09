@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:my_app/core/data/app_data_scope.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:my_app/core/auth/providers/auth_provider.dart';
 import 'package:my_app/core/data/models/blog_post.dart';
 import 'package:my_app/core/data/models/parish.dart';
 import 'package:my_app/core/data/repositories/audit_log_repository.dart';
@@ -7,16 +8,16 @@ import 'package:my_app/core/data/repositories/blog_posts_repository.dart';
 import 'package:my_app/core/data/repositories/parish_repository.dart';
 import 'package:my_app/features/admin/presentation/screens/admin_add_blog_post_screen.dart';
 
-class AdminBlogDetailScreen extends StatefulWidget {
+class AdminBlogDetailScreen extends ConsumerStatefulWidget {
   const AdminBlogDetailScreen({super.key, required this.postId});
 
   final String postId;
 
   @override
-  State<AdminBlogDetailScreen> createState() => _AdminBlogDetailScreenState();
+  ConsumerState<AdminBlogDetailScreen> createState() => _AdminBlogDetailScreenState();
 }
 
-class _AdminBlogDetailScreenState extends State<AdminBlogDetailScreen> {
+class _AdminBlogDetailScreenState extends ConsumerState<AdminBlogDetailScreen> {
   BlogPost? _post;
   List<Parish> _parishes = [];
   bool _loading = true;
@@ -52,7 +53,7 @@ class _AdminBlogDetailScreenState extends State<AdminBlogDetailScreen> {
 
   Future<void> _updateStatus(String status) async {
     final repo = BlogPostsRepository();
-    final uid = AppDataScope.of(context).authRepository.currentUserId;
+    final uid = ref.read(authNotifierProvider).valueOrNull?.id;
     await repo.updateStatus(widget.postId, status, approvedBy: uid);
     AuditLogRepository().insert(
       action: status == 'approved' ? 'blog_approved' : 'blog_rejected',
@@ -61,9 +62,7 @@ class _AdminBlogDetailScreenState extends State<AdminBlogDetailScreen> {
       targetId: widget.postId,
     );
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Status set to $status')),
-      );
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Status set to $status')));
       _load();
     }
   }
@@ -81,11 +80,9 @@ class _AdminBlogDetailScreenState extends State<AdminBlogDetailScreen> {
               icon: const Icon(Icons.edit_rounded),
               tooltip: 'Edit',
               onPressed: () async {
-                final ok = await Navigator.of(context).push<bool>(
-                  MaterialPageRoute<bool>(
-                    builder: (_) => AdminAddBlogPostScreen(post: _post),
-                  ),
-                );
+                final ok = await Navigator.of(
+                  context,
+                ).push<bool>(MaterialPageRoute<bool>(builder: (_) => AdminAddBlogPostScreen(post: _post)));
                 if (ok == true && mounted) _load();
               },
             ),
@@ -94,43 +91,47 @@ class _AdminBlogDetailScreenState extends State<AdminBlogDetailScreen> {
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : _error != null
-              ? Center(child: Text(_error!, style: theme.textTheme.bodyLarge))
-              : SingleChildScrollView(
-                  padding: const EdgeInsets.all(24),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      _DetailRow(label: 'Status', value: _post!.status),
-                      _DetailRow(label: 'Parish visibility', value: _parishLabel(_post!)),
-                      _DetailRow(label: 'Title', value: _post!.title),
-                      _DetailRow(label: 'Slug', value: _post!.slug),
-                      if (_post!.authorId != null) _DetailRow(label: 'Author ID', value: _post!.authorId!),
-                      if (_post!.content != null) _DetailRow(label: 'Content', value: _post!.content!.length > 200 ? '${_post!.content!.substring(0, 200)}...' : _post!.content!),
-                      const SizedBox(height: 24),
-                      if (_post!.status == 'pending') ...[
-                        Row(
-                          children: [
-                            Expanded(
-                              child: FilledButton.icon(
-                                onPressed: () => _updateStatus('approved'),
-                                icon: const Icon(Icons.check_rounded, size: 20),
-                                label: const Text('Approve'),
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: OutlinedButton.icon(
-                                onPressed: () => _updateStatus('rejected'),
-                                icon: const Icon(Icons.close_rounded, size: 20),
-                                label: const Text('Reject'),
-                              ),
-                            ),
-                          ],
+          ? Center(child: Text(_error!, style: theme.textTheme.bodyLarge))
+          : SingleChildScrollView(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  _DetailRow(label: 'Status', value: _post!.status),
+                  _DetailRow(label: 'Parish visibility', value: _parishLabel(_post!)),
+                  _DetailRow(label: 'Title', value: _post!.title),
+                  _DetailRow(label: 'Slug', value: _post!.slug),
+                  if (_post!.authorId != null) _DetailRow(label: 'Author ID', value: _post!.authorId!),
+                  if (_post!.content != null)
+                    _DetailRow(
+                      label: 'Content',
+                      value: _post!.content!.length > 200 ? '${_post!.content!.substring(0, 200)}...' : _post!.content!,
+                    ),
+                  const SizedBox(height: 24),
+                  if (_post!.status == 'pending') ...[
+                    Row(
+                      children: [
+                        Expanded(
+                          child: FilledButton.icon(
+                            onPressed: () => _updateStatus('approved'),
+                            icon: const Icon(Icons.check_rounded, size: 20),
+                            label: const Text('Approve'),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: OutlinedButton.icon(
+                            onPressed: () => _updateStatus('rejected'),
+                            icon: const Icon(Icons.close_rounded, size: 20),
+                            label: const Text('Reject'),
+                          ),
                         ),
                       ],
-                    ],
-                  ),
-                ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
     );
   }
 }

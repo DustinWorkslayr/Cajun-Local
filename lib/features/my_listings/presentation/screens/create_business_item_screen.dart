@@ -1,6 +1,7 @@
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
-import 'package:my_app/core/data/app_data_scope.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:my_app/core/data/providers/app_data_providers.dart';
 import 'package:my_app/core/data/mock_data.dart';
 import 'package:my_app/core/data/repositories/business_events_repository.dart';
 import 'package:my_app/core/data/repositories/deals_repository.dart';
@@ -9,23 +10,22 @@ import 'package:my_app/core/data/repositories/punch_card_programs_repository.dar
 import 'package:my_app/core/data/services/app_storage_service.dart';
 import 'package:my_app/core/data/services/storage_upload_constants.dart';
 import 'package:my_app/core/subscription/business_tier_service.dart';
-import 'package:my_app/core/supabase/supabase_config.dart';
 import 'package:my_app/core/theme/app_layout.dart';
 import 'package:my_app/core/theme/theme.dart';
 import 'package:my_app/shared/widgets/app_buttons.dart';
 import 'package:my_app/shared/widgets/business_tier_upgrade_dialog.dart';
 
 /// Screen to create a new deal (coupon) for a listing.
-class CreateDealScreen extends StatefulWidget {
+class CreateDealScreen extends ConsumerStatefulWidget {
   const CreateDealScreen({super.key, required this.listingId});
 
   final String listingId;
 
   @override
-  State<CreateDealScreen> createState() => _CreateDealScreenState();
+  ConsumerState<CreateDealScreen> createState() => _CreateDealScreenState();
 }
 
-class _CreateDealScreenState extends State<CreateDealScreen> {
+class _CreateDealScreenState extends ConsumerState<CreateDealScreen> {
   final _formKey = GlobalKey<FormState>();
   late TextEditingController _titleController;
   late TextEditingController _descriptionController;
@@ -38,6 +38,7 @@ class _CreateDealScreenState extends State<CreateDealScreen> {
   bool _tierLoading = true;
   DateTime? _startDate;
   DateTime? _endDate;
+
   /// Required: user must select a deal type. Null until selected.
   String? _dealType;
 
@@ -54,12 +55,8 @@ class _CreateDealScreenState extends State<CreateDealScreen> {
   }
 
   Future<void> _loadTierAndCount() async {
-    if (!SupabaseConfig.isConfigured) {
-      if (mounted) setState(() => _tierLoading = false);
-      return;
-    }
-    final tier = await BusinessTierService().getTierForBusiness(widget.listingId);
-    final count = await DealsRepository().countActiveForBusiness(widget.listingId);
+    final tier = await ref.read(businessTierServiceProvider).getTierForBusiness(widget.listingId);
+    final count = await ref.read(dealsRepositoryProvider).countActiveForBusiness(widget.listingId);
     if (mounted) {
       setState(() {
         _tier = tier;
@@ -158,36 +155,26 @@ class _CreateDealScreenState extends State<CreateDealScreen> {
 
   Future<void> _save() async {
     if (_dealType == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please select a deal type')),
-      );
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please select a deal type')));
       return;
     }
     if (!_formKey.currentState!.validate()) return;
     if (_tier != null && _atDealLimit) {
-      await BusinessTierUpgradeDialog.show(
-        context,
-        message: BusinessTierService.upgradeMessageForDealLimit(_tier!),
-      );
+      await BusinessTierUpgradeDialog.show(context, message: BusinessTierService.upgradeMessageForDealLimit(_tier!));
       return;
     }
     if (_tier != null && !BusinessTierService.canCreateDealType(_tier!, _dealType!)) {
-      await BusinessTierUpgradeDialog.show(
-        context,
-        message: BusinessTierService.upgradeMessageForAdvancedFeatures(),
-      );
+      await BusinessTierUpgradeDialog.show(context, message: BusinessTierService.upgradeMessageForAdvancedFeatures());
       return;
     }
-    final scope = AppDataScope.of(context);
-    final useSupabase = scope.dataSource.useSupabase;
+    final dataSource = ref.read(listingDataSourceProvider);
+    final useSupabase = dataSource.useBackend;
     final isManager = useSupabase
-        ? (await scope.dataSource.getCurrentUser()).ownedListingIds.contains(widget.listingId)
+        ? (await dataSource.getCurrentUser()).ownedListingIds.contains(widget.listingId)
         : false;
 
     String title = _titleController.text.trim();
-    String? description = _descriptionController.text.trim().isEmpty
-        ? null
-        : _descriptionController.text.trim();
+    String? description = _descriptionController.text.trim().isEmpty ? null : _descriptionController.text.trim();
     if (_isPercentage && _percentageController.text.trim().isNotEmpty) {
       final pct = _percentageController.text.trim();
       description = '$pct% off. ${description ?? ''}'.trim();
@@ -198,14 +185,16 @@ class _CreateDealScreenState extends State<CreateDealScreen> {
     }
 
     if (useSupabase && isManager) {
-      await DealsRepository().insert(
-        businessId: widget.listingId,
-        title: title,
-        dealType: _dealType!,
-        description: description,
-        startDate: _startDate,
-        endDate: _endDate,
-      );
+      await ref
+          .read(dealsRepositoryProvider)
+          .insert(
+            businessId: widget.listingId,
+            title: title,
+            dealType: _dealType!,
+            description: description,
+            startDate: _startDate,
+            endDate: _endDate,
+          );
     } else {
       final id = 'd-u-${DateTime.now().millisecondsSinceEpoch}';
       final deal = MockDeal(
@@ -221,9 +210,7 @@ class _CreateDealScreenState extends State<CreateDealScreen> {
       MockData.addDeal(deal);
     }
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Deal created')),
-      );
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Deal created')));
       Navigator.of(context).pop();
     }
   }
@@ -266,10 +253,7 @@ class _CreateDealScreenState extends State<CreateDealScreen> {
         ),
         title: Text(
           'Create deal',
-          style: theme.textTheme.titleLarge?.copyWith(
-            fontWeight: FontWeight.w700,
-            color: AppTheme.specNavy,
-          ),
+          style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700, color: AppTheme.specNavy),
         ),
       ),
       body: SingleChildScrollView(
@@ -284,7 +268,9 @@ class _CreateDealScreenState extends State<CreateDealScreen> {
                 if (_tierLoading)
                   const Padding(
                     padding: EdgeInsets.symmetric(vertical: 16),
-                    child: Center(child: SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2))),
+                    child: Center(
+                      child: SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2)),
+                    ),
                   )
                 else ...[
                   if (_atDealLimit)
@@ -328,10 +314,7 @@ class _CreateDealScreenState extends State<CreateDealScreen> {
                       fillColor: AppTheme.specWhite,
                     ),
                     items: _availableDealTypes.map((type) {
-                      return DropdownMenuItem(
-                        value: type,
-                        child: Text(_dealTypeLabel(type)),
-                      );
+                      return DropdownMenuItem(value: type, child: Text(_dealTypeLabel(type)));
                     }).toList(),
                     onChanged: (v) => setState(() => _dealType = v),
                     validator: (v) => v == null || v.isEmpty ? 'Select a deal type' : null,
@@ -402,7 +385,9 @@ class _CreateDealScreenState extends State<CreateDealScreen> {
                     ),
                     validator: (v) {
                       if (_descriptionRequiredByType && (v == null || v.trim().isEmpty)) {
-                        return _isBogo ? 'Enter BOGO details (e.g. Buy one get one half off)' : 'Enter description (e.g. Free item with purchase)';
+                        return _isBogo
+                            ? 'Enter BOGO details (e.g. Buy one get one half off)'
+                            : 'Enter description (e.g. Free item with purchase)';
                       }
                       return null;
                     },
@@ -412,7 +397,10 @@ class _CreateDealScreenState extends State<CreateDealScreen> {
                   if (canSchedule) ...[
                     const SizedBox(height: 16),
                     ListTile(
-                      title: Text('Start date (optional)', style: theme.textTheme.bodyMedium?.copyWith(color: AppTheme.specNavy)),
+                      title: Text(
+                        'Start date (optional)',
+                        style: theme.textTheme.bodyMedium?.copyWith(color: AppTheme.specNavy),
+                      ),
                       subtitle: Text(
                         _startDate == null
                             ? 'None'
@@ -426,7 +414,10 @@ class _CreateDealScreenState extends State<CreateDealScreen> {
                     ),
                     const SizedBox(height: 8),
                     ListTile(
-                      title: Text('End date (optional)', style: theme.textTheme.bodyMedium?.copyWith(color: AppTheme.specNavy)),
+                      title: Text(
+                        'End date (optional)',
+                        style: theme.textTheme.bodyMedium?.copyWith(color: AppTheme.specNavy),
+                      ),
                       subtitle: Text(
                         _endDate == null
                             ? 'None'
@@ -464,10 +455,7 @@ class _CreateDealScreenState extends State<CreateDealScreen> {
                     textCapitalization: TextCapitalization.characters,
                   ),
                   const SizedBox(height: 24),
-                  AppPrimaryButton(
-                    onPressed: _atDealLimit ? null : _save,
-                    child: const Text('Save deal'),
-                  ),
+                  AppPrimaryButton(onPressed: _atDealLimit ? null : _save, child: const Text('Save deal')),
                 ],
               ],
             ),
@@ -479,16 +467,16 @@ class _CreateDealScreenState extends State<CreateDealScreen> {
 }
 
 /// Screen to create a new event for a listing.
-class CreateEventScreen extends StatefulWidget {
+class CreateEventScreen extends ConsumerStatefulWidget {
   const CreateEventScreen({super.key, required this.listingId});
 
   final String listingId;
 
   @override
-  State<CreateEventScreen> createState() => _CreateEventScreenState();
+  ConsumerState<CreateEventScreen> createState() => _CreateEventScreenState();
 }
 
-class _CreateEventScreenState extends State<CreateEventScreen> {
+class _CreateEventScreenState extends ConsumerState<CreateEventScreen> {
   final _formKey = GlobalKey<FormState>();
   late TextEditingController _titleController;
   late TextEditingController _descriptionController;
@@ -515,7 +503,7 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
   }
 
   Future<void> _pickAndUploadImage() async {
-    if (_uploadingImage || !SupabaseConfig.isConfigured) return;
+    if (_uploadingImage) return;
     final result = await FilePicker.platform.pickFiles(
       type: FileType.custom,
       allowedExtensions: allowedImageExtensions,
@@ -532,38 +520,38 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
         bytes: bytes,
         extension: ext,
       );
-      if (mounted) setState(() { _imageUrl = url; _uploadingImage = false; });
+      if (mounted)
+        setState(() {
+          _imageUrl = url;
+          _uploadingImage = false;
+        });
     } catch (e) {
       if (mounted) {
         setState(() => _uploadingImage = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Upload failed: $e')),
-        );
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Upload failed: $e')));
       }
     }
   }
 
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
-    final scope = AppDataScope.of(context);
-    final useSupabase = scope.dataSource.useSupabase;
+    final dataSource = ref.read(listingDataSourceProvider);
+    final useSupabase = dataSource.useBackend;
     final isManager = useSupabase
-        ? (await scope.dataSource.getCurrentUser()).ownedListingIds.contains(widget.listingId)
+        ? (await dataSource.getCurrentUser()).ownedListingIds.contains(widget.listingId)
         : false;
     if (useSupabase && isManager) {
-      await BusinessEventsRepository().insert(
-        businessId: widget.listingId,
-        title: _titleController.text.trim(),
-        eventDate: _eventDate,
-        description: _descriptionController.text.trim().isEmpty
-            ? null
-            : _descriptionController.text.trim(),
-        endDate: _endDate,
-        location: _locationController.text.trim().isEmpty
-            ? null
-            : _locationController.text.trim(),
-        imageUrl: _imageUrl,
-      );
+      await ref
+          .read(businessEventsRepositoryProvider)
+          .insert(
+            businessId: widget.listingId,
+            title: _titleController.text.trim(),
+            eventDate: _eventDate,
+            description: _descriptionController.text.trim().isEmpty ? null : _descriptionController.text.trim(),
+            endDate: _endDate,
+            location: _locationController.text.trim().isEmpty ? null : _locationController.text.trim(),
+            imageUrl: _imageUrl,
+          );
     } else {
       final id = 'e-u-${DateTime.now().millisecondsSinceEpoch}';
       final ev = MockEvent(
@@ -571,22 +559,16 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
         listingId: widget.listingId,
         title: _titleController.text.trim(),
         eventDate: _eventDate,
-        description: _descriptionController.text.trim().isEmpty
-            ? null
-            : _descriptionController.text.trim(),
+        description: _descriptionController.text.trim().isEmpty ? null : _descriptionController.text.trim(),
         endDate: _endDate,
-        location: _locationController.text.trim().isEmpty
-            ? null
-            : _locationController.text.trim(),
+        location: _locationController.text.trim().isEmpty ? null : _locationController.text.trim(),
         imageUrl: _imageUrl,
         status: 'pending',
       );
       MockData.addEvent(ev);
     }
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Event created (pending approval)')),
-      );
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Event created (pending approval)')));
       Navigator.of(context).pop();
     }
   }
@@ -615,12 +597,7 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Create event'),
-        actions: [
-          TextButton(
-            onPressed: () => _save(),
-            child: const Text('Save'),
-          ),
-        ],
+        actions: [TextButton(onPressed: () => _save(), child: const Text('Save'))],
       ),
       body: Form(
         key: _formKey,
@@ -683,13 +660,13 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
             OutlinedButton.icon(
               onPressed: _uploadingImage ? null : _pickAndUploadImage,
               icon: _uploadingImage
-                  ? const SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
+                  ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
                   : const Icon(Icons.image_rounded, size: 20),
-              label: Text(_uploadingImage ? 'Uploading...' : (_imageUrl != null ? 'Change event image' : 'Add event image (optional)')),
+              label: Text(
+                _uploadingImage
+                    ? 'Uploading...'
+                    : (_imageUrl != null ? 'Change event image' : 'Add event image (optional)'),
+              ),
             ),
             if (_imageUrl != null)
               Padding(
@@ -704,16 +681,16 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
 }
 
 /// Screen to create a new loyalty punch card for a listing.
-class CreateLoyaltyScreen extends StatefulWidget {
+class CreateLoyaltyScreen extends ConsumerStatefulWidget {
   const CreateLoyaltyScreen({super.key, required this.listingId});
 
   final String listingId;
 
   @override
-  State<CreateLoyaltyScreen> createState() => _CreateLoyaltyScreenState();
+  ConsumerState<CreateLoyaltyScreen> createState() => _CreateLoyaltyScreenState();
 }
 
-class _CreateLoyaltyScreenState extends State<CreateLoyaltyScreen> {
+class _CreateLoyaltyScreenState extends ConsumerState<CreateLoyaltyScreen> {
   final _formKey = GlobalKey<FormState>();
   late TextEditingController _titleController;
   late TextEditingController _rewardController;
@@ -731,12 +708,6 @@ class _CreateLoyaltyScreenState extends State<CreateLoyaltyScreen> {
   }
 
   Future<void> _loadTier() async {
-    if (!SupabaseConfig.isConfigured) {
-      if (mounted) {
-        setState(() => _tierLoading = false);
-      }
-      return;
-    }
     final tier = await BusinessTierService().getTierForBusiness(widget.listingId);
     if (mounted) {
       setState(() {
@@ -758,33 +729,32 @@ class _CreateLoyaltyScreenState extends State<CreateLoyaltyScreen> {
 
   Future<void> _save() async {
     if (!_canCreatePunchCard) {
-      await BusinessTierUpgradeDialog.show(
-        context,
-        message: BusinessTierService.upgradeMessageForAdvancedFeatures(),
-      );
+      await BusinessTierUpgradeDialog.show(context, message: BusinessTierService.upgradeMessageForAdvancedFeatures());
       return;
     }
     if (!_formKey.currentState!.validate()) return;
     final punches = int.tryParse(_punchesController.text.trim());
     if (punches == null || punches < 1) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Enter a valid number of punches (1 or more)')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Enter a valid number of punches (1 or more)')));
       return;
     }
-    final scope = AppDataScope.of(context);
-    final useSupabase = scope.dataSource.useSupabase;
+    final dataSource = ref.read(listingDataSourceProvider);
+    final useSupabase = dataSource.useBackend;
     final isManager = useSupabase
-        ? (await scope.dataSource.getCurrentUser()).ownedListingIds.contains(widget.listingId)
+        ? (await dataSource.getCurrentUser()).ownedListingIds.contains(widget.listingId)
         : false;
     if (useSupabase && isManager) {
-      await PunchCardProgramsRepository().insert(
-        businessId: widget.listingId,
-        title: _titleController.text.trim(),
-        rewardDescription: _rewardController.text.trim(),
-        punchesRequired: punches,
-        isActive: true,
-      );
+      await ref
+          .read(punchCardProgramsRepositoryProvider)
+          .insert(
+            businessId: widget.listingId,
+            title: _titleController.text.trim(),
+            rewardDescription: _rewardController.text.trim(),
+            punchesRequired: punches,
+            isActive: true,
+          );
     } else {
       final id = 'p-u-${DateTime.now().millisecondsSinceEpoch}';
       final card = MockPunchCard(
@@ -799,9 +769,7 @@ class _CreateLoyaltyScreenState extends State<CreateLoyaltyScreen> {
       MockData.addPunchCard(card);
     }
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Loyalty card created')),
-      );
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Loyalty card created')));
       Navigator.of(context).pop();
     }
   }
@@ -824,10 +792,7 @@ class _CreateLoyaltyScreenState extends State<CreateLoyaltyScreen> {
         ),
         title: Text(
           'Create loyalty card',
-          style: theme.textTheme.titleLarge?.copyWith(
-            fontWeight: FontWeight.w700,
-            color: AppTheme.specNavy,
-          ),
+          style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700, color: AppTheme.specNavy),
         ),
       ),
       body: SingleChildScrollView(
@@ -842,17 +807,16 @@ class _CreateLoyaltyScreenState extends State<CreateLoyaltyScreen> {
                 if (_tierLoading)
                   const Padding(
                     padding: EdgeInsets.symmetric(vertical: 24),
-                    child: Center(child: SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2))),
+                    child: Center(
+                      child: SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2)),
+                    ),
                   )
                 else if (locked) ...[
                   Icon(Icons.lock_rounded, size: 56, color: AppTheme.specNavy.withValues(alpha: 0.4)),
                   const SizedBox(height: 16),
                   Text(
                     'Loyalty cards require Local Partner',
-                    style: theme.textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w600,
-                      color: AppTheme.specNavy,
-                    ),
+                    style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600, color: AppTheme.specNavy),
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 12),
@@ -872,8 +836,7 @@ class _CreateLoyaltyScreenState extends State<CreateLoyaltyScreen> {
                     ),
                     child: const Text('Upgrade to Local Partner'),
                   ),
-                ]
-                else ...[
+                ] else ...[
                   TextFormField(
                     controller: _titleController,
                     decoration: const InputDecoration(
@@ -917,10 +880,7 @@ class _CreateLoyaltyScreenState extends State<CreateLoyaltyScreen> {
                     },
                   ),
                   const SizedBox(height: 24),
-                  AppPrimaryButton(
-                    onPressed: _save,
-                    child: const Text('Save loyalty card'),
-                  ),
+                  AppPrimaryButton(onPressed: _save, child: const Text('Save loyalty card')),
                 ],
               ],
             ),
@@ -932,16 +892,16 @@ class _CreateLoyaltyScreenState extends State<CreateLoyaltyScreen> {
 }
 
 /// Screen to add an item to a listing's menu (products, services, or offerings).
-class CreateMenuItemScreen extends StatefulWidget {
+class CreateMenuItemScreen extends ConsumerStatefulWidget {
   const CreateMenuItemScreen({super.key, required this.listingId});
 
   final String listingId;
 
   @override
-  State<CreateMenuItemScreen> createState() => _CreateMenuItemScreenState();
+  ConsumerState<CreateMenuItemScreen> createState() => _CreateMenuItemScreenState();
 }
 
-class _CreateMenuItemScreenState extends State<CreateMenuItemScreen> {
+class _CreateMenuItemScreenState extends ConsumerState<CreateMenuItemScreen> {
   final _formKey = GlobalKey<FormState>();
   late TextEditingController _nameController;
   late TextEditingController _priceController;
@@ -968,23 +928,20 @@ class _CreateMenuItemScreenState extends State<CreateMenuItemScreen> {
 
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
-    final scope = AppDataScope.of(context);
-    final useSupabase = scope.dataSource.useSupabase;
+    final dataSource = ref.read(listingDataSourceProvider);
+    final useSupabase = dataSource.useBackend;
     final isManager = useSupabase
-        ? (await scope.dataSource.getCurrentUser()).ownedListingIds.contains(widget.listingId)
+        ? (await dataSource.getCurrentUser()).ownedListingIds.contains(widget.listingId)
         : false;
     if (useSupabase && isManager) {
-      final sectionName = _sectionController.text.trim().isEmpty
-          ? 'General'
-          : _sectionController.text.trim();
-      final sectionId = await MenuRepository().getOrCreateSectionId(widget.listingId, sectionName);
-      await MenuRepository().insertItem(
+      final sectionName = _sectionController.text.trim().isEmpty ? 'General' : _sectionController.text.trim();
+      final menuRepo = ref.read(menuRepositoryProvider);
+      final sectionId = await menuRepo.getOrCreateSectionId(widget.listingId, sectionName);
+      await menuRepo.insertItem(
         sectionId: sectionId,
         name: _nameController.text.trim(),
         price: _priceController.text.trim().isEmpty ? null : _priceController.text.trim(),
-        description: _descriptionController.text.trim().isEmpty
-            ? null
-            : _descriptionController.text.trim(),
+        description: _descriptionController.text.trim().isEmpty ? null : _descriptionController.text.trim(),
         isAvailable: true,
       );
     } else {
@@ -998,9 +955,7 @@ class _CreateMenuItemScreenState extends State<CreateMenuItemScreen> {
       MockData.addMenuItem(item);
     }
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Item added')),
-      );
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Item added')));
       Navigator.of(context).pop();
     }
   }
@@ -1010,12 +965,7 @@ class _CreateMenuItemScreenState extends State<CreateMenuItemScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Add item'),
-        actions: [
-          TextButton(
-            onPressed: () => _save(),
-            child: const Text('Save'),
-          ),
-        ],
+        actions: [TextButton(onPressed: () => _save(), child: const Text('Save'))],
       ),
       body: Form(
         key: _formKey,

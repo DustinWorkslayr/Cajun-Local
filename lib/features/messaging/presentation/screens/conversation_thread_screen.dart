@@ -1,17 +1,19 @@
 import 'package:flutter/material.dart';
-import 'package:my_app/core/auth/auth_repository.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:my_app/core/auth/providers/auth_provider.dart';
 import 'package:my_app/core/data/models/conversation.dart';
 import 'package:my_app/core/data/models/message.dart';
 import 'package:my_app/core/data/repositories/business_repository.dart';
 import 'package:my_app/core/data/repositories/conversations_repository.dart';
 import 'package:my_app/core/data/repositories/messages_repository.dart';
+import 'package:my_app/core/data/repositories/profiles_repository.dart';
 import 'package:my_app/core/theme/app_layout.dart';
 import 'package:my_app/core/theme/theme.dart';
 import 'package:my_app/shared/widgets/app_buttons.dart';
 
 /// Two-way conversation thread. User messages on right, business on left.
 /// User can only send when the last message is from the business.
-class ConversationThreadScreen extends StatefulWidget {
+class ConversationThreadScreen extends ConsumerStatefulWidget {
   const ConversationThreadScreen({
     super.key,
     required this.conversationId,
@@ -25,14 +27,15 @@ class ConversationThreadScreen extends StatefulWidget {
   final Conversation? conversation;
   final String? businessName;
   final String? userDisplayName;
+
   /// When true, current user is replying as business (can always send).
   final bool isBusinessManager;
 
   @override
-  State<ConversationThreadScreen> createState() => _ConversationThreadScreenState();
+  ConsumerState<ConversationThreadScreen> createState() => _ConversationThreadScreenState();
 }
 
-class _ConversationThreadScreenState extends State<ConversationThreadScreen> {
+class _ConversationThreadScreenState extends ConsumerState<ConversationThreadScreen> {
   Conversation? _conversation;
   List<Message> _messages = [];
   bool _loading = true;
@@ -89,8 +92,10 @@ class _ConversationThreadScreenState extends State<ConversationThreadScreen> {
   }
 
   Future<String?> _getUserDisplayName(String userId) async {
-    final p = await AuthRepository().getProfileForAdmin(userId);
-    return p?.displayName?.trim().isNotEmpty == true ? p!.displayName : p?.email;
+    final p = await ref.read(profilesRepositoryProvider).getProfile(userId);
+    return (p?.displayName != null && p!.displayName!.trim().isNotEmpty)
+        ? p.displayName!
+        : (p?.email ?? 'User $userId');
   }
 
   /// User (customer) can send only when last message is from business (sender_id != conversation.user_id).
@@ -111,15 +116,11 @@ class _ConversationThreadScreenState extends State<ConversationThreadScreen> {
     final body = _messageController.text.trim();
     if (body.isEmpty || _conversation == null) return;
     if (!widget.isBusinessManager && !_userCanSend) return;
-    final uid = AuthRepository().currentUserId;
+    final uid = ref.read(authNotifierProvider).valueOrNull?.id;
     if (uid == null) return;
     setState(() => _sending = true);
     try {
-      final msg = await MessagesRepository().insert(
-        conversationId: _conversation!.id,
-        senderId: uid,
-        body: body,
-      );
+      final msg = await MessagesRepository().insert(conversationId: _conversation!.id, senderId: uid, body: body);
       if (!mounted) return;
       _messageController.clear();
       setState(() {
@@ -129,9 +130,7 @@ class _ConversationThreadScreenState extends State<ConversationThreadScreen> {
     } catch (e) {
       if (mounted) {
         setState(() => _sending = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to send: $e')),
-        );
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to send: $e')));
       }
     }
   }
@@ -146,7 +145,10 @@ class _ConversationThreadScreenState extends State<ConversationThreadScreen> {
       return Scaffold(
         backgroundColor: AppTheme.specOffWhite,
         appBar: AppBar(
-          title: Text(_otherPartyName ?? 'Conversation', style: const TextStyle(color: AppTheme.specNavy, fontWeight: FontWeight.w700)),
+          title: Text(
+            _otherPartyName ?? 'Conversation',
+            style: const TextStyle(color: AppTheme.specNavy, fontWeight: FontWeight.w700),
+          ),
           backgroundColor: AppTheme.specWhite,
           foregroundColor: AppTheme.specNavy,
           surfaceTintColor: Colors.transparent,
@@ -159,7 +161,10 @@ class _ConversationThreadScreenState extends State<ConversationThreadScreen> {
       return Scaffold(
         backgroundColor: AppTheme.specOffWhite,
         appBar: AppBar(
-          title: const Text('Conversation', style: TextStyle(color: AppTheme.specNavy, fontWeight: FontWeight.w700)),
+          title: const Text(
+            'Conversation',
+            style: TextStyle(color: AppTheme.specNavy, fontWeight: FontWeight.w700),
+          ),
           backgroundColor: AppTheme.specWhite,
           foregroundColor: AppTheme.specNavy,
           surfaceTintColor: Colors.transparent,
@@ -173,10 +178,7 @@ class _ConversationThreadScreenState extends State<ConversationThreadScreen> {
               children: [
                 Text(_error!, style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.error)),
                 const SizedBox(height: 16),
-                AppSecondaryButton(
-                  onPressed: _load,
-                  child: const Text('Retry'),
-                ),
+                AppSecondaryButton(onPressed: _load, child: const Text('Retry')),
               ],
             ),
           ),
@@ -187,7 +189,10 @@ class _ConversationThreadScreenState extends State<ConversationThreadScreen> {
     return Scaffold(
       backgroundColor: AppTheme.specOffWhite,
       appBar: AppBar(
-        title: Text(_otherPartyName ?? 'Conversation', style: const TextStyle(color: AppTheme.specNavy, fontWeight: FontWeight.w700)),
+        title: Text(
+          _otherPartyName ?? 'Conversation',
+          style: const TextStyle(color: AppTheme.specNavy, fontWeight: FontWeight.w700),
+        ),
         backgroundColor: AppTheme.specWhite,
         foregroundColor: AppTheme.specNavy,
         surfaceTintColor: Colors.transparent,
@@ -244,15 +249,9 @@ class _ConversationThreadScreenState extends State<ConversationThreadScreen> {
                   ),
                   const SizedBox(width: 8),
                   IconButton.filled(
-                    onPressed: (_userCanSend || widget.isBusinessManager) && !_sending
-                        ? _send
-                        : null,
+                    onPressed: (_userCanSend || widget.isBusinessManager) && !_sending ? _send : null,
                     icon: _sending
-                        ? const SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
+                        ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
                         : const Icon(Icons.send_rounded),
                     style: IconButton.styleFrom(
                       backgroundColor: AppTheme.specNavy,
@@ -307,9 +306,7 @@ class _MessageBubble extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                 decoration: BoxDecoration(
-                  color: isFromMe
-                      ? AppTheme.specNavy
-                      : AppTheme.specGold.withValues(alpha: 0.25),
+                  color: isFromMe ? AppTheme.specNavy : AppTheme.specGold.withValues(alpha: 0.25),
                   borderRadius: BorderRadius.only(
                     topLeft: const Radius.circular(16),
                     topRight: const Radius.circular(16),
@@ -319,18 +316,11 @@ class _MessageBubble extends StatelessWidget {
                 ),
                 child: Text(
                   body,
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    color: isFromMe ? AppTheme.specWhite : AppTheme.specNavy,
-                  ),
+                  style: theme.textTheme.bodyMedium?.copyWith(color: isFromMe ? AppTheme.specWhite : AppTheme.specNavy),
                 ),
               ),
               const SizedBox(height: 4),
-              Text(
-                time,
-                style: theme.textTheme.labelSmall?.copyWith(
-                  color: AppTheme.specNavy.withValues(alpha: 0.6),
-                ),
-              ),
+              Text(time, style: theme.textTheme.labelSmall?.copyWith(color: AppTheme.specNavy.withValues(alpha: 0.6))),
             ],
           ),
         ),

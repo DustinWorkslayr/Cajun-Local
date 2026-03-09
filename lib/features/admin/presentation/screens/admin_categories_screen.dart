@@ -9,23 +9,14 @@ import 'package:uuid/uuid.dart';
 
 /// Result of add/edit category form: name, bucket, and optional icon (Material icon name).
 class _CategoryFormResult {
-  const _CategoryFormResult({
-    required this.name,
-    required this.bucket,
-    this.icon,
-  });
+  const _CategoryFormResult({required this.name, required this.bucket, this.icon});
   final String name;
   final String bucket;
   final String? icon;
 }
 
 /// Bucket options for grouping categories (hire, eat, shop, explore).
-const _kBucketOptions = [
-  ('hire', 'Hire'),
-  ('eat', 'Eat'),
-  ('shop', 'Shop'),
-  ('explore', 'Explore'),
-];
+const _kBucketOptions = [('hire', 'Hire'), ('eat', 'Eat'), ('shop', 'Shop'), ('explore', 'Explore')];
 
 /// Admin categories: reorderable list, auto-increment sort order for new,
 /// accordion per category with inline subcategories.
@@ -104,10 +95,7 @@ class _AdminCategoriesScreenState extends State<AdminCategoriesScreen> {
   }
 
   Future<void> _addCategory() async {
-    final result = await showDialog<_CategoryFormResult>(
-      context: context,
-      builder: (context) => _AddCategoryDialog(),
-    );
+    final result = await showDialog<_CategoryFormResult>(context: context, builder: (context) => _AddCategoryDialog());
     if (result == null || result.name.trim().isEmpty) return;
     setState(() => _loading = true);
     try {
@@ -124,9 +112,7 @@ class _AdminCategoriesScreenState extends State<AdminCategoriesScreen> {
     } catch (e) {
       if (mounted) {
         setState(() => _loading = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to add category: $e')),
-        );
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to add category: $e')));
       }
     }
   }
@@ -147,16 +133,12 @@ class _AdminCategoriesScreenState extends State<AdminCategoriesScreen> {
       });
       await _load();
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Category updated')),
-        );
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Category updated')));
       }
     } catch (e) {
       if (mounted) {
         setState(() => _loading = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to update category: $e')),
-        );
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to update category: $e')));
       }
     }
   }
@@ -182,23 +164,15 @@ class _AdminCategoriesScreenState extends State<AdminCategoriesScreen> {
     setState(() => _addingSubcategoryCategoryId = null);
     try {
       final id = const Uuid().v4();
-      await _repo.insertSubcategory({
-        'id': id,
-        'name': name,
-        'category_id': categoryId,
-      });
+      await _repo.insertSubcategory({'id': id, 'name': name, 'category_id': categoryId});
       _subcategoriesByCategoryId.remove(categoryId);
       await _loadSubcategories(categoryId);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Subcategory added')),
-        );
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Subcategory added')));
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to add subcategory: $e')),
-        );
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to add subcategory: $e')));
       }
     }
   }
@@ -210,14 +184,8 @@ class _AdminCategoriesScreenState extends State<AdminCategoriesScreen> {
         title: const Text('Delete subcategory?'),
         content: Text('Delete "${sub.name}"?'),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Cancel'),
-          ),
-          AppDangerButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Delete'),
-          ),
+          TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Cancel')),
+          AppDangerButton(onPressed: () => Navigator.of(context).pop(true), child: const Text('Delete')),
         ],
       ),
     );
@@ -227,15 +195,11 @@ class _AdminCategoriesScreenState extends State<AdminCategoriesScreen> {
       _subcategoriesByCategoryId.remove(sub.categoryId);
       await _loadSubcategories(sub.categoryId);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Subcategory deleted')),
-        );
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Subcategory deleted')));
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to delete: $e')),
-        );
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to delete: $e')));
       }
     }
   }
@@ -255,9 +219,7 @@ class _AdminCategoriesScreenState extends State<AdminCategoriesScreen> {
           padding: const EdgeInsets.all(24),
           child: Text(
             'No categories. Add one to get started.',
-            style: theme.textTheme.bodyLarge?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
-            ),
+            style: theme.textTheme.bodyLarge?.copyWith(color: theme.colorScheme.onSurfaceVariant),
             textAlign: TextAlign.center,
           ),
         ),
@@ -366,26 +328,21 @@ class _AddCategoryDialogState extends State<_AddCategoryDialog> {
             const SizedBox(height: 16),
             DropdownButtonFormField<String>(
               initialValue: _selectedBucket,
-              decoration: const InputDecoration(
-                labelText: 'Bucket',
-                border: OutlineInputBorder(),
-              ),
-              items: _kBucketOptions
-                  .map((e) => DropdownMenuItem(value: e.$1, child: Text(e.$2)))
-                  .toList(),
+              decoration: const InputDecoration(labelText: 'Bucket', border: OutlineInputBorder()),
+              items: _kBucketOptions.map((e) => DropdownMenuItem(value: e.$1, child: Text(e.$2))).toList(),
               onChanged: (v) => setState(() => _selectedBucket = v ?? 'explore'),
             ),
             const SizedBox(height: 16),
             ListTile(
               contentPadding: EdgeInsets.zero,
-              leading: Icon(getCategoryIconData(_selectedIcon?.isEmpty ?? true ? null : _selectedIcon), color: Theme.of(context).colorScheme.primary),
-              title: const Text('Category icon'),
-              subtitle: Text(_selectedIcon == null || _selectedIcon!.isEmpty ? 'Default' : kCategoryIconOptions.firstWhere((o) => o.name == _selectedIcon, orElse: () => kCategoryIconOptions.first).label),
+              leading: Icon(getCategoryIconData(_selectedIcon)),
+              title: const Text('Icon'),
+              subtitle: Text(_selectedIcon != null && _selectedIcon!.isNotEmpty ? _selectedIcon! : 'Default'),
               trailing: const Icon(Icons.chevron_right_rounded),
               onTap: () async {
                 final picked = await showDialog<String>(
                   context: context,
-                  builder: (ctx) => _CategoryIconPickerDialog(selectedIconName: _selectedIcon ?? ''),
+                  builder: (context) => _CategoryIconPickerDialog(selectedIconName: _selectedIcon ?? ''),
                 );
                 if (picked != null && mounted) setState(() => _selectedIcon = picked.isEmpty ? null : picked);
               },
@@ -394,14 +351,8 @@ class _AddCategoryDialogState extends State<_AddCategoryDialog> {
         ),
       ),
       actions: [
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Cancel'),
-        ),
-        FilledButton(
-          onPressed: _submit,
-          child: const Text('Add'),
-        ),
+        TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Cancel')),
+        FilledButton(onPressed: _submit, child: const Text('Add')),
       ],
     );
   }
@@ -409,11 +360,13 @@ class _AddCategoryDialogState extends State<_AddCategoryDialog> {
   void _submit() {
     final name = _nameController.text.trim();
     if (name.isNotEmpty) {
-      Navigator.of(context).pop(_CategoryFormResult(
-        name: name,
-        bucket: _selectedBucket,
-        icon: _selectedIcon != null && _selectedIcon!.isNotEmpty ? _selectedIcon : null,
-      ));
+      Navigator.of(context).pop(
+        _CategoryFormResult(
+          name: name,
+          bucket: _selectedBucket,
+          icon: _selectedIcon != null && _selectedIcon!.isNotEmpty ? _selectedIcon : null,
+        ),
+      );
     }
   }
 }
@@ -448,9 +401,22 @@ class _CategoryIconPickerDialog extends StatelessWidget {
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(getCategoryIconData(opt.name.isEmpty ? null : opt.name), size: 28, color: theme.colorScheme.onSurface),
+                        Icon(
+                          getCategoryIconData(opt.name.isEmpty ? null : opt.name),
+                          size: 28,
+                          color: theme.colorScheme.onSurface,
+                        ),
                         const SizedBox(height: 4),
-                        SizedBox(width: 64, child: Text(opt.label, style: theme.textTheme.labelSmall, textAlign: TextAlign.center, maxLines: 2, overflow: TextOverflow.ellipsis)),
+                        SizedBox(
+                          width: 64,
+                          child: Text(
+                            opt.label,
+                            style: theme.textTheme.labelSmall,
+                            textAlign: TextAlign.center,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
                       ],
                     ),
                   ),
@@ -460,12 +426,7 @@ class _CategoryIconPickerDialog extends StatelessWidget {
           ),
         ),
       ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(selectedIconName),
-          child: const Text('Cancel'),
-        ),
-      ],
+      actions: [TextButton(onPressed: () => Navigator.of(context).pop(selectedIconName), child: const Text('Cancel'))],
     );
   }
 }
@@ -489,9 +450,7 @@ class _EditCategoryDialogState extends State<_EditCategoryDialog> {
     super.initState();
     _nameController = TextEditingController(text: widget.category.name);
     final validBuckets = _kBucketOptions.map((e) => e.$1).toSet();
-    _selectedBucket = validBuckets.contains(widget.category.bucket)
-        ? widget.category.bucket
-        : 'explore';
+    _selectedBucket = validBuckets.contains(widget.category.bucket) ? widget.category.bucket : 'explore';
     final validIconNames = kCategoryIconOptions.map((e) => e.name).toSet();
     _selectedIcon = widget.category.icon != null && validIconNames.contains(widget.category.icon)
         ? widget.category.icon!
@@ -527,26 +486,21 @@ class _EditCategoryDialogState extends State<_EditCategoryDialog> {
             const SizedBox(height: 16),
             DropdownButtonFormField<String>(
               initialValue: _selectedBucket,
-              decoration: const InputDecoration(
-                labelText: 'Bucket',
-                border: OutlineInputBorder(),
-              ),
-              items: _kBucketOptions
-                  .map((e) => DropdownMenuItem(value: e.$1, child: Text(e.$2)))
-                  .toList(),
+              decoration: const InputDecoration(labelText: 'Bucket', border: OutlineInputBorder()),
+              items: _kBucketOptions.map((e) => DropdownMenuItem(value: e.$1, child: Text(e.$2))).toList(),
               onChanged: (v) => setState(() => _selectedBucket = v ?? 'explore'),
             ),
             const SizedBox(height: 16),
             ListTile(
               contentPadding: EdgeInsets.zero,
-              leading: Icon(getCategoryIconData(_selectedIcon?.isEmpty ?? true ? null : _selectedIcon), color: Theme.of(context).colorScheme.primary),
-              title: const Text('Category icon'),
-              subtitle: Text(_selectedIcon == null || _selectedIcon!.isEmpty ? 'Default' : kCategoryIconOptions.firstWhere((o) => o.name == _selectedIcon, orElse: () => kCategoryIconOptions.first).label),
+              leading: Icon(getCategoryIconData(_selectedIcon)),
+              title: const Text('Icon'),
+              subtitle: Text(_selectedIcon != null && _selectedIcon!.isNotEmpty ? _selectedIcon! : 'Default'),
               trailing: const Icon(Icons.chevron_right_rounded),
               onTap: () async {
                 final picked = await showDialog<String>(
                   context: context,
-                  builder: (ctx) => _CategoryIconPickerDialog(selectedIconName: _selectedIcon ?? ''),
+                  builder: (context) => _CategoryIconPickerDialog(selectedIconName: _selectedIcon ?? ''),
                 );
                 if (picked != null && mounted) setState(() => _selectedIcon = picked.isEmpty ? null : picked);
               },
@@ -555,14 +509,8 @@ class _EditCategoryDialogState extends State<_EditCategoryDialog> {
         ),
       ),
       actions: [
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Cancel'),
-        ),
-        FilledButton(
-          onPressed: _submit,
-          child: const Text('Save'),
-        ),
+        TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Cancel')),
+        FilledButton(onPressed: _submit, child: const Text('Save')),
       ],
     );
   }
@@ -570,11 +518,13 @@ class _EditCategoryDialogState extends State<_EditCategoryDialog> {
   void _submit() {
     final name = _nameController.text.trim();
     if (name.isNotEmpty) {
-      Navigator.of(context).pop(_CategoryFormResult(
-        name: name,
-        bucket: _selectedBucket,
-        icon: _selectedIcon != null && _selectedIcon!.isNotEmpty ? _selectedIcon : null,
-      ));
+      Navigator.of(context).pop(
+        _CategoryFormResult(
+          name: name,
+          bucket: _selectedBucket,
+          icon: _selectedIcon != null && _selectedIcon!.isNotEmpty ? _selectedIcon : null,
+        ),
+      );
     }
   }
 }
@@ -640,17 +590,12 @@ class _CategoryAccordion extends StatelessWidget {
                 ),
                 title: Text(
                   category.name,
-                  style: theme.textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w600,
-                    color: AppTheme.specNavy,
-                  ),
+                  style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600, color: AppTheme.specNavy),
                 ),
                 subtitle: isExpanded && subcategories.isNotEmpty
                     ? Text(
                         '${subcategories.length} subcategories',
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: colorScheme.onSurfaceVariant,
-                        ),
+                        style: theme.textTheme.bodySmall?.copyWith(color: colorScheme.onSurfaceVariant),
                       )
                     : null,
                 trailing: Row(
@@ -675,11 +620,7 @@ class _CategoryAccordion extends StatelessWidget {
             if (isLoadingSubcategories)
               const Padding(
                 padding: EdgeInsets.all(16),
-                child: Center(child: SizedBox(
-                  width: 24,
-                  height: 24,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                )),
+                child: Center(child: SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2))),
               )
             else
               Padding(
@@ -687,21 +628,21 @@ class _CategoryAccordion extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    ...subcategories.map((sub) => ListTile(
-                          contentPadding: EdgeInsets.zero,
-                          dense: true,
-                          title: Text(
-                            sub.name,
-                            style: theme.textTheme.bodyMedium?.copyWith(
-                              color: colorScheme.onSurface,
-                            ),
-                          ),
-                          trailing: IconButton(
-                            icon: Icon(Icons.close_rounded, size: 20, color: colorScheme.error),
-                            onPressed: () => onDeleteSubcategory(sub),
-                            tooltip: 'Delete subcategory',
-                          ),
-                        )),
+                    ...subcategories.map(
+                      (sub) => ListTile(
+                        contentPadding: EdgeInsets.zero,
+                        dense: true,
+                        title: Text(
+                          sub.name,
+                          style: theme.textTheme.bodyMedium?.copyWith(color: colorScheme.onSurface),
+                        ),
+                        trailing: IconButton(
+                          icon: Icon(Icons.close_rounded, size: 20, color: colorScheme.error),
+                          onPressed: () => onDeleteSubcategory(sub),
+                          tooltip: 'Delete subcategory',
+                        ),
+                      ),
+                    ),
                     const SizedBox(height: 8),
                     if (isAddingSubcategory)
                       Row(

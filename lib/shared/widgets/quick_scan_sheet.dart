@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
-import 'package:my_app/core/data/services/punch_edge_functions_service.dart';
+import 'package:my_app/core/data/services/punch_service.dart';
 import 'package:my_app/core/theme/theme.dart';
 import 'package:my_app/shared/widgets/punch_code_invalid_dialog.dart';
 
@@ -32,10 +33,7 @@ void showQuickScanSheet(
   List<QuickScanBusiness>? businesses,
   List<QuickScanLoyaltyCard>? loyaltyCards,
 }) {
-  assert(
-    (businesses != null && businesses.isNotEmpty) ||
-    (loyaltyCards != null && loyaltyCards.isNotEmpty),
-  );
+  assert((businesses != null && businesses.isNotEmpty) || (loyaltyCards != null && loyaltyCards.isNotEmpty));
   showModalBottomSheet<void>(
     context: context,
     isScrollControlled: true,
@@ -50,11 +48,7 @@ void showQuickScanSheet(
 }
 
 class _QuickScanSheet extends StatefulWidget {
-  const _QuickScanSheet({
-    required this.businesses,
-    required this.loyaltyCards,
-    required this.onClose,
-  });
+  const _QuickScanSheet({required this.businesses, required this.loyaltyCards, required this.onClose});
 
   final List<QuickScanBusiness> businesses;
   final List<QuickScanLoyaltyCard> loyaltyCards;
@@ -80,10 +74,7 @@ class _QuickScanSheetState extends State<_QuickScanSheet> {
       _selectedBusiness = business;
       _selectedCard = null;
     });
-    _pageController.nextPage(
-      duration: const Duration(milliseconds: 250),
-      curve: Curves.easeInOut,
-    );
+    _pageController.nextPage(duration: const Duration(milliseconds: 250), curve: Curves.easeInOut);
   }
 
   void _goToScannerWithCard(QuickScanLoyaltyCard card) {
@@ -91,10 +82,7 @@ class _QuickScanSheetState extends State<_QuickScanSheet> {
       _selectedBusiness = null;
       _selectedCard = card;
     });
-    _pageController.nextPage(
-      duration: const Duration(milliseconds: 250),
-      curve: Curves.easeInOut,
-    );
+    _pageController.nextPage(duration: const Duration(milliseconds: 250), curve: Curves.easeInOut);
   }
 
   void _backToPicker() {
@@ -102,10 +90,7 @@ class _QuickScanSheetState extends State<_QuickScanSheet> {
       _selectedBusiness = null;
       _selectedCard = null;
     });
-    _pageController.previousPage(
-      duration: const Duration(milliseconds: 250),
-      curve: Curves.easeInOut,
-    );
+    _pageController.previousPage(duration: const Duration(milliseconds: 250), curve: Curves.easeInOut);
   }
 
   String get _scannerTitle {
@@ -130,10 +115,7 @@ class _QuickScanSheetState extends State<_QuickScanSheet> {
             child: PageView(
               controller: _pageController,
               physics: const NeverScrollableScrollPhysics(),
-              children: [
-                _buildPicker(),
-                _buildScanner(),
-              ],
+              children: [_buildPicker(), _buildScanner()],
             ),
           ),
         ],
@@ -148,10 +130,7 @@ class _QuickScanSheetState extends State<_QuickScanSheet> {
         child: Container(
           width: 40,
           height: 4,
-          decoration: BoxDecoration(
-            color: Colors.grey.shade400,
-            borderRadius: BorderRadius.circular(2),
-          ),
+          decoration: BoxDecoration(color: Colors.grey.shade400, borderRadius: BorderRadius.circular(2)),
         ),
       ),
     );
@@ -168,10 +147,7 @@ class _QuickScanSheetState extends State<_QuickScanSheet> {
             padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
             child: Text(
               'Select loyalty card to scan',
-              style: theme.textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.w600,
-                    color: AppTheme.specNavy,
-                  ),
+              style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w600, color: AppTheme.specNavy),
             ),
           ),
           Flexible(
@@ -190,16 +166,11 @@ class _QuickScanSheetState extends State<_QuickScanSheet> {
                     ),
                     title: Text(
                       card.programTitle,
-                      style: const TextStyle(
-                        fontWeight: FontWeight.w600,
-                        color: AppTheme.specNavy,
-                      ),
+                      style: const TextStyle(fontWeight: FontWeight.w600, color: AppTheme.specNavy),
                     ),
                     subtitle: Text(
                       card.businessName,
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: AppTheme.specNavy.withValues(alpha: 0.8),
-                      ),
+                      style: theme.textTheme.bodySmall?.copyWith(color: AppTheme.specNavy.withValues(alpha: 0.8)),
                     ),
                     trailing: const Icon(Icons.qr_code_scanner_rounded, color: AppTheme.specGold),
                     onTap: () => _goToScannerWithCard(card),
@@ -219,10 +190,7 @@ class _QuickScanSheetState extends State<_QuickScanSheet> {
           padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
           child: Text(
             'Select business to scan',
-            style: theme.textTheme.titleLarge?.copyWith(
-                  fontWeight: FontWeight.w600,
-                  color: AppTheme.specNavy,
-                ),
+            style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w600, color: AppTheme.specNavy),
           ),
         ),
         Flexible(
@@ -241,10 +209,7 @@ class _QuickScanSheetState extends State<_QuickScanSheet> {
                   ),
                   title: Text(
                     b.name,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.w600,
-                      color: AppTheme.specNavy,
-                    ),
+                    style: const TextStyle(fontWeight: FontWeight.w600, color: AppTheme.specNavy),
                   ),
                   subtitle: const Text('Active loyalty punch cards'),
                   trailing: const Icon(Icons.qr_code_scanner_rounded, color: AppTheme.specGold),
@@ -259,30 +224,22 @@ class _QuickScanSheetState extends State<_QuickScanSheet> {
   }
 
   Widget _buildScanner() {
-    return _ScannerSlide(
-      title: 'Scan punch — $_scannerTitle',
-      onBack: _backToPicker,
-      onScanSuccess: widget.onClose,
-    );
+    return _ScannerSlide(title: 'Scan punch — $_scannerTitle', onBack: _backToPicker, onScanSuccess: widget.onClose);
   }
 }
 
-class _ScannerSlide extends StatefulWidget {
-  const _ScannerSlide({
-    required this.title,
-    required this.onBack,
-    required this.onScanSuccess,
-  });
+class _ScannerSlide extends ConsumerStatefulWidget {
+  const _ScannerSlide({required this.title, required this.onBack, required this.onScanSuccess});
 
   final String title;
   final VoidCallback onBack;
   final VoidCallback onScanSuccess;
 
   @override
-  State<_ScannerSlide> createState() => _ScannerSlideState();
+  ConsumerState<_ScannerSlide> createState() => _ScannerSlideState();
 }
 
-class _ScannerSlideState extends State<_ScannerSlide> {
+class _ScannerSlideState extends ConsumerState<_ScannerSlide> {
   final MobileScannerController _controller = MobileScannerController(
     detectionSpeed: DetectionSpeed.normal,
     facing: CameraFacing.back,
@@ -309,10 +266,7 @@ class _ScannerSlideState extends State<_ScannerSlide> {
     if (token == null || token.trim().isEmpty) return;
     setState(() => _processing = true);
     try {
-      final result = await PunchEdgeFunctionsService().validatePunch(
-        token.trim(),
-        punches: _punchesToAward,
-      );
+      final result = await ref.read(punchServiceProvider).validatePunch(token.trim(), punches: _punchesToAward);
       if (!mounted) return;
       if (result.success) {
         _scanned = true;
@@ -321,45 +275,28 @@ class _ScannerSlideState extends State<_ScannerSlide> {
           barrierDismissible: false,
           builder: (ctx) => AlertDialog(
             title: const Text('Punch recorded'),
-            content: Text(
-              result.message ?? 'The customer earned a punch.',
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(ctx),
-                child: const Text('OK'),
-              ),
-            ],
+            content: Text(result.message ?? 'The customer earned a punch.'),
+            actions: [TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('OK'))],
           ),
         );
         if (mounted) widget.onScanSuccess();
       } else {
         setState(() => _processing = false);
         if (!mounted) return;
-        await PunchCodeInvalidDialog.show(
-          context,
-          message: result.message,
-          title: 'This code is used or invalid',
-        );
+        await PunchCodeInvalidDialog.show(context, message: result.message, title: 'This code is used or invalid');
       }
-    } on PunchTokenException catch (e) {
+    } on PunchException catch (e) {
       if (!mounted) return;
       setState(() => _processing = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(e.message),
-          backgroundColor: Theme.of(context).colorScheme.error,
-        ),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(e.message), backgroundColor: Theme.of(context).colorScheme.error));
     } catch (e) {
       if (!mounted) return;
       setState(() => _processing = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error: $e'),
-          backgroundColor: Theme.of(context).colorScheme.error,
-        ),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Error: $e'), backgroundColor: Theme.of(context).colorScheme.error));
     }
   }
 
@@ -368,10 +305,7 @@ class _ScannerSlideState extends State<_ScannerSlide> {
     final theme = Theme.of(context);
     return Container(
       height: MediaQuery.of(context).size.height * 0.7,
-      decoration: BoxDecoration(
-        color: Colors.black,
-        borderRadius: BorderRadius.circular(12),
-      ),
+      decoration: BoxDecoration(color: Colors.black, borderRadius: BorderRadius.circular(12)),
       child: Column(
         children: [
           Material(
@@ -390,10 +324,7 @@ class _ScannerSlideState extends State<_ScannerSlide> {
                     Expanded(
                       child: Text(
                         widget.title,
-                        style: theme.textTheme.titleMedium?.copyWith(
-                              color: Colors.white,
-                              fontWeight: FontWeight.w600,
-                            ),
+                        style: theme.textTheme.titleMedium?.copyWith(color: Colors.white, fontWeight: FontWeight.w600),
                         overflow: TextOverflow.ellipsis,
                         textAlign: TextAlign.center,
                       ),
@@ -412,10 +343,7 @@ class _ScannerSlideState extends State<_ScannerSlide> {
                 children: [
                   Text(
                     'Punches to award:',
-                    style: theme.textTheme.labelLarge?.copyWith(
-                      color: Colors.white70,
-                      fontWeight: FontWeight.w500,
-                    ),
+                    style: theme.textTheme.labelLarge?.copyWith(color: Colors.white70, fontWeight: FontWeight.w500),
                   ),
                   const SizedBox(width: 12),
                   Wrap(
@@ -425,9 +353,7 @@ class _ScannerSlideState extends State<_ScannerSlide> {
                       return ChoiceChip(
                         label: Text('$n'),
                         selected: selected,
-                        onSelected: _processing || _scanned
-                            ? null
-                            : (_) => setState(() => _punchesToAward = n),
+                        onSelected: _processing || _scanned ? null : (_) => setState(() => _punchesToAward = n),
                         selectedColor: AppTheme.specGold,
                         labelStyle: TextStyle(
                           color: selected ? AppTheme.specNavy : Colors.white,
@@ -446,10 +372,7 @@ class _ScannerSlideState extends State<_ScannerSlide> {
             child: Stack(
               fit: StackFit.expand,
               children: [
-                MobileScanner(
-                  controller: _controller,
-                  onDetect: _onDetect,
-                ),
+                MobileScanner(controller: _controller, onDetect: _onDetect),
                 if (_processing)
                   Container(
                     color: Colors.black54,
@@ -459,10 +382,7 @@ class _ScannerSlideState extends State<_ScannerSlide> {
                         children: [
                           CircularProgressIndicator(color: Colors.white),
                           SizedBox(height: 16),
-                          Text(
-                            'Validating punch…',
-                            style: TextStyle(color: Colors.white, fontSize: 16),
-                          ),
+                          Text('Validating punch…', style: TextStyle(color: Colors.white, fontSize: 16)),
                         ],
                       ),
                     ),
