@@ -1988,7 +1988,7 @@ class _MapViewState extends State<_MapView> {
           children: [
             TileLayer(
               urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-              userAgentPackageName: 'com.sitesnapps.cajun_local',
+              userAgentPackageName: 'com.sitesnapps.cajunlocal',
             ),
             MarkerLayer(
               markers: [

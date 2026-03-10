@@ -48,7 +48,7 @@ class DefaultFirebaseOptions {
 
   static const FirebaseOptions android = FirebaseOptions(
     apiKey: 'AIzaSyCFYmeuDAB8wKRgN2bevk48rWMY1KWrOUU',
-    appId: '1:791192605612:android:acc56f1579f1706925a009',
+    appId: '1:791192605612:android:8c84840541feef7625a009',
     messagingSenderId: '791192605612',
     projectId: 'cajun-local',
     storageBucket: 'cajun-local.firebasestorage.app',
@@ -56,19 +56,22 @@ class DefaultFirebaseOptions {
 
   static const FirebaseOptions ios = FirebaseOptions(
     apiKey: 'AIzaSyCT1in747jSEfE2aYE07gyYcsZ-tJfz8jk',
-    appId: '1:791192605612:ios:e0b1fa04667a503c25a009',
+    appId: '1:791192605612:ios:261efe2227a72f3025a009',
     messagingSenderId: '791192605612',
     projectId: 'cajun-local',
     storageBucket: 'cajun-local.firebasestorage.app',
-    iosBundleId: 'com.example.myApp',
+    iosClientId: '791192605612-ivlhg3b4bqr1kl2fv5d1h51nrp41l7rm.apps.googleusercontent.com',
+    iosBundleId: 'com.sitesnapps.cajunlocal',
   );
 
   static const FirebaseOptions macos = FirebaseOptions(
     apiKey: 'AIzaSyCT1in747jSEfE2aYE07gyYcsZ-tJfz8jk',
-    appId: '1:791192605612:ios:e0b1fa04667a503c25a009',
+    appId: '1:791192605612:ios:261efe2227a72f3025a009',
     messagingSenderId: '791192605612',
     projectId: 'cajun-local',
     storageBucket: 'cajun-local.firebasestorage.app',
-    iosBundleId: 'com.example.myApp',
+    iosClientId: '791192605612-ivlhg3b4bqr1kl2fv5d1h51nrp41l7rm.apps.googleusercontent.com',
+    iosBundleId: 'com.sitesnapps.cajunlocal',
   );
+
 }

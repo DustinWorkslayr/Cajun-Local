@@ -7,12 +7,17 @@
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:791192605612:android:acc56f1579f1706925a009",
+        "mobilesdk_app_id": "1:791192605612:android:8c84840541feef7625a009",
         "android_client_info": {
-          "package_name": "com.sitesnapps.cajun_local"
+          "package_name": "com.sitesnapps.cajunlocal"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "791192605612-don9bktib6cl1nk3mej43hstkal6urt9.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyCFYmeuDAB8wKRgN2bevk48rWMY1KWrOUU"
@@ -20,7 +25,12 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "791192605612-don9bktib6cl1nk3mej43hstkal6urt9.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
         }
       }
     }
