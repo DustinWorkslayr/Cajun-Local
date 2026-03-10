@@ -1,19 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:my_app/core/data/repositories/profiles_repository.dart';
-import 'package:my_app/core/data/models/business_ad.dart';
-import 'package:my_app/core/data/models/payment_history_entry.dart';
-import 'package:my_app/core/data/models/user_plan.dart';
-import 'package:my_app/core/data/repositories/business_ads_repository.dart';
-import 'package:my_app/core/data/repositories/business_repository.dart';
-import 'package:my_app/core/data/repositories/business_subscriptions_repository.dart';
-import 'package:my_app/core/data/repositories/payment_history_repository.dart';
-import 'package:my_app/core/data/repositories/user_plans_repository.dart';
-import 'package:my_app/core/theme/theme.dart';
-import 'package:my_app/features/admin/presentation/screens/admin_business_ads_screen.dart';
-import 'package:my_app/features/admin/presentation/screens/admin_business_detail_screen.dart';
-import 'package:my_app/features/admin/presentation/widgets/admin_shared.dart';
-import 'package:my_app/shared/widgets/app_buttons.dart';
+import 'package:cajun_local/core/data/repositories/profiles_repository.dart';
+import 'package:cajun_local/core/data/models/business_ad.dart';
+import 'package:cajun_local/core/data/models/payment_history_entry.dart';
+import 'package:cajun_local/core/data/models/user_plan.dart';
+import 'package:cajun_local/core/data/repositories/business_ads_repository.dart';
+import 'package:cajun_local/core/data/repositories/business_repository.dart';
+import 'package:cajun_local/core/data/repositories/business_subscriptions_repository.dart';
+import 'package:cajun_local/core/data/repositories/payment_history_repository.dart';
+import 'package:cajun_local/core/data/repositories/user_plans_repository.dart';
+import 'package:cajun_local/core/theme/theme.dart';
+import 'package:cajun_local/features/admin/presentation/screens/admin_business_ads_screen.dart';
+import 'package:cajun_local/features/admin/presentation/screens/admin_business_detail_screen.dart';
+import 'package:cajun_local/features/admin/presentation/widgets/admin_shared.dart';
+import 'package:cajun_local/shared/widgets/app_buttons.dart';
 
 /// Admin: view payment history (read-only). Optional filters. Shows business or user name; tap to view detail.
 class AdminPaymentHistoryScreen extends ConsumerStatefulWidget {

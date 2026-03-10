@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
-import 'package:my_app/core/data/services/punch_service.dart';
-import 'package:my_app/core/theme/theme.dart';
-import 'package:my_app/shared/widgets/punch_code_invalid_dialog.dart';
+import 'package:cajun_local/core/data/services/punch_service.dart';
+import 'package:cajun_local/core/theme/theme.dart';
+import 'package:cajun_local/shared/widgets/punch_code_invalid_dialog.dart';
 
 /// Full-screen QR scanner for business owners to scan a customer's punch token.
 /// On successful scan, calls punch-validate edge function and shows result.

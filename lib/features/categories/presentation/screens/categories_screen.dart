@@ -7,25 +7,25 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:shimmer/shimmer.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
-import 'package:my_app/core/data/app_data_scope.dart';
-import 'package:my_app/core/data/listing_data_source.dart';
-import 'package:my_app/core/data/mock_data.dart';
-import 'package:my_app/core/data/models/amenity.dart';
-import 'package:my_app/core/data/models/category_banner.dart';
-import 'package:my_app/core/data/repositories/amenities_repository.dart';
-import 'package:my_app/core/data/repositories/business_ads_repository.dart';
-import 'package:my_app/core/data/repositories/business_subscriptions_repository.dart';
-import 'package:my_app/core/data/repositories/category_banners_repository.dart';
-import 'package:my_app/core/favorites/favorites_scope.dart';
-import 'package:my_app/core/subscription/resolved_permissions.dart';
-import 'package:my_app/core/revenuecat/present_subscription_paywall.dart';
-import 'package:my_app/core/preferences/user_parish_preferences.dart';
-import 'package:my_app/core/theme/app_layout.dart';
-import 'package:my_app/core/theme/theme.dart';
-import 'package:my_app/core/subscription/business_tier_service.dart';
-import 'package:my_app/features/listing/presentation/screens/listing_detail_screen.dart';
-import 'package:my_app/shared/widgets/app_buttons.dart';
-import 'package:my_app/shared/widgets/animated_entrance.dart';
+import 'package:cajun_local/core/data/app_data_scope.dart';
+import 'package:cajun_local/core/data/listing_data_source.dart';
+import 'package:cajun_local/core/data/mock_data.dart';
+import 'package:cajun_local/core/data/models/amenity.dart';
+import 'package:cajun_local/core/data/models/category_banner.dart';
+import 'package:cajun_local/core/data/repositories/amenities_repository.dart';
+import 'package:cajun_local/core/data/repositories/business_ads_repository.dart';
+import 'package:cajun_local/core/data/repositories/business_subscriptions_repository.dart';
+import 'package:cajun_local/core/data/repositories/category_banners_repository.dart';
+import 'package:cajun_local/core/favorites/favorites_scope.dart';
+import 'package:cajun_local/core/subscription/resolved_permissions.dart';
+import 'package:cajun_local/core/revenuecat/present_subscription_paywall.dart';
+import 'package:cajun_local/core/preferences/user_parish_preferences.dart';
+import 'package:cajun_local/core/theme/app_layout.dart';
+import 'package:cajun_local/core/theme/theme.dart';
+import 'package:cajun_local/core/subscription/business_tier_service.dart';
+import 'package:cajun_local/features/listing/presentation/screens/listing_detail_screen.dart';
+import 'package:cajun_local/shared/widgets/app_buttons.dart';
+import 'package:cajun_local/shared/widgets/animated_entrance.dart';
 
 class CategoriesScreen extends StatefulWidget {
   const CategoriesScreen({super.key, this.initialSearch, this.initialCategoryId});
@@ -49,8 +49,10 @@ class _CategoriesScreenState extends State<CategoriesScreen> with TickerProvider
   late TabController _listMapTabController;
   late TextEditingController _searchController;
   Timer? _searchDebounce;
+
   /// Initial page load; then "load more" appends pages.
   Future<void>? _initialLoadFuture;
+
   /// Cached list from backend (pages appended on load more); filters applied in memory.
   List<MockListing>? _fullListCache;
   int _nextOffset = 0;
@@ -58,22 +60,22 @@ class _CategoriesScreenState extends State<CategoriesScreen> with TickerProvider
   bool _loadingMore = false;
   Map<String, String> _lastTierMap = const {};
   Set<String> _lastSponsoredIds = const {};
+
   /// Lazy-loaded when user first applies deal-only or amenity filter.
   Set<String>? _dealListingIds;
   Set<String>? _cachedAmenityBusinessIds;
   Set<String> _cachedAmenityIds = const {};
+
   /// Result of in-memory filter + partition/shuffle; shown without reload.
   List<MockListing>? _lastFilteredList;
+
   /// When true, we're fetching deal or amenity sets for the first time (show previous list).
   bool _loadingAuxiliaryFilters = false;
 
   @override
   void initState() {
     super.initState();
-    _filters = ListingFilters(
-      searchQuery: widget.initialSearch ?? '',
-      categoryId: widget.initialCategoryId,
-    );
+    _filters = ListingFilters(searchQuery: widget.initialSearch ?? '', categoryId: widget.initialCategoryId);
     _searchController = TextEditingController(text: widget.initialSearch ?? '');
     _listMapTabController = TabController(length: 2, vsync: this);
     // Apply user's saved parish preferences when Explore loads (no refetch; filters applied in memory).
@@ -95,8 +97,7 @@ class _CategoriesScreenState extends State<CategoriesScreen> with TickerProvider
         _applyFiltersFromCache();
       });
     }
-    if (widget.initialSearch != oldWidget.initialSearch &&
-        widget.initialSearch != _searchController.text) {
+    if (widget.initialSearch != oldWidget.initialSearch && widget.initialSearch != _searchController.text) {
       _searchController.text = widget.initialSearch ?? '';
       setState(() {
         _filters = _filters.copyWith(searchQuery: widget.initialSearch ?? '');
@@ -142,15 +143,12 @@ class _CategoriesScreenState extends State<CategoriesScreen> with TickerProvider
     if (_fullListCache != null && !_loadingAuxiliaryFilters && ds.useBackend) {
       _maybeLoadAuxiliaryFilters(ds);
     }
-    _filterPanelDataFuture ??= Future.wait([
-        ds.getCategories(),
-        ds.getParishes(),
-      ]).then((results) {
-        final categories = results[0] as List<MockCategory>;
-        final parishes = results[1] as List<MockParish>;
-        final totalCount = categories.fold<int>(0, (s, c) => s + c.count);
-        return (totalCount, categories, parishes);
-      });
+    _filterPanelDataFuture ??= Future.wait([ds.getCategories(), ds.getParishes()]).then((results) {
+      final categories = results[0] as List<MockCategory>;
+      final parishes = results[1] as List<MockParish>;
+      final totalCount = categories.fold<int>(0, (s, c) => s + c.count);
+      return (totalCount, categories, parishes);
+    });
     if (_initialLoadFuture == null && ds.useBackend) {
       _initialLoadFuture = _performInitialLoad(ds);
     }
@@ -200,9 +198,7 @@ class _CategoriesScreenState extends State<CategoriesScreen> with TickerProvider
   }
 
   bool _isFiltered() {
-    return _filters.parishIds.isNotEmpty ||
-        _filters.categoryId != null ||
-        _filters.subcategoryIds.isNotEmpty;
+    return _filters.parishIds.isNotEmpty || _filters.categoryId != null || _filters.subcategoryIds.isNotEmpty;
   }
 
   /// Partition into sponsored, Local Partners, rest; shuffle each; order per user rules.
@@ -214,18 +210,24 @@ class _CategoriesScreenState extends State<CategoriesScreen> with TickerProvider
     final isFiltered = _isFiltered();
     final rnd = Random();
     final sponsored = list.where((l) => sponsoredIds.contains(l.id)).toList()..shuffle(rnd);
-    final partners = list
-        .where((l) =>
-            !sponsoredIds.contains(l.id) &&
-            BusinessTierService.fromPlanTier(tierMap[l.id]) == BusinessTier.localPartner)
-        .toList()
-      ..shuffle(rnd);
-    final rest = list
-        .where((l) =>
-            !sponsoredIds.contains(l.id) &&
-            BusinessTierService.fromPlanTier(tierMap[l.id]) != BusinessTier.localPartner)
-        .toList()
-      ..shuffle(rnd);
+    final partners =
+        list
+            .where(
+              (l) =>
+                  !sponsoredIds.contains(l.id) &&
+                  BusinessTierService.fromPlanTier(tierMap[l.id]) == BusinessTier.localPartner,
+            )
+            .toList()
+          ..shuffle(rnd);
+    final rest =
+        list
+            .where(
+              (l) =>
+                  !sponsoredIds.contains(l.id) &&
+                  BusinessTierService.fromPlanTier(tierMap[l.id]) != BusinessTier.localPartner,
+            )
+            .toList()
+          ..shuffle(rnd);
     if (isFiltered) {
       return [...sponsored, ...partners, ...rest];
     }
@@ -235,11 +237,7 @@ class _CategoriesScreenState extends State<CategoriesScreen> with TickerProvider
   /// Load first page; tiers and sponsored IDs. "Load more" appends via [_loadMoreListings].
   Future<void> _performInitialLoad(ListingDataSource dataSource) async {
     if (!dataSource.useBackend) return;
-    final page = await dataSource.getListingsPage(
-      limit: _kExplorePageSize,
-      offset: 0,
-      categoryId: _filters.categoryId,
-    );
+    final page = await dataSource.getListingsPage(limit: _kExplorePageSize, offset: 0, categoryId: _filters.categoryId);
     if (!mounted) return;
     final list = page.list;
     if (list.isEmpty) {
@@ -343,16 +341,14 @@ class _CategoriesScreenState extends State<CategoriesScreen> with TickerProvider
     });
   }
 
-  static bool _setEquals<T>(Set<T> a, Set<T> b) =>
-      a.length == b.length && a.every((x) => b.contains(x));
+  static bool _setEquals<T>(Set<T> a, Set<T> b) => a.length == b.length && a.every((x) => b.contains(x));
 
   void _maybeLoadAuxiliaryFilters(ListingDataSource dataSource) {
     if (!dataSource.useBackend || _loadingAuxiliaryFilters || _fullListCache == null) return;
     if (_filters.dealOnly && _dealListingIds == null) {
       setState(() => _loadingAuxiliaryFilters = true);
       _ensureDealListingIds(dataSource);
-    } else if (_filters.amenityIds.isNotEmpty &&
-        !_setEquals(_filters.amenityIds, _cachedAmenityIds)) {
+    } else if (_filters.amenityIds.isNotEmpty && !_setEquals(_filters.amenityIds, _cachedAmenityIds)) {
       setState(() => _loadingAuxiliaryFilters = true);
       _ensureAmenityBusinessIds(dataSource);
     }
@@ -379,10 +375,7 @@ class _CategoriesScreenState extends State<CategoriesScreen> with TickerProvider
                 onFilterTap: _openFilterSheet,
                 listMapTabController: _listMapTabController,
               ),
-              _ExploreSearchBar(
-                controller: _searchController,
-                onChanged: _onSearchChanged,
-              ),
+              _ExploreSearchBar(controller: _searchController, onChanged: _onSearchChanged),
             ],
           ),
         ),
@@ -397,8 +390,7 @@ class _CategoriesScreenState extends State<CategoriesScreen> with TickerProvider
                 final categoryNames = {for (final c in categories) c.id: c.name};
                 final subcategoryNames = {
                   for (final c in categories)
-                    for (final s in c.subcategories)
-                      s.id: s.name,
+                    for (final s in c.subcategories) s.id: s.name,
                 };
                 return Expanded(
                   child: _buildListAndMap(
@@ -481,59 +473,49 @@ class _CategoriesScreenState extends State<CategoriesScreen> with TickerProvider
     final hasMore = _hasMoreFromServer;
     final isLoadingMore = _loadingAuxiliaryFilters || _loadingMore;
     if (list.isEmpty) {
-          final t = Theme.of(context);
-          final hasSearch = _filters.searchQuery.isNotEmpty;
-          return Center(
-            child: AnimatedEntrance(
-              child: Padding(
-                padding: const EdgeInsets.all(32),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      Icons.search_off_rounded,
-                      size: 48,
-                      color: t.colorScheme.onSurfaceVariant.withValues(alpha: 0.6),
-                    ),
-                    const SizedBox(height: 16),
-                    Text(
-                      hasSearch
-                          ? 'No businesses match "${_filters.searchQuery}".'
-                          : 'No businesses match your filters.',
-                      textAlign: TextAlign.center,
-                      style: t.textTheme.bodyLarge?.copyWith(
-                        color: t.colorScheme.onSurfaceVariant,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      hasSearch
-                          ? 'Try a different name, tagline, or category — or clear search and use filters.'
-                          : 'Try changing category, parish, or turn off "Open now".',
-                      textAlign: TextAlign.center,
-                      style: t.textTheme.bodySmall?.copyWith(
-                        color: t.colorScheme.onSurfaceVariant.withValues(alpha: 0.8),
-                      ),
-                    ),
-                    if (hasSearch) ...[
-                      const SizedBox(height: 20),
-                      TextButton.icon(
-                        onPressed: () {
-                          _searchController.clear();
-                          setState(() {
-                            _filters = _filters.copyWith(searchQuery: '');
-                            _applyFiltersFromCache();
-                          });
-                        },
-                        icon: const Icon(Icons.clear_rounded, size: 20),
-                        label: const Text('Clear search'),
-                      ),
-                    ],
-                  ],
+      final t = Theme.of(context);
+      final hasSearch = _filters.searchQuery.isNotEmpty;
+      return Center(
+        child: AnimatedEntrance(
+          child: Padding(
+            padding: const EdgeInsets.all(32),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.search_off_rounded, size: 48, color: t.colorScheme.onSurfaceVariant.withValues(alpha: 0.6)),
+                const SizedBox(height: 16),
+                Text(
+                  hasSearch ? 'No businesses match "${_filters.searchQuery}".' : 'No businesses match your filters.',
+                  textAlign: TextAlign.center,
+                  style: t.textTheme.bodyLarge?.copyWith(color: t.colorScheme.onSurfaceVariant),
                 ),
-              ),
+                const SizedBox(height: 8),
+                Text(
+                  hasSearch
+                      ? 'Try a different name, tagline, or category — or clear search and use filters.'
+                      : 'Try changing category, parish, or turn off "Open now".',
+                  textAlign: TextAlign.center,
+                  style: t.textTheme.bodySmall?.copyWith(color: t.colorScheme.onSurfaceVariant.withValues(alpha: 0.8)),
+                ),
+                if (hasSearch) ...[
+                  const SizedBox(height: 20),
+                  TextButton.icon(
+                    onPressed: () {
+                      _searchController.clear();
+                      setState(() {
+                        _filters = _filters.copyWith(searchQuery: '');
+                        _applyFiltersFromCache();
+                      });
+                    },
+                    icon: const Icon(Icons.clear_rounded, size: 20),
+                    label: const Text('Clear search'),
+                  ),
+                ],
+              ],
             ),
-          );
+          ),
+        ),
+      );
     }
     final countsFuture = dataSource.useBackend && displayList.isNotEmpty
         ? AppDataScope.of(context).favoritesRepository.getCountsForBusinesses(displayList.map((l) => l.id).toList())
@@ -588,12 +570,7 @@ class _ListMapToggle extends StatelessWidget {
               onTap: () => controller.animateTo(0),
             ),
             const SizedBox(width: 4),
-            _ToggleChip(
-              icon: Icons.map_rounded,
-              label: 'Map',
-              selected: !isList,
-              onTap: () => controller.animateTo(1),
-            ),
+            _ToggleChip(icon: Icons.map_rounded, label: 'Map', selected: !isList, onTap: () => controller.animateTo(1)),
           ],
         );
       },
@@ -602,12 +579,7 @@ class _ListMapToggle extends StatelessWidget {
 }
 
 class _ToggleChip extends StatelessWidget {
-  const _ToggleChip({
-    required this.icon,
-    required this.label,
-    required this.selected,
-    required this.onTap,
-  });
+  const _ToggleChip({required this.icon, required this.label, required this.selected, required this.onTap});
 
   final IconData icon;
   final String label;
@@ -631,21 +603,13 @@ class _ToggleChip extends StatelessWidget {
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(
-                icon,
-                size: 18,
-                color: selected
-                    ? colorScheme.onPrimaryContainer
-                    : colorScheme.onSurfaceVariant,
-              ),
+              Icon(icon, size: 18, color: selected ? colorScheme.onPrimaryContainer : colorScheme.onSurfaceVariant),
               const SizedBox(width: 4),
               Text(
                 label,
                 style: theme.textTheme.labelMedium?.copyWith(
                   fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
-                  color: selected
-                      ? colorScheme.onPrimaryContainer
-                      : colorScheme.onSurfaceVariant,
+                  color: selected ? colorScheme.onPrimaryContainer : colorScheme.onSurfaceVariant,
                 ),
               ),
             ],
@@ -657,10 +621,7 @@ class _ToggleChip extends StatelessWidget {
 }
 
 class _ExploreSearchBar extends StatelessWidget {
-  const _ExploreSearchBar({
-    required this.controller,
-    required this.onChanged,
-  });
+  const _ExploreSearchBar({required this.controller, required this.onChanged});
 
   final TextEditingController controller;
   final ValueChanged<String> onChanged;
@@ -683,14 +644,8 @@ class _ExploreSearchBar extends StatelessWidget {
             onChanged: onChanged,
             decoration: InputDecoration(
               hintText: 'Search by name, tagline, or category',
-              hintStyle: theme.textTheme.bodyMedium?.copyWith(
-                color: colorScheme.onSurfaceVariant,
-              ),
-              prefixIcon: Icon(
-                Icons.search_rounded,
-                color: colorScheme.onSurfaceVariant,
-                size: 22,
-              ),
+              hintStyle: theme.textTheme.bodyMedium?.copyWith(color: colorScheme.onSurfaceVariant),
+              prefixIcon: Icon(Icons.search_rounded, color: colorScheme.onSurfaceVariant, size: 22),
               suffixIcon: ValueListenableBuilder<TextEditingValue>(
                 valueListenable: controller,
                 builder: (context, value, _) {
@@ -739,20 +694,13 @@ class _TopBar extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(20, 12, 20, 12),
       decoration: BoxDecoration(
         color: Colors.transparent,
-        border: Border(
-          bottom: BorderSide(
-            color: AppTheme.specNavy.withValues(alpha: 0.08),
-          ),
-        ),
+        border: Border(bottom: BorderSide(color: AppTheme.specNavy.withValues(alpha: 0.08))),
       ),
       child: Row(
         children: [
           Text(
             'Open now',
-            style: theme.textTheme.titleSmall?.copyWith(
-              fontWeight: FontWeight.w600,
-              color: AppTheme.specNavy,
-            ),
+            style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600, color: AppTheme.specNavy),
           ),
           const SizedBox(width: 8),
           Switch.adaptive(
@@ -772,11 +720,7 @@ class _TopBar extends StatelessWidget {
               borderRadius: BorderRadius.circular(12),
               child: Padding(
                 padding: const EdgeInsets.all(10),
-                child: Icon(
-                  Icons.tune_rounded,
-                  color: AppTheme.specNavy,
-                  size: 22,
-                ),
+                child: Icon(Icons.tune_rounded, color: AppTheme.specNavy, size: 22),
               ),
             ),
           ),
@@ -788,10 +732,7 @@ class _TopBar extends StatelessWidget {
 
 /// Sponsored category banner: one large horizontal card or carousel with 10s rotation.
 class _ExploreCategoryBanner extends StatefulWidget {
-  const _ExploreCategoryBanner({
-    required this.banners,
-    required this.categoryNames,
-  });
+  const _ExploreCategoryBanner({required this.banners, required this.categoryNames});
 
   final List<CategoryBanner> banners;
   final Map<String, String> categoryNames;
@@ -814,11 +755,7 @@ class _ExploreCategoryBannerState extends State<_ExploreCategoryBanner> {
       _timer = Timer.periodic(const Duration(seconds: 10), (_) {
         if (!mounted || !_pageController.hasClients) return;
         final next = (_currentPage.value + 1) % widget.banners.length;
-        _pageController.animateToPage(
-          next,
-          duration: const Duration(milliseconds: 400),
-          curve: Curves.easeInOut,
-        );
+        _pageController.animateToPage(next, duration: const Duration(milliseconds: 400), curve: Curves.easeInOut);
       });
     }
   }
@@ -876,11 +813,7 @@ class _ExploreCategoryBannerState extends State<_ExploreCategoryBanner> {
                 final b = banners[index];
                 return Padding(
                   padding: const EdgeInsets.only(right: 12),
-                  child: _BannerCard(
-                    banner: b,
-                    headline: categoryNames[b.categoryId] ?? 'Explore',
-                    radius: radius,
-                  ),
+                  child: _BannerCard(banner: b, headline: categoryNames[b.categoryId] ?? 'Explore', radius: radius),
                 );
               },
             ),
@@ -915,11 +848,7 @@ class _ExploreCategoryBannerState extends State<_ExploreCategoryBanner> {
 }
 
 class _BannerCard extends StatelessWidget {
-  const _BannerCard({
-    required this.banner,
-    required this.headline,
-    required this.radius,
-  });
+  const _BannerCard({required this.banner, required this.headline, required this.radius});
 
   final CategoryBanner banner;
   final String headline;
@@ -946,10 +875,7 @@ class _BannerCard extends StatelessWidget {
               gradient: LinearGradient(
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
-                colors: [
-                  Colors.transparent,
-                  AppTheme.specNavy.withValues(alpha: 0.75),
-                ],
+                colors: [Colors.transparent, AppTheme.specNavy.withValues(alpha: 0.75)],
               ),
             ),
           ),
@@ -964,10 +890,9 @@ class _BannerCard extends StatelessWidget {
               ),
               child: Text(
                 'Sponsored',
-                style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                  color: AppTheme.specOffWhite,
-                  fontWeight: FontWeight.w600,
-                ),
+                style: Theme.of(
+                  context,
+                ).textTheme.labelSmall?.copyWith(color: AppTheme.specOffWhite, fontWeight: FontWeight.w600),
               ),
             ),
           ),
@@ -981,24 +906,19 @@ class _BannerCard extends StatelessWidget {
               children: [
                 Text(
                   headline,
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    color: AppTheme.specWhite,
-                    fontWeight: FontWeight.bold,
-                  ),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleMedium?.copyWith(color: AppTheme.specWhite, fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 4),
                 Text(
                   'Discover local spots in this category',
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: AppTheme.specOffWhite.withValues(alpha: 0.9),
-                  ),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.bodySmall?.copyWith(color: AppTheme.specOffWhite.withValues(alpha: 0.9)),
                 ),
                 const SizedBox(height: 10),
-                AppPrimaryButton(
-                  onPressed: () {},
-                  expanded: false,
-                  child: const Text('Explore'),
-                ),
+                AppPrimaryButton(onPressed: () {}, expanded: false, child: const Text('Explore')),
               ],
             ),
           ),
@@ -1069,13 +989,7 @@ class _ExploreFilterBottomSheetState extends State<_ExploreFilterBottomSheet> {
       decoration: BoxDecoration(
         color: theme.colorScheme.surface,
         borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.1),
-            blurRadius: 20,
-            offset: const Offset(0, -4),
-          ),
-        ],
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 20, offset: const Offset(0, -4))],
       ),
       child: SafeArea(
         top: false,
@@ -1162,7 +1076,13 @@ class _ExploreFilterBottomSheetState extends State<_ExploreFilterBottomSheet> {
                           if (amenities.isEmpty) {
                             return const Padding(
                               padding: EdgeInsets.symmetric(vertical: 8),
-                              child: Center(child: SizedBox(height: 24, width: 24, child: CircularProgressIndicator(strokeWidth: 2))),
+                              child: Center(
+                                child: SizedBox(
+                                  height: 24,
+                                  width: 24,
+                                  child: CircularProgressIndicator(strokeWidth: 2),
+                                ),
+                              ),
                             );
                           }
                           return Wrap(
@@ -1205,7 +1125,9 @@ class _ExploreFilterBottomSheetState extends State<_ExploreFilterBottomSheet> {
                           onSelected: (_) => setState(() => _filters = _filters.copyWith(maxDistanceMiles: null)),
                           selectedColor: AppTheme.specGold.withValues(alpha: 0.3),
                           labelStyle: TextStyle(
-                            color: _filters.maxDistanceMiles == null ? AppTheme.specNavy : theme.colorScheme.onSurfaceVariant,
+                            color: _filters.maxDistanceMiles == null
+                                ? AppTheme.specNavy
+                                : theme.colorScheme.onSurfaceVariant,
                             fontWeight: _filters.maxDistanceMiles == null ? FontWeight.w600 : FontWeight.normal,
                           ),
                         ),
@@ -1313,11 +1235,9 @@ class _ExploreFilterBottomSheetState extends State<_ExploreFilterBottomSheet> {
   Widget _sectionLabel(String label) {
     return Text(
       label,
-      style: Theme.of(context).textTheme.labelMedium?.copyWith(
-        color: AppTheme.specNavy,
-        fontWeight: FontWeight.w700,
-        letterSpacing: 0.8,
-      ),
+      style: Theme.of(
+        context,
+      ).textTheme.labelMedium?.copyWith(color: AppTheme.specNavy, fontWeight: FontWeight.w700, letterSpacing: 0.8),
     );
   }
 
@@ -1435,9 +1355,7 @@ class _CategoryTile extends StatelessWidget {
               if (count > 0)
                 Text(
                   count.toString(),
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: AppTheme.specNavy.withValues(alpha: 0.7),
-                  ),
+                  style: theme.textTheme.bodySmall?.copyWith(color: AppTheme.specNavy.withValues(alpha: 0.7)),
                 ),
               if (hasSubcategories)
                 Icon(
@@ -1483,11 +1401,7 @@ class _ListLoadingSkeleton extends StatelessWidget {
                   color: AppTheme.specWhite,
                   borderRadius: BorderRadius.circular(_cardRadius),
                   boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.06),
-                      blurRadius: 10,
-                      offset: const Offset(0, 2),
-                    ),
+                    BoxShadow(color: Colors.black.withValues(alpha: 0.06), blurRadius: 10, offset: const Offset(0, 2)),
                   ],
                 ),
                 child: Row(
@@ -1495,10 +1409,7 @@ class _ListLoadingSkeleton extends StatelessWidget {
                     Container(
                       width: 48,
                       height: 48,
-                      decoration: BoxDecoration(
-                        color: baseColor,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
+                      decoration: BoxDecoration(color: baseColor, borderRadius: BorderRadius.circular(12)),
                     ),
                     const SizedBox(width: 14),
                     Expanded(
@@ -1509,19 +1420,13 @@ class _ListLoadingSkeleton extends StatelessWidget {
                           Container(
                             height: 18,
                             width: double.infinity,
-                            decoration: BoxDecoration(
-                              color: baseColor,
-                              borderRadius: BorderRadius.circular(4),
-                            ),
+                            decoration: BoxDecoration(color: baseColor, borderRadius: BorderRadius.circular(4)),
                           ),
                           const SizedBox(height: 8),
                           Container(
                             height: 14,
                             width: 120,
-                            decoration: BoxDecoration(
-                              color: baseColor,
-                              borderRadius: BorderRadius.circular(4),
-                            ),
+                            decoration: BoxDecoration(color: baseColor, borderRadius: BorderRadius.circular(4)),
                           ),
                         ],
                       ),
@@ -1530,10 +1435,7 @@ class _ListLoadingSkeleton extends StatelessWidget {
                       width: 14,
                       height: 14,
                       margin: const EdgeInsets.only(left: 8),
-                      decoration: BoxDecoration(
-                        color: baseColor,
-                        borderRadius: BorderRadius.circular(2),
-                      ),
+                      decoration: BoxDecoration(color: baseColor, borderRadius: BorderRadius.circular(2)),
                     ),
                   ],
                 ),
@@ -1590,89 +1492,77 @@ class _ListViewList extends StatelessWidget {
       padding: EdgeInsets.fromLTRB(padding.left, 8, padding.right, 16),
       children: [
         if (isLoadingMore) ...[
-            Center(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 8),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    SizedBox(
-                      width: 16,
-                      height: 16,
-                      child: CircularProgressIndicator(strokeWidth: 2, color: AppTheme.specNavy),
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      'Updating results…',
-                      style: theme.textTheme.bodySmall?.copyWith(color: AppTheme.specNavy.withValues(alpha: 0.8)),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ],
-          if (hasBanners) ...[
-            _ExploreCategoryBanner(
-              banners: banners,
-              categoryNames: categoryNames,
-            ),
-            const SizedBox(height: 8),
-          ],
-          Padding(
-            padding: const EdgeInsets.only(bottom: 4),
-            child: Text(
-              'Listings',
-              style: theme.textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.bold,
-                color: AppTheme.specNavy,
+          Center(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(strokeWidth: 2, color: AppTheme.specNavy),
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Updating results…',
+                    style: theme.textTheme.bodySmall?.copyWith(color: AppTheme.specNavy.withValues(alpha: 0.8)),
+                  ),
+                ],
               ),
             ),
           ),
-          ..._buildStandardListWithSponsored(list, padding, theme),
-          if (hasMore && onLoadMore != null && !isLoadingMore) ...[
-            const SizedBox(height: 12),
-            Center(
-              child: Padding(
-                padding: const EdgeInsets.only(bottom: 24),
-                child: TextButton.icon(
-                  onPressed: onLoadMore,
-                  icon: const Icon(Icons.add_circle_outline_rounded, size: 20),
-                  label: const Text('Load more'),
-                  style: TextButton.styleFrom(
-                    foregroundColor: AppTheme.specNavy,
-                  ),
-                ),
+        ],
+        if (hasBanners) ...[
+          _ExploreCategoryBanner(banners: banners, categoryNames: categoryNames),
+          const SizedBox(height: 8),
+        ],
+        Padding(
+          padding: const EdgeInsets.only(bottom: 4),
+          child: Text(
+            'Listings',
+            style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold, color: AppTheme.specNavy),
+          ),
+        ),
+        ..._buildStandardListWithSponsored(list, padding, theme),
+        if (hasMore && onLoadMore != null && !isLoadingMore) ...[
+          const SizedBox(height: 12),
+          Center(
+            child: Padding(
+              padding: const EdgeInsets.only(bottom: 24),
+              child: TextButton.icon(
+                onPressed: onLoadMore,
+                icon: const Icon(Icons.add_circle_outline_rounded, size: 20),
+                label: const Text('Load more'),
+                style: TextButton.styleFrom(foregroundColor: AppTheme.specNavy),
               ),
             ),
-          ],
+          ),
         ],
+      ],
     );
-    final body = onRefresh != null
-        ? RefreshIndicator(onRefresh: onRefresh!, child: listView)
-        : listView;
+    final body = onRefresh != null ? RefreshIndicator(onRefresh: onRefresh!, child: listView) : listView;
     return Container(color: AppTheme.specOffWhite, child: body);
   }
 
-  List<Widget> _buildStandardListWithSponsored(
-    List<MockListing> standard,
-    EdgeInsets padding,
-    ThemeData theme,
-  ) {
+  List<Widget> _buildStandardListWithSponsored(List<MockListing> standard, EdgeInsets padding, ThemeData theme) {
     final children = <Widget>[];
     final rnd = banners.isNotEmpty ? Random(Object.hash(standard.length, standard.hashCode)) : null;
     for (var i = 0; i < standard.length; i++) {
       if (banners.isNotEmpty && i > 0 && i % _sponsoredInlineEvery == 0) {
         final bannerIndex = rnd!.nextInt(banners.length);
         final b = banners[bannerIndex];
-        children.add(Padding(
-          padding: const EdgeInsets.only(bottom: 6),
-          child: _SponsoredInlineCard(
-            banner: b,
-            headline: categoryNames[b.categoryId] ?? 'Sponsored',
-            radius: _cardRadius,
-            compact: true,
+        children.add(
+          Padding(
+            padding: const EdgeInsets.only(bottom: 6),
+            child: _SponsoredInlineCard(
+              banner: b,
+              headline: categoryNames[b.categoryId] ?? 'Sponsored',
+              radius: _cardRadius,
+              compact: true,
+            ),
           ),
-        ));
+        );
       }
       final listing = standard[i];
       final isLocalPartner = BusinessTierService.fromPlanTier(tierMap[listing.id]) == BusinessTier.localPartner;
@@ -1698,11 +1588,7 @@ class _ListViewList extends StatelessWidget {
 
 /// Business logo thumbnail: network image or placeholder icon.
 class _ListingLogo extends StatelessWidget {
-  const _ListingLogo({
-    required this.logoUrl,
-    this.size = 48,
-    this.radius = 12,
-  });
+  const _ListingLogo({required this.logoUrl, this.size = 48, this.radius = 12});
 
   final String? logoUrl;
   final double size;
@@ -1727,16 +1613,10 @@ class _ListingLogo extends StatelessWidget {
           memCacheWidth: 200,
           memCacheHeight: 200,
           height: size,
-          placeholder: (_, _) => Icon(
-            Icons.store_rounded,
-            size: size * 0.5,
-            color: AppTheme.specNavy.withValues(alpha: 0.7),
-          ),
-          errorWidget: (_, _, _) => Icon(
-            Icons.store_rounded,
-            size: size * 0.5,
-            color: AppTheme.specNavy.withValues(alpha: 0.7),
-          ),
+          placeholder: (_, _) =>
+              Icon(Icons.store_rounded, size: size * 0.5, color: AppTheme.specNavy.withValues(alpha: 0.7)),
+          errorWidget: (_, _, _) =>
+              Icon(Icons.store_rounded, size: size * 0.5, color: AppTheme.specNavy.withValues(alpha: 0.7)),
         ),
       );
     }
@@ -1744,11 +1624,7 @@ class _ListingLogo extends StatelessWidget {
       width: size,
       height: size,
       decoration: boxDecoration,
-      child: Icon(
-        Icons.store_rounded,
-        size: size * 0.5,
-        color: AppTheme.specNavy.withValues(alpha: 0.7),
-      ),
+      child: Icon(Icons.store_rounded, size: size * 0.5, color: AppTheme.specNavy.withValues(alpha: 0.7)),
     );
   }
 }
@@ -1778,22 +1654,14 @@ class _StandardListingCard extends StatelessWidget {
     final rating = listing.rating;
     final ratingStr = rating != null ? '(${rating.toStringAsFixed(1)})' : '—';
     final location = listing.address ?? '—';
-    final distanceStr = listing.distanceMiles != null
-        ? '${listing.distanceMiles!.toStringAsFixed(1)} mi'
-        : null;
-    final subName = listing.subcategoryId != null
-        ? subcategoryNames[listing.subcategoryId!]
-        : null;
-    final categorySubLine = subName != null
-        ? '${listing.categoryName} · $subName'
-        : listing.categoryName;
+    final distanceStr = listing.distanceMiles != null ? '${listing.distanceMiles!.toStringAsFixed(1)} mi' : null;
+    final subName = listing.subcategoryId != null ? subcategoryNames[listing.subcategoryId!] : null;
+    final categorySubLine = subName != null ? '${listing.categoryName} · $subName' : listing.categoryName;
     final padding = isLocalPartner
         ? const EdgeInsets.symmetric(horizontal: 14, vertical: 10)
         : const EdgeInsets.symmetric(horizontal: 12, vertical: 10);
     final logoSize = isLocalPartner ? 56.0 : 48.0;
-    final cardColor = isLocalPartner
-        ? AppTheme.specGold.withValues(alpha: 0.12)
-        : AppTheme.specWhite;
+    final cardColor = isLocalPartner ? AppTheme.specGold.withValues(alpha: 0.12) : AppTheme.specWhite;
     Border? border;
     if (isLocalPartner) {
       border = Border.all(color: AppTheme.specGold.withValues(alpha: 0.35), width: 1);
@@ -1804,9 +1672,9 @@ class _StandardListingCard extends StatelessWidget {
       child: Material(
         color: Colors.transparent,
         child: InkWell(
-          onTap: () => Navigator.of(context).push(
-            MaterialPageRoute<void>(builder: (_) => ListingDetailScreen(listingId: listing.id)),
-          ),
+          onTap: () => Navigator.of(
+            context,
+          ).push(MaterialPageRoute<void>(builder: (_) => ListingDetailScreen(listingId: listing.id))),
           borderRadius: BorderRadius.circular(cardRadius),
           child: Container(
             padding: padding,
@@ -1857,18 +1725,14 @@ class _StandardListingCard extends StatelessWidget {
                           const SizedBox(width: 4),
                           Text(
                             ratingStr,
-                            style: theme.textTheme.bodySmall?.copyWith(
-                              color: theme.colorScheme.onSurfaceVariant,
-                            ),
+                            style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
                           ),
                         ],
                       ),
                       const SizedBox(height: 2),
                       Text(
                         location,
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: theme.colorScheme.onSurfaceVariant,
-                        ),
+                        style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -1891,11 +1755,7 @@ class _StandardListingCard extends StatelessWidget {
                                 ),
                                 if (distanceStr != null) ...[
                                   const SizedBox(width: 8),
-                                  Icon(
-                                    Icons.location_on_outlined,
-                                    size: 14,
-                                    color: theme.colorScheme.onSurfaceVariant,
-                                  ),
+                                  Icon(Icons.location_on_outlined, size: 14, color: theme.colorScheme.onSurfaceVariant),
                                   const SizedBox(width: 2),
                                   Text(
                                     distanceStr,
@@ -1946,21 +1806,15 @@ class _FavoriteHeartButton extends StatefulWidget {
   State<_FavoriteHeartButton> createState() => _FavoriteHeartButtonState();
 }
 
-class _FavoriteHeartButtonState extends State<_FavoriteHeartButton>
-    with SingleTickerProviderStateMixin {
+class _FavoriteHeartButtonState extends State<_FavoriteHeartButton> with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _scale;
 
   @override
   void initState() {
     super.initState();
-    _controller = AnimationController(
-      duration: const Duration(milliseconds: 150),
-      vsync: this,
-    );
-    _scale = Tween<double>(begin: 1, end: 1.25).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
-    );
+    _controller = AnimationController(duration: const Duration(milliseconds: 150), vsync: this);
+    _scale = Tween<double>(begin: 1, end: 1.25).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
   }
 
   @override
@@ -2038,13 +1892,7 @@ class _SponsoredInlineCard extends StatelessWidget {
         color: AppTheme.specWhite,
         borderRadius: BorderRadius.circular(radius),
         border: Border.all(color: AppTheme.specGold.withValues(alpha: 0.3)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 8, offset: const Offset(0, 2))],
       ),
       child: Row(
         children: [
@@ -2058,10 +1906,7 @@ class _SponsoredInlineCard extends StatelessWidget {
             child: banner.imageUrl.isNotEmpty
                 ? ClipRRect(
                     borderRadius: BorderRadius.circular(12),
-                    child: CachedNetworkImage(
-                      imageUrl: banner.imageUrl,
-                      fit: BoxFit.cover,
-                    ),
+                    child: CachedNetworkImage(imageUrl: banner.imageUrl, fit: BoxFit.cover),
                   )
                 : Icon(Icons.campaign_rounded, color: AppTheme.specGold, size: compact ? 24 : 32),
           ),
@@ -2081,18 +1926,13 @@ class _SponsoredInlineCard extends StatelessWidget {
                 const SizedBox(height: 2),
                 Text(
                   headline,
-                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                    fontWeight: FontWeight.w600,
-                    color: AppTheme.specNavy,
-                  ),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600, color: AppTheme.specNavy),
                 ),
                 if (!compact) ...[
                   const SizedBox(height: 6),
-                  AppPrimaryButton(
-                    onPressed: () {},
-                    expanded: false,
-                    child: const Text('Explore'),
-                  ),
+                  AppPrimaryButton(onPressed: () {}, expanded: false, child: const Text('Explore')),
                 ],
               ],
             ),
@@ -2124,10 +1964,7 @@ class _MapViewState extends State<_MapView> {
   static LatLng _positionForIndex(int index) {
     const radius = 0.012;
     final angle = index * 0.7;
-    return LatLng(
-      _mapCenter.latitude + radius * cos(angle),
-      _mapCenter.longitude + radius * sin(angle),
-    );
+    return LatLng(_mapCenter.latitude + radius * cos(angle), _mapCenter.longitude + radius * sin(angle));
   }
 
   @override
@@ -2141,9 +1978,7 @@ class _MapViewState extends State<_MapView> {
           options: MapOptions(
             initialCenter: _mapCenter,
             initialZoom: 13.5,
-            interactionOptions: const InteractionOptions(
-              flags: InteractiveFlag.all,
-            ),
+            interactionOptions: const InteractionOptions(flags: InteractiveFlag.all),
             onTap: (_, _) {
               if (_selectedIndex != null) {
                 setState(() => _selectedIndex = null);
@@ -2153,7 +1988,7 @@ class _MapViewState extends State<_MapView> {
           children: [
             TileLayer(
               urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-              userAgentPackageName: 'com.example.my_app',
+              userAgentPackageName: 'com.sitesnapps.cajun_local',
             ),
             MarkerLayer(
               markers: [
@@ -2166,13 +2001,13 @@ class _MapViewState extends State<_MapView> {
                       onTap: () {
                         setState(() => _selectedIndex = _selectedIndex == i ? null : i);
                       },
-                  child: SvgPicture.asset(
-                    'assets/images/map pin icon.svg',
-                    width: 44,
-                    height: 44,
-                    fit: BoxFit.contain,
-                    // No colorFilter: keep SVG's built-in logo colors (gold, red, white, navy).
-                  ),
+                      child: SvgPicture.asset(
+                        'assets/images/map pin icon.svg',
+                        width: 44,
+                        height: 44,
+                        fit: BoxFit.contain,
+                        // No colorFilter: keep SVG's built-in logo colors (gold, red, white, navy).
+                      ),
                     ),
                   ),
               ],
@@ -2189,19 +2024,13 @@ class _MapViewState extends State<_MapView> {
               final rating = listing.rating;
               final ratingStr = rating?.toStringAsFixed(1);
               final subName = widget.subcategoryNames[listing.subcategoryId ?? ''];
-              final categorySubLine = subName != null
-                  ? '${listing.categoryName} · $subName'
-                  : listing.categoryName;
+              final categorySubLine = subName != null ? '${listing.categoryName} · $subName' : listing.categoryName;
               return Container(
                 decoration: BoxDecoration(
                   color: AppTheme.specWhite,
                   borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
                   boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.1),
-                      blurRadius: 20,
-                      offset: const Offset(0, -4),
-                    ),
+                    BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 20, offset: const Offset(0, -4)),
                   ],
                 ),
                 child: ListView(
@@ -2269,12 +2098,9 @@ class _MapViewState extends State<_MapView> {
                                   Row(
                                     mainAxisSize: MainAxisSize.min,
                                     children: List.generate(5, (i) {
-                                      final filled = rating != null &&
-                                          i < rating.floor().clamp(0, 5);
+                                      final filled = rating != null && i < rating.floor().clamp(0, 5);
                                       return Icon(
-                                        filled
-                                            ? Icons.star_rounded
-                                            : Icons.star_outline_rounded,
+                                        filled ? Icons.star_rounded : Icons.star_outline_rounded,
                                         size: 20,
                                         color: AppTheme.specGold,
                                       );
@@ -2315,11 +2141,9 @@ class _MapViewState extends State<_MapView> {
                       onPressed: () {
                         final id = listing.id;
                         setState(() => _selectedIndex = null);
-                        Navigator.of(context).push(
-                          MaterialPageRoute<void>(
-                            builder: (_) => ListingDetailScreen(listingId: id),
-                          ),
-                        );
+                        Navigator.of(
+                          context,
+                        ).push(MaterialPageRoute<void>(builder: (_) => ListingDetailScreen(listingId: id)));
                       },
                       expanded: false,
                       child: const Text('View listing'),

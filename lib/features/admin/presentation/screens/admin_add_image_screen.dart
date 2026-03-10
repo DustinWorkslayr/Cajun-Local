@@ -1,16 +1,16 @@
 import 'package:file_picker/file_picker.dart';
-import 'package:my_app/core/data/services/storage_upload_constants.dart';
+import 'package:cajun_local/core/data/services/storage_upload_constants.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:my_app/core/auth/providers/auth_provider.dart';
-import 'package:my_app/core/data/models/business.dart';
-import 'package:my_app/core/data/models/business_image.dart';
-import 'package:my_app/core/data/repositories/business_repository.dart';
-import 'package:my_app/core/data/repositories/business_images_repository.dart';
-import 'package:my_app/core/data/services/business_images_storage_service.dart';
-import 'package:my_app/core/theme/app_layout.dart';
-import 'package:my_app/core/theme/theme.dart';
-import 'package:my_app/shared/widgets/app_buttons.dart';
+import 'package:cajun_local/core/auth/providers/auth_provider.dart';
+import 'package:cajun_local/core/data/models/business.dart';
+import 'package:cajun_local/core/data/models/business_image.dart';
+import 'package:cajun_local/core/data/repositories/business_repository.dart';
+import 'package:cajun_local/core/data/repositories/business_images_repository.dart';
+import 'package:cajun_local/core/data/services/business_images_storage_service.dart';
+import 'package:cajun_local/core/theme/app_layout.dart';
+import 'package:cajun_local/core/theme/theme.dart';
+import 'package:cajun_local/shared/widgets/app_buttons.dart';
 
 /// Add a business image by uploading to the business-images bucket.
 /// [initialBusinessId] pre-selects the business when opening from listing edit.

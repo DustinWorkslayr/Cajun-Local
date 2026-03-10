@@ -1,18 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:my_app/app/main_shell.dart';
-import 'package:my_app/core/auth/providers/auth_provider.dart';
-import 'package:my_app/core/data/app_data_scope.dart';
-import 'package:my_app/core/data/listing_data_source.dart';
-import 'package:my_app/core/data/repositories/favorites_repository.dart';
-import 'package:my_app/core/data/repositories/user_plans_repository.dart';
-import 'package:my_app/core/data/repositories/user_subscriptions_repository.dart';
-import 'package:my_app/core/favorites/favorites_scope.dart';
-import 'package:my_app/core/revenuecat/revenuecat_service.dart';
-import 'package:my_app/core/subscription/user_tier_service.dart';
-import 'package:my_app/core/theme/theme.dart';
-import 'package:my_app/features/auth/presentation/screens/set_new_password_screen.dart';
-import 'package:my_app/features/auth/presentation/screens/sign_in_screen.dart';
+import 'package:cajun_local/app/main_shell.dart';
+import 'package:cajun_local/core/auth/providers/auth_provider.dart';
+import 'package:cajun_local/core/data/app_data_scope.dart';
+import 'package:cajun_local/core/data/listing_data_source.dart';
+import 'package:cajun_local/core/data/repositories/favorites_repository.dart';
+import 'package:cajun_local/core/data/repositories/user_plans_repository.dart';
+import 'package:cajun_local/core/data/repositories/user_subscriptions_repository.dart';
+import 'package:cajun_local/core/favorites/favorites_scope.dart';
+import 'package:cajun_local/core/revenuecat/revenuecat_service.dart';
+import 'package:cajun_local/core/subscription/user_tier_service.dart';
+import 'package:cajun_local/core/theme/theme.dart';
+import 'package:cajun_local/features/auth/presentation/screens/set_new_password_screen.dart';
+import 'package:cajun_local/features/auth/presentation/screens/sign_in_screen.dart';
 
 /// Root MaterialApp for Cajun Local.
 class CajunLocalApp extends ConsumerStatefulWidget {

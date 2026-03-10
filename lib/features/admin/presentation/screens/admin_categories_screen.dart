@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:my_app/core/data/category_icons.dart';
-import 'package:my_app/core/data/models/business_category.dart';
-import 'package:my_app/core/data/models/subcategory.dart';
-import 'package:my_app/core/data/repositories/category_repository.dart';
-import 'package:my_app/core/theme/theme.dart';
-import 'package:my_app/shared/widgets/app_buttons.dart';
+import 'package:cajun_local/core/data/category_icons.dart';
+import 'package:cajun_local/core/data/models/business_category.dart';
+import 'package:cajun_local/core/data/models/subcategory.dart';
+import 'package:cajun_local/core/data/repositories/category_repository.dart';
+import 'package:cajun_local/core/theme/theme.dart';
+import 'package:cajun_local/shared/widgets/app_buttons.dart';
 import 'package:uuid/uuid.dart';
 
 /// Result of add/edit category form: name, bucket, and optional icon (Material icon name).

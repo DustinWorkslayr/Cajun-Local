@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:my_app/core/theme/theme.dart';
+import 'package:cajun_local/core/theme/theme.dart';
 
 /// Label + TextField with app-standard decoration (filled, specWhite, radius 12).
 /// Use for form fields across the app.

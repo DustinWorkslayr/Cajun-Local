@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:my_app/core/data/models/conversation.dart';
-import 'package:my_app/core/data/repositories/business_repository.dart';
-import 'package:my_app/core/data/repositories/conversations_repository.dart';
-import 'package:my_app/core/theme/app_layout.dart';
-import 'package:my_app/core/theme/theme.dart';
-import 'package:my_app/features/messaging/presentation/screens/conversation_thread_screen.dart';
+import 'package:cajun_local/core/data/models/conversation.dart';
+import 'package:cajun_local/core/data/repositories/business_repository.dart';
+import 'package:cajun_local/core/data/repositories/conversations_repository.dart';
+import 'package:cajun_local/core/theme/app_layout.dart';
+import 'package:cajun_local/core/theme/theme.dart';
+import 'package:cajun_local/features/messaging/presentation/screens/conversation_thread_screen.dart';
 
 /// List of conversations for the current user (as customer). Tapping opens the thread.
 class MyConversationsScreen extends StatefulWidget {
@@ -79,7 +79,10 @@ class _MyConversationsScreenState extends State<MyConversationsScreen> {
     return Scaffold(
       backgroundColor: AppTheme.specOffWhite,
       appBar: AppBar(
-        title: const Text('Messages', style: TextStyle(color: AppTheme.specNavy, fontWeight: FontWeight.w700)),
+        title: const Text(
+          'Messages',
+          style: TextStyle(color: AppTheme.specNavy, fontWeight: FontWeight.w700),
+        ),
         backgroundColor: AppTheme.specWhite,
         foregroundColor: AppTheme.specNavy,
         surfaceTintColor: Colors.transparent,
@@ -88,125 +91,121 @@ class _MyConversationsScreenState extends State<MyConversationsScreen> {
       body: _loading
           ? const Center(child: CircularProgressIndicator(color: AppTheme.specGold))
           : _error != null
-              ? Center(
-                  child: Padding(
-                    padding: const EdgeInsets.all(24),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(_error!, style: const TextStyle(color: Colors.red)),
-                        const SizedBox(height: 16),
-                        FilledButton(
-                          onPressed: _load,
-                          child: const Text('Retry'),
-                        ),
-                      ],
-                    ),
-                  ),
-                )
-              : _conversations.isEmpty
-                  ? Center(
-                      child: Padding(
-                        padding: const EdgeInsets.all(24),
-                        child: Text(
-                          'No conversations yet. Submit a contact form on a business to start one.',
-                          textAlign: TextAlign.center,
-                          style: Theme.of(context).textTheme.bodyLarge,
-                        ),
-                      ),
-                    )
-                  : RefreshIndicator(
-                      onRefresh: _load,
-                      child: ListView.builder(
-                        padding: EdgeInsets.fromLTRB(
-                          AppLayout.horizontalPadding(context).left,
-                          16,
-                          AppLayout.horizontalPadding(context).right,
-                          24,
-                        ),
-                        itemCount: _conversations.length,
-                        itemBuilder: (context, index) {
-                          final c = _conversations[index];
-                          final businessName =
-                              _businessNames[c.businessId] ?? 'Business';
-                          final logoUrl = _businessLogos[c.businessId];
-                          return Padding(
-                            padding: const EdgeInsets.only(bottom: 12),
-                            child: Material(
-                              color: AppTheme.specWhite,
-                              borderRadius: BorderRadius.circular(14),
-                              elevation: 1,
-                              child: InkWell(
-                                onTap: () {
-                                  Navigator.of(context).push(
-                                    MaterialPageRoute<void>(
-                                      builder: (_) => ConversationThreadScreen(
-                                        conversationId: c.id,
-                                        conversation: c,
-                                        businessName: businessName,
-                                      ),
-                                    ),
-                                  );
-                                },
-                                borderRadius: BorderRadius.circular(14),
-                                child: Padding(
-                                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                                  child: Row(
-                                    children: [
-                                      CircleAvatar(
-                                        radius: 28,
-                                        backgroundColor: AppTheme.specNavy.withValues(alpha: 0.08),
-                                        backgroundImage: logoUrl != null && logoUrl.isNotEmpty
-                                            ? NetworkImage(logoUrl)
-                                            : null,
-                                        child: logoUrl == null || logoUrl.isEmpty
-                                            ? Icon(Icons.store_rounded, color: AppTheme.specNavy.withValues(alpha: 0.5), size: 28)
-                                            : null,
-                                      ),
-                                      const SizedBox(width: 14),
-                                      Expanded(
-                                        child: Column(
-                                          crossAxisAlignment: CrossAxisAlignment.start,
-                                          children: [
-                                            Text(
-                                              businessName,
-                                              style: const TextStyle(
-                                                fontWeight: FontWeight.w700,
-                                                fontSize: 16,
-                                                color: AppTheme.specNavy,
-                                              ),
-                                              maxLines: 1,
-                                              overflow: TextOverflow.ellipsis,
-                                            ),
-                                            const SizedBox(height: 4),
-                                            Text(
-                                              [
-                                                if (c.subject != null && c.subject!.trim().isNotEmpty)
-                                                  c.subject!,
-                                                _formatTime(c.lastMessageAt),
-                                              ]
-                                                  .where((e) => e.isNotEmpty)
-                                                  .join(' · '),
-                                              style: TextStyle(
-                                                color: AppTheme.specNavy.withValues(alpha: 0.7),
-                                                fontSize: 13,
-                                              ),
-                                              maxLines: 1,
-                                              overflow: TextOverflow.ellipsis,
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                      Icon(Icons.chevron_right_rounded, color: AppTheme.specNavy.withValues(alpha: 0.6), size: 24),
-                                    ],
-                                  ),
-                                ),
+          ? Center(
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(_error!, style: const TextStyle(color: Colors.red)),
+                    const SizedBox(height: 16),
+                    FilledButton(onPressed: _load, child: const Text('Retry')),
+                  ],
+                ),
+              ),
+            )
+          : _conversations.isEmpty
+          ? Center(
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Text(
+                  'No conversations yet. Submit a contact form on a business to start one.',
+                  textAlign: TextAlign.center,
+                  style: Theme.of(context).textTheme.bodyLarge,
+                ),
+              ),
+            )
+          : RefreshIndicator(
+              onRefresh: _load,
+              child: ListView.builder(
+                padding: EdgeInsets.fromLTRB(
+                  AppLayout.horizontalPadding(context).left,
+                  16,
+                  AppLayout.horizontalPadding(context).right,
+                  24,
+                ),
+                itemCount: _conversations.length,
+                itemBuilder: (context, index) {
+                  final c = _conversations[index];
+                  final businessName = _businessNames[c.businessId] ?? 'Business';
+                  final logoUrl = _businessLogos[c.businessId];
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 12),
+                    child: Material(
+                      color: AppTheme.specWhite,
+                      borderRadius: BorderRadius.circular(14),
+                      elevation: 1,
+                      child: InkWell(
+                        onTap: () {
+                          Navigator.of(context).push(
+                            MaterialPageRoute<void>(
+                              builder: (_) => ConversationThreadScreen(
+                                conversationId: c.id,
+                                conversation: c,
+                                businessName: businessName,
                               ),
                             ),
                           );
                         },
+                        borderRadius: BorderRadius.circular(14),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                          child: Row(
+                            children: [
+                              CircleAvatar(
+                                radius: 28,
+                                backgroundColor: AppTheme.specNavy.withValues(alpha: 0.08),
+                                backgroundImage: logoUrl != null && logoUrl.isNotEmpty ? NetworkImage(logoUrl) : null,
+                                child: logoUrl == null || logoUrl.isEmpty
+                                    ? Icon(
+                                        Icons.store_rounded,
+                                        color: AppTheme.specNavy.withValues(alpha: 0.5),
+                                        size: 28,
+                                      )
+                                    : null,
+                              ),
+                              const SizedBox(width: 14),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      businessName,
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.w700,
+                                        fontSize: 16,
+                                        color: AppTheme.specNavy,
+                                      ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      [
+                                        if (c.subject != null && c.subject!.trim().isNotEmpty) c.subject!,
+                                        _formatTime(c.lastMessageAt),
+                                      ].where((e) => e.isNotEmpty).join(' · '),
+                                      style: TextStyle(color: AppTheme.specNavy.withValues(alpha: 0.7), fontSize: 13),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              Icon(
+                                Icons.chevron_right_rounded,
+                                color: AppTheme.specNavy.withValues(alpha: 0.6),
+                                size: 24,
+                              ),
+                            ],
+                          ),
+                        ),
                       ),
                     ),
+                  );
+                },
+              ),
+            ),
     );
   }
 }

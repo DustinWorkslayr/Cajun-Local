@@ -1,15 +1,15 @@
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:my_app/core/data/providers/app_data_providers.dart';
-import 'package:my_app/core/data/models/ad_package.dart';
-import 'package:my_app/core/data/models/business_ad.dart';
-import 'package:my_app/core/data/repositories/ad_packages_repository.dart';
-import 'package:my_app/core/data/repositories/business_ads_repository.dart';
-import 'package:my_app/core/data/services/app_storage_service.dart';
-import 'package:my_app/core/revenuecat/revenuecat_service.dart';
-import 'package:my_app/core/theme/theme.dart';
-import 'package:my_app/shared/widgets/app_buttons.dart';
+import 'package:cajun_local/core/data/providers/app_data_providers.dart';
+import 'package:cajun_local/core/data/models/ad_package.dart';
+import 'package:cajun_local/core/data/models/business_ad.dart';
+import 'package:cajun_local/core/data/repositories/ad_packages_repository.dart';
+import 'package:cajun_local/core/data/repositories/business_ads_repository.dart';
+import 'package:cajun_local/core/data/services/app_storage_service.dart';
+import 'package:cajun_local/core/revenuecat/revenuecat_service.dart';
+import 'package:cajun_local/core/theme/theme.dart';
+import 'package:cajun_local/shared/widgets/app_buttons.dart';
 
 /// For a single business: list its ads and start "Buy ad" flow (package -> form -> checkout).
 class BusinessAdsScreen extends ConsumerStatefulWidget {

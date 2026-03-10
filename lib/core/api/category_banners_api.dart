@@ -1,6 +1,6 @@
 import 'package:dio/dio.dart';
-import 'package:my_app/core/api/api_client.dart';
-import 'package:my_app/core/data/models/category_banner.dart';
+import 'package:cajun_local/core/api/api_client.dart';
+import 'package:cajun_local/core/data/models/category_banner.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 part 'category_banners_api.g.dart';

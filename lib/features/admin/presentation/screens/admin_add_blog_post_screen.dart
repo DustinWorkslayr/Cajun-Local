@@ -2,15 +2,15 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_quill/flutter_quill.dart' as quill;
 import 'package:flutter_quill_delta_from_html/flutter_quill_delta_from_html.dart';
-import 'package:my_app/core/data/models/blog_post.dart';
-import 'package:my_app/core/data/models/parish.dart';
-import 'package:my_app/core/data/repositories/blog_posts_repository.dart';
-import 'package:my_app/core/data/repositories/parish_repository.dart';
-import 'package:my_app/core/data/services/app_storage_service.dart';
-import 'package:my_app/core/data/services/storage_upload_constants.dart';
-import 'package:my_app/core/theme/app_layout.dart';
-import 'package:my_app/core/theme/theme.dart';
-import 'package:my_app/shared/widgets/app_buttons.dart';
+import 'package:cajun_local/core/data/models/blog_post.dart';
+import 'package:cajun_local/core/data/models/parish.dart';
+import 'package:cajun_local/core/data/repositories/blog_posts_repository.dart';
+import 'package:cajun_local/core/data/repositories/parish_repository.dart';
+import 'package:cajun_local/core/data/services/app_storage_service.dart';
+import 'package:cajun_local/core/data/services/storage_upload_constants.dart';
+import 'package:cajun_local/core/theme/app_layout.dart';
+import 'package:cajun_local/core/theme/theme.dart';
+import 'package:cajun_local/shared/widgets/app_buttons.dart';
 import 'package:vsc_quill_delta_to_html/vsc_quill_delta_to_html.dart';
 
 /// Admin: create or edit a blog post. Body is edited with a rich text (Quill) editor and stored as HTML.
@@ -72,10 +72,7 @@ class _AdminAddBlogPostScreenState extends State<AdminAddBlogPostScreen> {
     } else {
       document = quill.Document();
     }
-    return quill.QuillController(
-      document: document,
-      selection: const TextSelection.collapsed(offset: 0),
-    );
+    return quill.QuillController(document: document, selection: const TextSelection.collapsed(offset: 0));
   }
 
   Future<void> _loadParishes() async {
@@ -97,18 +94,16 @@ class _AdminAddBlogPostScreenState extends State<AdminAddBlogPostScreen> {
       final name = result.files.single.name;
       final ext = name.contains('.') ? name.split('.').last : 'jpg';
       final pathSegment = _slugController.text.trim().isEmpty ? 'blog' : _slugController.text.trim();
-      final url = await AppStorageService().uploadBlogImage(
-        pathSegment: pathSegment,
-        bytes: bytes,
-        extension: ext,
-      );
-      if (mounted) setState(() { _coverImageUrl = url; _uploadingCover = false; });
+      final url = await AppStorageService().uploadBlogImage(pathSegment: pathSegment, bytes: bytes, extension: ext);
+      if (mounted)
+        setState(() {
+          _coverImageUrl = url;
+          _uploadingCover = false;
+        });
     } catch (e) {
       if (mounted) {
         setState(() => _uploadingCover = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Upload failed: $e')),
-        );
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Upload failed: $e')));
       }
     }
   }
@@ -127,10 +122,7 @@ class _AdminAddBlogPostScreenState extends State<AdminAddBlogPostScreen> {
     final delta = _quillController.document.toDelta();
     final ops = delta.toJson();
     if (ops.isEmpty) return '';
-    final converter = QuillDeltaToHtmlConverter(
-      ops,
-      ConverterOptions.forEmail(),
-    );
+    final converter = QuillDeltaToHtmlConverter(ops, ConverterOptions.forEmail());
     return converter.convert().trim();
   }
 
@@ -201,10 +193,7 @@ class _AdminAddBlogPostScreenState extends State<AdminAddBlogPostScreen> {
         ),
         title: Text(
           isEdit ? 'Edit post' : 'New post',
-          style: theme.textTheme.titleLarge?.copyWith(
-            fontWeight: FontWeight.w700,
-            color: AppTheme.specNavy,
-          ),
+          style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700, color: AppTheme.specNavy),
         ),
       ),
       body: SingleChildScrollView(
@@ -263,9 +252,7 @@ class _AdminAddBlogPostScreenState extends State<AdminAddBlogPostScreen> {
               _SectionLabel(title: 'Parish visibility'),
               Text(
                 'Choose which parishes will see this post. "All parishes" shows it to everyone.',
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: AppTheme.specNavy.withValues(alpha: 0.7),
-                ),
+                style: theme.textTheme.bodySmall?.copyWith(color: AppTheme.specNavy.withValues(alpha: 0.7)),
               ),
               const SizedBox(height: 8),
               CheckboxListTile(
@@ -328,9 +315,7 @@ class _AdminAddBlogPostScreenState extends State<AdminAddBlogPostScreen> {
               _SectionLabel(title: 'Content'),
               Text(
                 'Use the toolbar to format text. Content is saved as HTML and rendered on the post.',
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: AppTheme.specNavy.withValues(alpha: 0.7),
-                ),
+                style: theme.textTheme.bodySmall?.copyWith(color: AppTheme.specNavy.withValues(alpha: 0.7)),
               ),
               const SizedBox(height: 10),
               Container(
@@ -377,9 +362,7 @@ class _AdminAddBlogPostScreenState extends State<AdminAddBlogPostScreen> {
                 const SizedBox(height: 16),
                 Text(
                   _message!,
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: _success ? Colors.green : AppTheme.specRed,
-                  ),
+                  style: theme.textTheme.bodySmall?.copyWith(color: _success ? Colors.green : AppTheme.specRed),
                 ),
               ],
               const SizedBox(height: 24),
@@ -421,12 +404,8 @@ class _SectionLabel extends StatelessWidget {
       padding: const EdgeInsets.only(bottom: 8),
       child: Text(
         title,
-        style: theme.textTheme.titleSmall?.copyWith(
-          fontWeight: FontWeight.w700,
-          color: AppTheme.specNavy,
-        ),
+        style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700, color: AppTheme.specNavy),
       ),
     );
   }
 }
-

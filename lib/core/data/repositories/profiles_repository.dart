@@ -1,6 +1,6 @@
-import 'package:my_app/core/api/api_client.dart';
-import 'package:my_app/core/api/profiles_api.dart';
-import 'package:my_app/core/data/models/profile.dart';
+import 'package:cajun_local/core/api/api_client.dart';
+import 'package:cajun_local/core/api/profiles_api.dart';
+import 'package:cajun_local/core/data/models/profile.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 part 'profiles_repository.g.dart';

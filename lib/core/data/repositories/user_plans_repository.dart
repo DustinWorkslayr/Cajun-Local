@@ -1,6 +1,6 @@
-import 'package:my_app/core/api/api_client.dart';
-import 'package:my_app/core/api/user_plans_api.dart';
-import 'package:my_app/core/data/models/user_plan.dart';
+import 'package:cajun_local/core/api/api_client.dart';
+import 'package:cajun_local/core/api/user_plans_api.dart';
+import 'package:cajun_local/core/data/models/user_plan.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 part 'user_plans_repository.g.dart';

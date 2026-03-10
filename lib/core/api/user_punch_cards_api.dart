@@ -1,7 +1,7 @@
 import 'package:dio/dio.dart';
-import 'package:my_app/core/api/api_client.dart';
-import 'package:my_app/core/data/models/punch_card_enrollment.dart';
-import 'package:my_app/core/data/models/user_punch_card.dart';
+import 'package:cajun_local/core/api/api_client.dart';
+import 'package:cajun_local/core/data/models/punch_card_enrollment.dart';
+import 'package:cajun_local/core/data/models/user_punch_card.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 part 'user_punch_cards_api.g.dart';

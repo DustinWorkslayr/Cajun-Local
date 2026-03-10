@@ -1,15 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:my_app/shared/widgets/app_buttons.dart';
-import 'package:my_app/core/auth/providers/auth_provider.dart';
-import 'package:my_app/core/data/contact_form_templates.dart';
-import 'package:my_app/core/data/models/business.dart';
-import 'package:my_app/core/data/repositories/business_repository.dart';
-import 'package:my_app/core/data/repositories/conversations_repository.dart';
-import 'package:my_app/core/data/repositories/form_submissions_repository.dart';
-import 'package:my_app/core/data/repositories/messages_repository.dart';
-import 'package:my_app/core/theme/theme.dart';
+import 'package:cajun_local/shared/widgets/app_buttons.dart';
+import 'package:cajun_local/core/auth/providers/auth_provider.dart';
+import 'package:cajun_local/core/data/contact_form_templates.dart';
+import 'package:cajun_local/core/data/models/business.dart';
+import 'package:cajun_local/core/data/repositories/business_repository.dart';
+import 'package:cajun_local/core/data/repositories/conversations_repository.dart';
+import 'package:cajun_local/core/data/repositories/form_submissions_repository.dart';
+import 'package:cajun_local/core/data/repositories/messages_repository.dart';
+import 'package:cajun_local/core/theme/theme.dart';
 
 /// Renders the business's contact form (template-based). Shown on listing detail.
 /// When Supabase is off or business has no contact_form_template, shows nothing.

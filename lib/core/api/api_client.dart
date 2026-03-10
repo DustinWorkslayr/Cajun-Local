@@ -1,6 +1,6 @@
 import 'package:dio/dio.dart';
-import 'package:my_app/core/api/api_config.dart';
-import 'package:my_app/core/api/token_storage.dart';
+import 'package:cajun_local/core/api/api_config.dart';
+import 'package:cajun_local/core/api/token_storage.dart';
 
 class ApiClient {
   ApiClient._internal() {
@@ -35,10 +35,7 @@ class ApiClient {
 
                 final response = await dio.request(
                   e.requestOptions.path,
-                  options: Options(
-                    method: e.requestOptions.method,
-                    headers: e.requestOptions.headers,
-                  ),
+                  options: Options(method: e.requestOptions.method, headers: e.requestOptions.headers),
                   data: e.requestOptions.data,
                   queryParameters: e.requestOptions.queryParameters,
                 );

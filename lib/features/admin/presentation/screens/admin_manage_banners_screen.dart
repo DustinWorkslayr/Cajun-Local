@@ -1,17 +1,13 @@
 import 'package:flutter/material.dart';
-import 'package:my_app/core/theme/theme.dart';
-import 'package:my_app/features/admin/presentation/screens/admin_add_category_banner_screen.dart';
-import 'package:my_app/features/admin/presentation/screens/admin_add_notification_banner_screen.dart';
-import 'package:my_app/features/admin/presentation/screens/admin_category_banners_screen.dart';
-import 'package:my_app/features/admin/presentation/screens/admin_notification_banners_screen.dart';
+import 'package:cajun_local/core/theme/theme.dart';
+import 'package:cajun_local/features/admin/presentation/screens/admin_add_category_banner_screen.dart';
+import 'package:cajun_local/features/admin/presentation/screens/admin_add_notification_banner_screen.dart';
+import 'package:cajun_local/features/admin/presentation/screens/admin_category_banners_screen.dart';
+import 'package:cajun_local/features/admin/presentation/screens/admin_notification_banners_screen.dart';
 
 /// Combined admin screen: Category banners and Notification banners in a single tabbed view.
 class AdminManageBannersScreen extends StatefulWidget {
-  const AdminManageBannersScreen({
-    super.key,
-    this.status,
-    this.embeddedInShell = false,
-  });
+  const AdminManageBannersScreen({super.key, this.status, this.embeddedInShell = false});
 
   /// Optional status filter for category banners (e.g. 'pending' when opened from dashboard).
   final String? status;
@@ -21,8 +17,7 @@ class AdminManageBannersScreen extends StatefulWidget {
   State<AdminManageBannersScreen> createState() => _AdminManageBannersScreenState();
 }
 
-class _AdminManageBannersScreenState extends State<AdminManageBannersScreen>
-    with SingleTickerProviderStateMixin {
+class _AdminManageBannersScreenState extends State<AdminManageBannersScreen> with SingleTickerProviderStateMixin {
   late TabController _tabController;
   int _categoryRefreshKey = 0;
 
@@ -44,13 +39,11 @@ class _AdminManageBannersScreenState extends State<AdminManageBannersScreen>
 
   void _onAddPressed() {
     if (_tabController.index == 0) {
-      Navigator.of(context).push(
-        MaterialPageRoute<void>(builder: (_) => const AdminAddCategoryBannerScreen()),
-      ).then((_) => setState(() => _categoryRefreshKey++));
+      Navigator.of(context)
+          .push(MaterialPageRoute<void>(builder: (_) => const AdminAddCategoryBannerScreen()))
+          .then((_) => setState(() => _categoryRefreshKey++));
     } else {
-      Navigator.of(context).push(
-        MaterialPageRoute<void>(builder: (_) => const AdminAddNotificationBannerScreen()),
-      );
+      Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const AdminAddNotificationBannerScreen()));
     }
   }
 
@@ -70,10 +63,7 @@ class _AdminManageBannersScreenState extends State<AdminManageBannersScreen>
     final body = Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Material(
-          color: AppTheme.specOffWhite,
-          child: tabBar,
-        ),
+        Material(color: AppTheme.specOffWhite, child: tabBar),
         Expanded(
           child: TabBarView(
             controller: _tabController,
@@ -84,10 +74,7 @@ class _AdminManageBannersScreenState extends State<AdminManageBannersScreen>
                 hideFab: true,
                 key: ValueKey(_categoryRefreshKey),
               ),
-              const AdminNotificationBannersScreen(
-                embeddedInShell: true,
-                hideFab: true,
-              ),
+              const AdminNotificationBannersScreen(embeddedInShell: true, hideFab: true),
             ],
           ),
         ),
@@ -103,9 +90,7 @@ class _AdminManageBannersScreenState extends State<AdminManageBannersScreen>
             bottom: 16,
             child: FloatingActionButton(
               onPressed: _onAddPressed,
-              tooltip: _tabController.index == 0
-                  ? 'Add category banner'
-                  : 'Add notification banner',
+              tooltip: _tabController.index == 0 ? 'Add category banner' : 'Add notification banner',
               backgroundColor: AppTheme.specNavy,
               child: const Icon(Icons.add_rounded),
             ),
@@ -117,11 +102,7 @@ class _AdminManageBannersScreenState extends State<AdminManageBannersScreen>
     return Scaffold(
       backgroundColor: AppTheme.specOffWhite,
       appBar: AppBar(
-        title: Text(
-          widget.status != null
-              ? 'Manage banners (${widget.status})'
-              : 'Manage banners',
-        ),
+        title: Text(widget.status != null ? 'Manage banners (${widget.status})' : 'Manage banners'),
         backgroundColor: AppTheme.specOffWhite,
         foregroundColor: AppTheme.specNavy,
         bottom: PreferredSize(
@@ -131,9 +112,7 @@ class _AdminManageBannersScreenState extends State<AdminManageBannersScreen>
         actions: [
           IconButton(
             icon: const Icon(Icons.add_rounded),
-            tooltip: _tabController.index == 0
-                ? 'Add category banner'
-                : 'Add notification banner',
+            tooltip: _tabController.index == 0 ? 'Add category banner' : 'Add notification banner',
             onPressed: _onAddPressed,
           ),
         ],
@@ -147,10 +126,7 @@ class _AdminManageBannersScreenState extends State<AdminManageBannersScreen>
             hideFab: true,
             key: ValueKey(_categoryRefreshKey),
           ),
-          const AdminNotificationBannersScreen(
-            embeddedInShell: true,
-            hideFab: true,
-          ),
+          const AdminNotificationBannersScreen(embeddedInShell: true, hideFab: true),
         ],
       ),
     );

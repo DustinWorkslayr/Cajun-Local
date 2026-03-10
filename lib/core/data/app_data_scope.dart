@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:my_app/core/data/listing_data_source.dart';
-import 'package:my_app/core/data/repositories/favorites_repository.dart';
-import 'package:my_app/core/revenuecat/revenuecat_service.dart';
-import 'package:my_app/core/subscription/user_tier_service.dart';
+import 'package:cajun_local/core/data/listing_data_source.dart';
+import 'package:cajun_local/core/data/repositories/favorites_repository.dart';
+import 'package:cajun_local/core/revenuecat/revenuecat_service.dart';
+import 'package:cajun_local/core/subscription/user_tier_service.dart';
 
 /// Provides [ListingDataSource], [FavoritesRepository], [UserTierService], and optional [RevenueCatService] to the widget tree.
 class AppDataScope extends InheritedWidget {

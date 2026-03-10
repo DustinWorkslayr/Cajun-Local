@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:my_app/core/theme/theme.dart';
+import 'package:cajun_local/core/theme/theme.dart';
 
 /// Shared button styles: gold/navy spec colors, consistent padding and shape.
 /// Use these across the app for a symmetrical, component-based UI.
@@ -48,9 +48,7 @@ class AppPrimaryButton extends StatelessWidget {
       padding: WidgetStateProperty.all(padding),
       minimumSize: WidgetStateProperty.all(minimumSize),
       elevation: WidgetStateProperty.all(0),
-      shape: WidgetStateProperty.all(
-        RoundedRectangleBorder(borderRadius: BorderRadius.circular(_defaultRadius)),
-      ),
+      shape: WidgetStateProperty.all(RoundedRectangleBorder(borderRadius: BorderRadius.circular(_defaultRadius))),
     );
     if (icon != null && label != null) {
       final btn = FilledButton.icon(
@@ -63,12 +61,7 @@ class AppPrimaryButton extends StatelessWidget {
       return expanded ? SizedBox(width: double.infinity, child: btn) : btn;
     }
     final c = child ?? label!;
-    final btn = FilledButton(
-      onPressed: onPressed,
-      onLongPress: onLongPress,
-      style: effectiveStyle,
-      child: c,
-    );
+    final btn = FilledButton(onPressed: onPressed, onLongPress: onLongPress, style: effectiveStyle, child: c);
     return expanded ? SizedBox(width: double.infinity, child: btn) : btn;
   }
 }
@@ -113,9 +106,7 @@ class AppSecondaryButton extends StatelessWidget {
       padding: WidgetStateProperty.all(padding),
       minimumSize: WidgetStateProperty.all(minimumSize),
       elevation: WidgetStateProperty.all(0),
-      shape: WidgetStateProperty.all(
-        RoundedRectangleBorder(borderRadius: BorderRadius.circular(_defaultRadius)),
-      ),
+      shape: WidgetStateProperty.all(RoundedRectangleBorder(borderRadius: BorderRadius.circular(_defaultRadius))),
     );
     if (icon != null && label != null) {
       final btn = FilledButton.icon(
@@ -128,12 +119,7 @@ class AppSecondaryButton extends StatelessWidget {
       return expanded ? SizedBox(width: double.infinity, child: btn) : btn;
     }
     final c = child ?? label!;
-    final btn = FilledButton(
-      onPressed: onPressed,
-      onLongPress: onLongPress,
-      style: effectiveStyle,
-      child: c,
-    );
+    final btn = FilledButton(onPressed: onPressed, onLongPress: onLongPress, style: effectiveStyle, child: c);
     return expanded ? SizedBox(width: double.infinity, child: btn) : btn;
   }
 }
@@ -171,9 +157,7 @@ class AppOutlinedButton extends StatelessWidget {
       side: WidgetStateProperty.all(BorderSide(color: AppTheme.specNavy.withValues(alpha: 0.6), width: 1.5)),
       padding: WidgetStateProperty.all(padding),
       minimumSize: WidgetStateProperty.all(minimumSize),
-      shape: WidgetStateProperty.all(
-        RoundedRectangleBorder(borderRadius: BorderRadius.circular(_defaultRadius)),
-      ),
+      shape: WidgetStateProperty.all(RoundedRectangleBorder(borderRadius: BorderRadius.circular(_defaultRadius))),
     );
     if (icon != null && label != null) {
       final btn = OutlinedButton.icon(
@@ -186,12 +170,7 @@ class AppOutlinedButton extends StatelessWidget {
       return expanded ? SizedBox(width: double.infinity, child: btn) : btn;
     }
     final c = child ?? label!;
-    final btn = OutlinedButton(
-      onPressed: onPressed,
-      onLongPress: onLongPress,
-      style: effectiveStyle,
-      child: c,
-    );
+    final btn = OutlinedButton(onPressed: onPressed, onLongPress: onLongPress, style: effectiveStyle, child: c);
     return expanded ? SizedBox(width: double.infinity, child: btn) : btn;
   }
 }
@@ -236,12 +215,7 @@ class AppTextButton extends StatelessWidget {
         label: label!,
       );
     }
-    return TextButton(
-      onPressed: onPressed,
-      onLongPress: onLongPress,
-      style: effectiveStyle,
-      child: child ?? label!,
-    );
+    return TextButton(onPressed: onPressed, onLongPress: onLongPress, style: effectiveStyle, child: child ?? label!);
   }
 }
 
@@ -277,9 +251,7 @@ class AppDangerButton extends StatelessWidget {
       padding: WidgetStateProperty.all(padding),
       minimumSize: WidgetStateProperty.all(minimumSize),
       elevation: WidgetStateProperty.all(0),
-      shape: WidgetStateProperty.all(
-        RoundedRectangleBorder(borderRadius: BorderRadius.circular(_defaultRadius)),
-      ),
+      shape: WidgetStateProperty.all(RoundedRectangleBorder(borderRadius: BorderRadius.circular(_defaultRadius))),
     );
     if (icon != null && label != null) {
       return FilledButton.icon(
@@ -290,12 +262,7 @@ class AppDangerButton extends StatelessWidget {
         label: label!,
       );
     }
-    return FilledButton(
-      onPressed: onPressed,
-      onLongPress: onLongPress,
-      style: effectiveStyle,
-      child: child ?? label!,
-    );
+    return FilledButton(onPressed: onPressed, onLongPress: onLongPress, style: effectiveStyle, child: child ?? label!);
   }
 }
 
@@ -330,9 +297,7 @@ class AppDangerOutlinedButton extends StatelessWidget {
       side: WidgetStateProperty.all(const BorderSide(color: AppTheme.specRed, width: 1.5)),
       padding: WidgetStateProperty.all(padding),
       minimumSize: WidgetStateProperty.all(minimumSize),
-      shape: WidgetStateProperty.all(
-        RoundedRectangleBorder(borderRadius: BorderRadius.circular(_defaultRadius)),
-      ),
+      shape: WidgetStateProperty.all(RoundedRectangleBorder(borderRadius: BorderRadius.circular(_defaultRadius))),
     );
     if (icon != null && label != null) {
       return OutlinedButton.icon(

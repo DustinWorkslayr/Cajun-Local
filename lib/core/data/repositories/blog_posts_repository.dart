@@ -1,6 +1,6 @@
-import 'package:my_app/core/api/api_client.dart';
-import 'package:my_app/core/api/blog_posts_api.dart';
-import 'package:my_app/core/data/models/blog_post.dart';
+import 'package:cajun_local/core/api/api_client.dart';
+import 'package:cajun_local/core/api/blog_posts_api.dart';
+import 'package:cajun_local/core/data/models/blog_post.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 part 'blog_posts_repository.g.dart';

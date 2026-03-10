@@ -1,22 +1,22 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:my_app/core/auth/providers/auth_provider.dart';
-import 'package:my_app/core/data/providers/app_data_providers.dart';
-import 'package:my_app/core/data/deal_type_icons.dart';
-import 'package:my_app/core/data/mock_data.dart';
-import 'package:my_app/core/data/models/user_deal.dart';
-import 'package:my_app/core/data/repositories/business_managers_repository.dart';
-import 'package:my_app/core/preferences/user_parish_preferences.dart';
-import 'package:my_app/core/theme/app_layout.dart';
-import 'package:my_app/core/theme/theme.dart';
-import 'package:my_app/features/deals/presentation/screens/my_deals_screen.dart';
-import 'package:my_app/features/deals/presentation/screens/my_punch_cards_screen.dart';
-import 'package:my_app/features/listing/presentation/screens/listing_detail_screen.dart';
-import 'package:my_app/shared/widgets/animated_entrance.dart';
-import 'package:my_app/shared/widgets/deal_detail_popup.dart';
-import 'package:my_app/shared/widgets/app_buttons.dart';
-import 'package:my_app/core/revenuecat/present_subscription_paywall.dart';
-import 'package:my_app/core/data/repositories/profiles_repository.dart';
+import 'package:cajun_local/core/auth/providers/auth_provider.dart';
+import 'package:cajun_local/core/data/providers/app_data_providers.dart';
+import 'package:cajun_local/core/data/deal_type_icons.dart';
+import 'package:cajun_local/core/data/mock_data.dart';
+import 'package:cajun_local/core/data/models/user_deal.dart';
+import 'package:cajun_local/core/data/repositories/business_managers_repository.dart';
+import 'package:cajun_local/core/preferences/user_parish_preferences.dart';
+import 'package:cajun_local/core/theme/app_layout.dart';
+import 'package:cajun_local/core/theme/theme.dart';
+import 'package:cajun_local/features/deals/presentation/screens/my_deals_screen.dart';
+import 'package:cajun_local/features/deals/presentation/screens/my_punch_cards_screen.dart';
+import 'package:cajun_local/features/listing/presentation/screens/listing_detail_screen.dart';
+import 'package:cajun_local/shared/widgets/animated_entrance.dart';
+import 'package:cajun_local/shared/widgets/deal_detail_popup.dart';
+import 'package:cajun_local/shared/widgets/app_buttons.dart';
+import 'package:cajun_local/core/revenuecat/present_subscription_paywall.dart';
+import 'package:cajun_local/core/data/repositories/profiles_repository.dart';
 
 /// Deal type filter options: value (null = all) and label.
 const List<({String? value, String label})> _dealTypeFilterOptions = [

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:my_app/core/data/models/amenity.dart';
-import 'package:my_app/core/data/repositories/amenities_repository.dart';
-import 'package:my_app/shared/widgets/app_buttons.dart';
+import 'package:cajun_local/core/data/models/amenity.dart';
+import 'package:cajun_local/core/data/repositories/amenities_repository.dart';
+import 'package:cajun_local/shared/widgets/app_buttons.dart';
 import 'package:uuid/uuid.dart';
 
 /// Bucket options for amenities (global, eat, hire, shop, explore).

@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:my_app/core/auth/providers/auth_provider.dart';
-import 'package:my_app/core/data/models/business_image.dart';
-import 'package:my_app/core/data/repositories/audit_log_repository.dart';
-import 'package:my_app/core/data/repositories/business_images_repository.dart';
-import 'package:my_app/core/data/repositories/business_managers_repository.dart';
-import 'package:my_app/core/data/repositories/business_repository.dart';
-import 'package:my_app/core/data/repositories/profiles_repository.dart';
+import 'package:cajun_local/core/auth/providers/auth_provider.dart';
+import 'package:cajun_local/core/data/models/business_image.dart';
+import 'package:cajun_local/core/data/repositories/audit_log_repository.dart';
+import 'package:cajun_local/core/data/repositories/business_images_repository.dart';
+import 'package:cajun_local/core/data/repositories/business_managers_repository.dart';
+import 'package:cajun_local/core/data/repositories/business_repository.dart';
+import 'package:cajun_local/core/data/repositories/profiles_repository.dart';
+
 class AdminImageDetailScreen extends ConsumerStatefulWidget {
   const AdminImageDetailScreen({super.key, required this.imageId});
 

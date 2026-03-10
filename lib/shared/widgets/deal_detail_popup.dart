@@ -1,11 +1,11 @@
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
-import 'package:my_app/core/data/deal_type_icons.dart';
-import 'package:my_app/core/data/mock_data.dart';
-import 'package:my_app/shared/widgets/app_buttons.dart';
-import 'package:my_app/core/theme/theme.dart';
-import 'package:my_app/features/listing/presentation/screens/listing_detail_screen.dart';
+import 'package:cajun_local/core/data/deal_type_icons.dart';
+import 'package:cajun_local/core/data/mock_data.dart';
+import 'package:cajun_local/shared/widgets/app_buttons.dart';
+import 'package:cajun_local/core/theme/theme.dart';
+import 'package:cajun_local/features/listing/presentation/screens/listing_detail_screen.dart';
 
 /// Glassy popup showing full deal details. Use [DealDetailPopup.show] to present.
 class DealDetailPopup extends StatefulWidget {
@@ -26,15 +26,20 @@ class DealDetailPopup extends StatefulWidget {
   final String? listingName;
   final VoidCallback? onGoToListing;
   final bool showViewBusinessButton;
+
   /// True when the current user has already claimed this deal.
   final bool isClaimed;
+
   /// True when the deal has been redeemed (used_at set).
   final bool isUsed;
+
   /// When [isUsed], optional date to show "Redeemed on ...".
   final DateTime? usedAt;
+
   /// Called when user taps "Claim deal". If null, claim button is hidden (e.g. not signed in).
   /// Can be async; popup shows "Claiming..." until it completes, then closes.
   final Future<void> Function()? onClaim;
+
   /// When set (signed in but tier does not allow claim), tapping "Claim deal" calls this (e.g. show upsell).
   final VoidCallback? onClaimUpsell;
 
@@ -90,23 +95,13 @@ class _DealDetailPopupState extends State<DealDetailPopup> {
       child: BackdropFilter(
         filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
         child: Container(
-          constraints: BoxConstraints(
-            maxHeight: MediaQuery.sizeOf(context).height * 0.75,
-          ),
+          constraints: BoxConstraints(maxHeight: MediaQuery.sizeOf(context).height * 0.75),
           decoration: BoxDecoration(
-            color: (isDark ? colorScheme.surface : AppTheme.specOffWhite)
-                .withValues(alpha: 0.98),
+            color: (isDark ? colorScheme.surface : AppTheme.specOffWhite).withValues(alpha: 0.98),
             borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-            border: Border.all(
-              color: AppTheme.specGold.withValues(alpha: 0.35),
-              width: 1.5,
-            ),
+            border: Border.all(color: AppTheme.specGold.withValues(alpha: 0.35), width: 1.5),
             boxShadow: [
-              BoxShadow(
-                color: AppTheme.specNavy.withValues(alpha: 0.12),
-                blurRadius: 20,
-                offset: const Offset(0, -4),
-              ),
+              BoxShadow(color: AppTheme.specNavy.withValues(alpha: 0.12), blurRadius: 20, offset: const Offset(0, -4)),
             ],
           ),
           child: SafeArea(
@@ -131,10 +126,7 @@ class _DealDetailPopupState extends State<DealDetailPopup> {
                     padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
-                        colors: [
-                          AppTheme.specNavy,
-                          AppTheme.specNavy.withValues(alpha: 0.92),
-                        ],
+                        colors: [AppTheme.specNavy, AppTheme.specNavy.withValues(alpha: 0.92)],
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
                       ),
@@ -164,16 +156,9 @@ class _DealDetailPopupState extends State<DealDetailPopup> {
                           decoration: BoxDecoration(
                             color: AppTheme.specGold.withValues(alpha: 0.25),
                             borderRadius: BorderRadius.circular(14),
-                            border: Border.all(
-                              color: AppTheme.specGold.withValues(alpha: 0.6),
-                              width: 1.5,
-                            ),
+                            border: Border.all(color: AppTheme.specGold.withValues(alpha: 0.6), width: 1.5),
                           ),
-                          child: Icon(
-                            DealTypeIcons.iconFor(widget.deal.dealType),
-                            size: 36,
-                            color: AppTheme.specGold,
-                          ),
+                          child: Icon(DealTypeIcons.iconFor(widget.deal.dealType), size: 36, color: AppTheme.specGold),
                         ),
                         if (widget.deal.expiry != null) ...[
                           const SizedBox(height: 8),
@@ -238,10 +223,7 @@ class _DealDetailPopupState extends State<DealDetailPopup> {
                           ),
                           child: Text(
                             widget.deal.description,
-                            style: theme.textTheme.bodyMedium?.copyWith(
-                              color: AppTheme.specNavy,
-                              height: 1.5,
-                            ),
+                            style: theme.textTheme.bodyMedium?.copyWith(color: AppTheme.specNavy, height: 1.5),
                           ),
                         ),
                         if (widget.deal.code != null) ...[
@@ -282,72 +264,72 @@ class _DealDetailPopupState extends State<DealDetailPopup> {
                         const SizedBox(height: 20),
                         if (onClaim != null || onClaimUpsell != null || isClaimed) ...[
                           if (isClaimed)
-                          Container(
-                            padding: const EdgeInsets.symmetric(vertical: 12),
-                            decoration: BoxDecoration(
-                              color: colorScheme.primaryContainer.withValues(alpha: 0.5),
-                              borderRadius: BorderRadius.circular(14),
-                            ),
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Icon(
-                                  widget.isUsed ? Icons.check_circle_rounded : Icons.check_circle_rounded,
-                                  size: 22,
-                                  color: widget.isUsed ? colorScheme.tertiary : colorScheme.primary,
-                                ),
-                                const SizedBox(width: 8),
-                                Flexible(
-                                  child: Text(
-                                    widget.isUsed
-                                        ? (widget.usedAt != null
-                                            ? 'Redeemed on ${_formatDate(widget.usedAt!)}'
-                                            : 'Redeemed')
-                                        : 'You claimed this deal',
-                                    style: theme.textTheme.labelLarge?.copyWith(
-                                      fontWeight: FontWeight.w600,
-                                      color: colorScheme.onPrimaryContainer,
+                            Container(
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                              decoration: BoxDecoration(
+                                color: colorScheme.primaryContainer.withValues(alpha: 0.5),
+                                borderRadius: BorderRadius.circular(14),
+                              ),
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(
+                                    widget.isUsed ? Icons.check_circle_rounded : Icons.check_circle_rounded,
+                                    size: 22,
+                                    color: widget.isUsed ? colorScheme.tertiary : colorScheme.primary,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Flexible(
+                                    child: Text(
+                                      widget.isUsed
+                                          ? (widget.usedAt != null
+                                                ? 'Redeemed on ${_formatDate(widget.usedAt!)}'
+                                                : 'Redeemed')
+                                          : 'You claimed this deal',
+                                      style: theme.textTheme.labelLarge?.copyWith(
+                                        fontWeight: FontWeight.w600,
+                                        color: colorScheme.onPrimaryContainer,
+                                      ),
                                     ),
                                   ),
-                                ),
-                              ],
-                            ),
-                          )
+                                ],
+                              ),
+                            )
                           else
                             AppPrimaryButton(
-                            onPressed: _isClaiming
-                                ? null
-                                : () async {
-                                    if (onClaim != null) {
-                                      setState(() => _isClaiming = true);
-                                      try {
-                                        await onClaim();
-                                        if (!context.mounted) return;
-                                        Navigator.of(context).pop();
-                                      } finally {
-                                        if (mounted) setState(() => _isClaiming = false);
+                              onPressed: _isClaiming
+                                  ? null
+                                  : () async {
+                                      if (onClaim != null) {
+                                        setState(() => _isClaiming = true);
+                                        try {
+                                          await onClaim();
+                                          if (!context.mounted) return;
+                                          Navigator.of(context).pop();
+                                        } finally {
+                                          if (mounted) setState(() => _isClaiming = false);
+                                        }
+                                        return;
                                       }
-                                      return;
-                                    }
-                                    if (onClaimUpsell != null) {
-                                      onClaimUpsell();
-                                      return;
-                                    }
-                                  },
-                            expanded: false,
-                            icon: _isClaiming
-                                ? SizedBox(
-                                    width: 22,
-                                    height: 22,
-                                    child: CircularProgressIndicator(strokeWidth: 2, color: AppTheme.specNavy),
-                                  )
-                                : const Icon(Icons.local_offer_rounded, size: 22),
-                            label: Text(_isClaiming ? 'Claiming...' : 'Grab this deal'),
+                                      if (onClaimUpsell != null) {
+                                        onClaimUpsell();
+                                        return;
+                                      }
+                                    },
+                              expanded: false,
+                              icon: _isClaiming
+                                  ? SizedBox(
+                                      width: 22,
+                                      height: 22,
+                                      child: CircularProgressIndicator(strokeWidth: 2, color: AppTheme.specNavy),
+                                    )
+                                  : const Icon(Icons.local_offer_rounded, size: 22),
+                              label: Text(_isClaiming ? 'Claiming...' : 'Grab this deal'),
                             ),
-                            const SizedBox(height: 10),
-                          ],
-                          if (widget.showViewBusinessButton)
-                            AppOutlinedButton(
+                          const SizedBox(height: 10),
+                        ],
+                        if (widget.showViewBusinessButton)
+                          AppOutlinedButton(
                             onPressed: () {
                               Navigator.of(context).pop();
                               if (widget.onGoToListing != null) {
@@ -355,18 +337,16 @@ class _DealDetailPopupState extends State<DealDetailPopup> {
                               } else {
                                 Navigator.of(context).push(
                                   MaterialPageRoute<void>(
-                                    builder: (_) => ListingDetailScreen(
-                                      listingId: widget.deal.listingId,
-                                    ),
+                                    builder: (_) => ListingDetailScreen(listingId: widget.deal.listingId),
                                   ),
                                 );
                               }
                             },
                             icon: const Icon(Icons.store_rounded, size: 20),
                             label: const Text('View business'),
-                            ),
-                          const SizedBox(height: 8),
-                          TextButton(
+                          ),
+                        const SizedBox(height: 8),
+                        TextButton(
                           onPressed: () => Navigator.of(context).pop(),
                           child: Text(
                             'Close',
@@ -386,10 +366,7 @@ class _DealDetailPopupState extends State<DealDetailPopup> {
   }
 
   static String _formatDate(DateTime d) {
-    const months = [
-      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
-    ];
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
     return '${months[d.month - 1]} ${d.day}, ${d.year}';
   }
 }

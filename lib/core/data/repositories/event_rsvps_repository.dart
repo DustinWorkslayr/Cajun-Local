@@ -1,6 +1,6 @@
-import 'package:my_app/core/api/api_client.dart';
-import 'package:my_app/core/api/event_rsvps_api.dart';
-import 'package:my_app/core/data/models/event_rsvp.dart';
+import 'package:cajun_local/core/api/api_client.dart';
+import 'package:cajun_local/core/api/event_rsvps_api.dart';
+import 'package:cajun_local/core/data/models/event_rsvp.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 part 'event_rsvps_repository.g.dart';

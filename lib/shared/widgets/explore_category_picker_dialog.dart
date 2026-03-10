@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:my_app/core/data/category_icons.dart';
-import 'package:my_app/core/data/mock_data.dart';
-import 'package:my_app/core/theme/theme.dart';
+import 'package:cajun_local/core/data/category_icons.dart';
+import 'package:cajun_local/core/data/mock_data.dart';
+import 'package:cajun_local/core/theme/theme.dart';
 
 /// Sentinel for "Explore all" so we can tell it apart from dialog dismissed (null).
 const String kExploreAllSentinel = '';
@@ -48,15 +48,10 @@ class _ExploreCategoryPickerDialog extends StatelessWidget {
               Text(
                 'How do you want to explore?',
                 textAlign: TextAlign.center,
-                style: theme.textTheme.titleLarge?.copyWith(
-                  fontWeight: FontWeight.w700,
-                  color: AppTheme.specNavy,
-                ),
+                style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700, color: AppTheme.specNavy),
               ),
               const SizedBox(height: 12),
-              _ExploreAllCard(
-                onTap: () => Navigator.of(context).pop(kExploreAllSentinel),
-              ),
+              _ExploreAllCard(onTap: () => Navigator.of(context).pop(kExploreAllSentinel)),
               if (categories.isNotEmpty) ...[
                 const SizedBox(height: 12),
                 Text(
@@ -78,10 +73,7 @@ class _ExploreCategoryPickerDialog extends StatelessWidget {
                       children: categories.map((cat) {
                         return SizedBox(
                           width: width,
-                          child: _CategoryCard(
-                            category: cat,
-                            onTap: () => Navigator.of(context).pop(cat.id),
-                          ),
+                          child: _CategoryCard(category: cat, onTap: () => Navigator.of(context).pop(cat.id)),
                         );
                       }).toList(),
                     );
@@ -117,17 +109,10 @@ class _ExploreAllCard extends StatelessWidget {
             gradient: LinearGradient(
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
-              colors: [
-                AppTheme.specNavy,
-                AppTheme.specNavy.withValues(alpha: 0.92),
-              ],
+              colors: [AppTheme.specNavy, AppTheme.specNavy.withValues(alpha: 0.92)],
             ),
             boxShadow: [
-              BoxShadow(
-                color: AppTheme.specNavy.withValues(alpha: 0.2),
-                blurRadius: 8,
-                offset: const Offset(0, 2),
-              ),
+              BoxShadow(color: AppTheme.specNavy.withValues(alpha: 0.2), blurRadius: 8, offset: const Offset(0, 2)),
             ],
           ),
           child: Row(
@@ -138,27 +123,16 @@ class _ExploreAllCard extends StatelessWidget {
                   color: AppTheme.specGold.withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: Icon(
-                  Icons.explore_rounded,
-                  size: 22,
-                  color: AppTheme.specGold,
-                ),
+                child: Icon(Icons.explore_rounded, size: 22, color: AppTheme.specGold),
               ),
               const SizedBox(width: 12),
               Expanded(
                 child: Text(
                   'Explore all',
-                  style: theme.textTheme.titleSmall?.copyWith(
-                    fontWeight: FontWeight.w700,
-                    color: AppTheme.specWhite,
-                  ),
+                  style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700, color: AppTheme.specWhite),
                 ),
               ),
-              Icon(
-                Icons.arrow_forward_rounded,
-                color: AppTheme.specWhite.withValues(alpha: 0.9),
-                size: 18,
-              ),
+              Icon(Icons.arrow_forward_rounded, color: AppTheme.specWhite.withValues(alpha: 0.9), size: 18),
             ],
           ),
         ),
@@ -187,28 +161,18 @@ class _CategoryCard extends StatelessWidget {
           decoration: BoxDecoration(
             color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.4),
             borderRadius: BorderRadius.circular(10),
-            border: Border.all(
-              color: theme.colorScheme.outlineVariant.withValues(alpha: 0.5),
-              width: 1,
-            ),
+            border: Border.all(color: theme.colorScheme.outlineVariant.withValues(alpha: 0.5), width: 1),
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(
-                getCategoryIconData(category.iconName),
-                size: 24,
-                color: AppTheme.specNavy,
-              ),
+              Icon(getCategoryIconData(category.iconName), size: 24, color: AppTheme.specNavy),
               const SizedBox(height: 4),
               Text(
                 category.name,
                 textAlign: TextAlign.center,
-                style: theme.textTheme.labelMedium?.copyWith(
-                  fontWeight: FontWeight.w600,
-                  color: AppTheme.specNavy,
-                ),
+                style: theme.textTheme.labelMedium?.copyWith(fontWeight: FontWeight.w600, color: AppTheme.specNavy),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),

@@ -1,16 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:my_app/core/theme/theme.dart';
+import 'package:cajun_local/core/theme/theme.dart';
 
 /// Standardized empty state: icon, message, optional action.
 /// Use for "no items", "no data", "no results" blocks.
 class AppEmptyState extends StatelessWidget {
-  const AppEmptyState({
-    super.key,
-    required this.message,
-    this.icon,
-    this.action,
-    this.padding,
-  });
+  const AppEmptyState({super.key, required this.message, this.icon, this.action, this.padding});
 
   final String message;
   final IconData? icon;
@@ -34,15 +28,10 @@ class AppEmptyState extends StatelessWidget {
             ],
             Text(
               message,
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: AppTheme.specNavy.withValues(alpha: 0.7),
-              ),
+              style: theme.textTheme.bodyMedium?.copyWith(color: AppTheme.specNavy.withValues(alpha: 0.7)),
               textAlign: TextAlign.center,
             ),
-            if (action != null) ...[
-              const SizedBox(height: 20),
-              action!,
-            ],
+            if (action != null) ...[const SizedBox(height: 20), action!],
           ],
         ),
       ),

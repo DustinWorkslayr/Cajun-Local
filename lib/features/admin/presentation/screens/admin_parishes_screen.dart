@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:my_app/core/data/models/parish.dart';
-import 'package:my_app/core/data/repositories/parish_repository.dart';
-import 'package:my_app/shared/widgets/app_buttons.dart';
+import 'package:cajun_local/core/data/models/parish.dart';
+import 'package:cajun_local/core/data/repositories/parish_repository.dart';
+import 'package:cajun_local/shared/widgets/app_buttons.dart';
 
 /// Admin: manage allowed parishes (used in business forms and directory filters).
 class AdminParishesScreen extends StatefulWidget {
@@ -73,16 +73,12 @@ class _AdminParishesScreenState extends State<AdminParishesScreen> {
       );
       await _load();
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Parish added')),
-        );
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Parish added')));
       }
     } catch (e) {
       if (mounted) {
         setState(() => _loading = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to add parish: $e')),
-        );
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to add parish: $e')));
       }
     }
   }
@@ -99,16 +95,12 @@ class _AdminParishesScreenState extends State<AdminParishesScreen> {
       await _repo.updateParish(parish.id, name: result.name.trim());
       await _load();
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Parish updated')),
-        );
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Parish updated')));
       }
     } catch (e) {
       if (mounted) {
         setState(() => _loading = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to update parish: $e')),
-        );
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to update parish: $e')));
       }
     }
   }
@@ -118,18 +110,10 @@ class _AdminParishesScreenState extends State<AdminParishesScreen> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Delete parish?'),
-        content: Text(
-          'Delete "${parish.name}"? Businesses using this parish may need to be updated.',
-        ),
+        content: Text('Delete "${parish.name}"? Businesses using this parish may need to be updated.'),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Cancel'),
-          ),
-          AppDangerButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Delete'),
-          ),
+          TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Cancel')),
+          AppDangerButton(onPressed: () => Navigator.of(context).pop(true), child: const Text('Delete')),
         ],
       ),
     );
@@ -138,15 +122,11 @@ class _AdminParishesScreenState extends State<AdminParishesScreen> {
       await _repo.deleteParish(parish.id);
       await _load();
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Parish deleted')),
-        );
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Parish deleted')));
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to delete: $e')),
-        );
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to delete: $e')));
       }
     }
   }
@@ -166,9 +146,7 @@ class _AdminParishesScreenState extends State<AdminParishesScreen> {
           padding: const EdgeInsets.all(24),
           child: Text(
             'No parishes. Add one to define allowed service areas.',
-            style: theme.textTheme.bodyLarge?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
-            ),
+            style: theme.textTheme.bodyLarge?.copyWith(color: theme.colorScheme.onSurfaceVariant),
             textAlign: TextAlign.center,
           ),
         ),
@@ -255,10 +233,7 @@ class _ParishTile extends StatelessWidget {
       child: ListTile(
         leading: ReorderableDragStartListener(
           index: index,
-          child: Icon(
-            Icons.drag_handle_rounded,
-            color: theme.colorScheme.onSurfaceVariant,
-          ),
+          child: Icon(Icons.drag_handle_rounded, color: theme.colorScheme.onSurfaceVariant),
         ),
         title: Text(parish.name),
         subtitle: Text(parish.id, style: theme.textTheme.bodySmall),
@@ -267,16 +242,8 @@ class _ParishTile extends StatelessWidget {
             : Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  IconButton(
-                    icon: const Icon(Icons.edit_rounded),
-                    onPressed: onEdit,
-                    tooltip: 'Edit',
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.delete_outline_rounded),
-                    onPressed: onDelete,
-                    tooltip: 'Delete',
-                  ),
+                  IconButton(icon: const Icon(Icons.edit_rounded), onPressed: onEdit, tooltip: 'Edit'),
+                  IconButton(icon: const Icon(Icons.delete_outline_rounded), onPressed: onDelete, tooltip: 'Delete'),
                 ],
               ),
       ),
@@ -347,14 +314,8 @@ class _AddParishDialogState extends State<_AddParishDialog> {
         ),
       ),
       actions: [
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Cancel'),
-        ),
-        FilledButton(
-          onPressed: _submit,
-          child: const Text('Add'),
-        ),
+        TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Cancel')),
+        FilledButton(onPressed: _submit, child: const Text('Add')),
       ],
     );
   }
@@ -403,30 +364,18 @@ class _EditParishDialogState extends State<_EditParishDialog> {
           children: [
             TextField(
               controller: _nameController,
-              decoration: const InputDecoration(
-                labelText: 'Name',
-                border: OutlineInputBorder(),
-              ),
+              decoration: const InputDecoration(labelText: 'Name', border: OutlineInputBorder()),
               textCapitalization: TextCapitalization.words,
               onSubmitted: (_) => _submit(),
             ),
             const SizedBox(height: 8),
-            Text(
-              'ID: ${widget.parish.id}',
-              style: Theme.of(context).textTheme.bodySmall,
-            ),
+            Text('ID: ${widget.parish.id}', style: Theme.of(context).textTheme.bodySmall),
           ],
         ),
       ),
       actions: [
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Cancel'),
-        ),
-        FilledButton(
-          onPressed: _submit,
-          child: const Text('Save'),
-        ),
+        TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Cancel')),
+        FilledButton(onPressed: _submit, child: const Text('Save')),
       ],
     );
   }

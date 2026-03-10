@@ -2,12 +2,12 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:my_app/core/data/providers/app_data_providers.dart';
-import 'package:my_app/core/data/mock_data.dart';
-import 'package:my_app/core/preferences/user_parish_preferences.dart';
-import 'package:my_app/core/theme/theme.dart';
-import 'package:my_app/shared/widgets/app_buttons.dart';
-import 'package:my_app/features/choose_for_me/presentation/screens/choose_for_me_slot_screen.dart'
+import 'package:cajun_local/core/data/providers/app_data_providers.dart';
+import 'package:cajun_local/core/data/mock_data.dart';
+import 'package:cajun_local/core/preferences/user_parish_preferences.dart';
+import 'package:cajun_local/core/theme/theme.dart';
+import 'package:cajun_local/shared/widgets/app_buttons.dart';
+import 'package:cajun_local/features/choose_for_me/presentation/screens/choose_for_me_slot_screen.dart'
     show showChooseForMeSlotDialog;
 
 /// Asset for the Choose for me hero illustration (selection screen).

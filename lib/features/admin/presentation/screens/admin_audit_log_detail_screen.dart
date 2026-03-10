@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:my_app/core/data/models/audit_log_entry.dart';
-import 'package:my_app/core/theme/app_layout.dart';
-import 'package:my_app/core/theme/theme.dart';
+import 'package:cajun_local/core/data/models/audit_log_entry.dart';
+import 'package:cajun_local/core/theme/app_layout.dart';
+import 'package:cajun_local/core/theme/theme.dart';
 
 /// Full-page audit log entry detail: all fields, user-friendly labels and backend data (UUID, timestamp).
 class AdminAuditLogDetailScreen extends StatelessWidget {
@@ -32,11 +32,7 @@ class AdminAuditLogDetailScreen extends StatelessWidget {
     final theme = Theme.of(context);
     final padding = AppLayout.horizontalPadding(context);
     final nav = AppTheme.specNavy;
-    const labelStyle = TextStyle(
-      fontWeight: FontWeight.w600,
-      color: AppTheme.specNavy,
-      fontSize: 12,
-    );
+    const labelStyle = TextStyle(fontWeight: FontWeight.w600, color: AppTheme.specNavy, fontSize: 12);
 
     return Scaffold(
       backgroundColor: AppTheme.specOffWhite,
@@ -45,10 +41,7 @@ class AdminAuditLogDetailScreen extends StatelessWidget {
         surfaceTintColor: Colors.transparent,
         title: Text(
           entry.action,
-          style: theme.textTheme.titleLarge?.copyWith(
-            fontWeight: FontWeight.w700,
-            color: nav,
-          ),
+          style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700, color: nav),
         ),
         iconTheme: const IconThemeData(color: AppTheme.specNavy),
       ),
@@ -69,11 +62,7 @@ class AdminAuditLogDetailScreen extends StatelessWidget {
               backend: _formatIso(entry.createdAt),
               labelStyle: labelStyle,
             ),
-            _DetailBlock(
-              label: 'Action',
-              value: entry.action,
-              labelStyle: labelStyle,
-            ),
+            _DetailBlock(label: 'Action', value: entry.action, labelStyle: labelStyle),
             _DetailBlock(
               label: 'User ID',
               value: entry.userId ?? '—',
@@ -141,11 +130,7 @@ class _DetailBlockDual extends StatelessWidget {
           const SizedBox(height: 8),
           SelectableText(
             friendly,
-            style: theme.textTheme.bodyMedium?.copyWith(
-              color: nav,
-              height: 1.4,
-              fontWeight: FontWeight.w500,
-            ),
+            style: theme.textTheme.bodyMedium?.copyWith(color: nav, height: 1.4, fontWeight: FontWeight.w500),
           ),
           if (backend != '—' && backend != friendly) ...[
             const SizedBox(height: 6),
@@ -153,11 +138,7 @@ class _DetailBlockDual extends StatelessWidget {
             const SizedBox(height: 2),
             SelectableText(
               backend,
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: sub,
-                fontFamily: 'monospace',
-                height: 1.3,
-              ),
+              style: theme.textTheme.bodySmall?.copyWith(color: sub, fontFamily: 'monospace', height: 1.3),
             ),
           ],
         ],
@@ -167,12 +148,7 @@ class _DetailBlockDual extends StatelessWidget {
 }
 
 class _DetailBlock extends StatelessWidget {
-  const _DetailBlock({
-    required this.label,
-    required this.value,
-    required this.labelStyle,
-    this.subtitle,
-  });
+  const _DetailBlock({required this.label, required this.value, required this.labelStyle, this.subtitle});
 
   final String label;
   final String value;
@@ -202,13 +178,7 @@ class _DetailBlock extends StatelessWidget {
             Text(subtitle!, style: theme.textTheme.labelSmall?.copyWith(color: sub)),
           ],
           const SizedBox(height: 8),
-          SelectableText(
-            value,
-            style: theme.textTheme.bodyMedium?.copyWith(
-              color: AppTheme.specNavy,
-              height: 1.4,
-            ),
-          ),
+          SelectableText(value, style: theme.textTheme.bodyMedium?.copyWith(color: AppTheme.specNavy, height: 1.4)),
         ],
       ),
     );

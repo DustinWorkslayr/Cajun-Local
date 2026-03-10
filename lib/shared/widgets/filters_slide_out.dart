@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:my_app/core/data/mock_data.dart';
-import 'package:my_app/shared/widgets/app_buttons.dart';
+import 'package:cajun_local/core/data/mock_data.dart';
+import 'package:cajun_local/shared/widgets/app_buttons.dart';
 
 /// Slide-out panel from the right: Filters & Categories with search,
 /// expandable categories with multiselect subcategories, and parish selector.
@@ -29,11 +29,11 @@ class FiltersSlideOut extends StatefulWidget {
 
 enum _FilterSection { category, location }
 
-class _FiltersSlideOutState extends State<FiltersSlideOut>
-    with SingleTickerProviderStateMixin {
+class _FiltersSlideOutState extends State<FiltersSlideOut> with SingleTickerProviderStateMixin {
   late TextEditingController _searchController;
   late ListingFilters _filters;
   String? _expandedCategoryId;
+
   /// Only one section expanded at a time to reduce visual clutter.
   _FilterSection? _expandedSection = _FilterSection.category;
   late AnimationController _slideController;
@@ -44,17 +44,11 @@ class _FiltersSlideOutState extends State<FiltersSlideOut>
     super.initState();
     _searchController = TextEditingController(text: widget.initialFilters.searchQuery);
     _filters = widget.initialFilters;
-    _slideController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 300),
-    );
+    _slideController = AnimationController(vsync: this, duration: const Duration(milliseconds: 300));
     _slideAnimation = Tween<Offset>(
       begin: const Offset(1, 0),
       end: Offset.zero,
-    ).animate(CurvedAnimation(
-      parent: _slideController,
-      curve: Curves.easeOutCubic,
-    ));
+    ).animate(CurvedAnimation(parent: _slideController, curve: Curves.easeOutCubic));
     _slideController.forward();
   }
 
@@ -79,10 +73,7 @@ class _FiltersSlideOutState extends State<FiltersSlideOut>
         children: [
           GestureDetector(
             onTap: widget.onClose,
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 200),
-              color: Colors.black54,
-            ),
+            child: AnimatedContainer(duration: const Duration(milliseconds: 200), color: Colors.black54),
           ),
           Align(
             alignment: Alignment.centerRight,
@@ -113,13 +104,8 @@ class _FiltersSlideOutState extends State<FiltersSlideOut>
                                   prefixIcon: const Icon(Icons.search_rounded, size: 22),
                                   filled: true,
                                   isDense: true,
-                                  border: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(10),
-                                  ),
-                                  contentPadding: const EdgeInsets.symmetric(
-                                    horizontal: 14,
-                                    vertical: 10,
-                                  ),
+                                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                                  contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                                 ),
                                 onChanged: (v) => setState(() {
                                   _filters = _filters.copyWith(searchQuery: v);
@@ -154,8 +140,8 @@ class _FiltersSlideOutState extends State<FiltersSlideOut>
               ),
             ),
           ),
-      ],
-    ),
+        ],
+      ),
     );
   }
 
@@ -176,10 +162,7 @@ class _FiltersSlideOutState extends State<FiltersSlideOut>
           IconButton(
             onPressed: widget.onClose,
             icon: const Icon(Icons.close_rounded, size: 22),
-            style: IconButton.styleFrom(
-              minimumSize: const Size(40, 40),
-              padding: EdgeInsets.zero,
-            ),
+            style: IconButton.styleFrom(minimumSize: const Size(40, 40), padding: EdgeInsets.zero),
           ),
         ],
       ),
@@ -191,30 +174,21 @@ class _FiltersSlideOutState extends State<FiltersSlideOut>
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
       decoration: BoxDecoration(
         color: theme.colorScheme.surface,
-        border: Border(
-          top: BorderSide(
-            color: theme.colorScheme.outlineVariant.withValues(alpha: 0.5),
-          ),
-        ),
+        border: Border(top: BorderSide(color: theme.colorScheme.outlineVariant.withValues(alpha: 0.5))),
       ),
       child: SafeArea(
         top: false,
         child: Row(
           children: [
             Expanded(
-              child: AppOutlinedButton(
-                onPressed: _clearFilters,
-                child: const Text('Clear'),
-              ),
+              child: AppOutlinedButton(onPressed: _clearFilters, child: const Text('Clear')),
             ),
             const SizedBox(width: 10),
             Expanded(
               flex: 2,
               child: AppPrimaryButton(
                 onPressed: () {
-                  widget.onApply(_filters.copyWith(
-                    searchQuery: _searchController.text.trim(),
-                  ));
+                  widget.onApply(_filters.copyWith(searchQuery: _searchController.text.trim()));
                 },
                 expanded: false,
                 child: const Text('Apply'),
@@ -230,10 +204,10 @@ class _FiltersSlideOutState extends State<FiltersSlideOut>
     return Text(
       label,
       style: Theme.of(context).textTheme.labelMedium?.copyWith(
-            color: Theme.of(context).colorScheme.primary,
-            fontWeight: FontWeight.w600,
-            letterSpacing: 0.3,
-          ),
+        color: Theme.of(context).colorScheme.primary,
+        fontWeight: FontWeight.w600,
+        letterSpacing: 0.3,
+      ),
     );
   }
 
@@ -307,9 +281,7 @@ class _FiltersSlideOutState extends State<FiltersSlideOut>
                         const SizedBox(height: 2),
                         Text(
                           subtitle,
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: colorScheme.onSurfaceVariant,
-                          ),
+                          style: theme.textTheme.bodySmall?.copyWith(color: colorScheme.onSurfaceVariant),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
@@ -325,11 +297,7 @@ class _FiltersSlideOutState extends State<FiltersSlideOut>
               ),
             ),
           ),
-          if (isExpanded)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(14, 8, 14, 12),
-              child: child,
-            ),
+          if (isExpanded) Padding(padding: const EdgeInsets.fromLTRB(14, 8, 14, 12), child: child),
         ],
       ),
     );
@@ -357,18 +325,18 @@ class _FiltersSlideOutState extends State<FiltersSlideOut>
               key: ValueKey(cat.id),
               child: _CategoryTile(
                 label: cat.name,
-              count: cat.count,
-              isExpanded: isExpanded,
-              isSelected: isSelected,
-              hasSubcategories: cat.subcategories.isNotEmpty,
-              onTap: () => setState(() {
-                if (isExpanded) {
-                  _expandedCategoryId = null;
-                } else {
-                  _expandedCategoryId = cat.id;
-                  _filters = _filters.copyWith(categoryId: cat.id);
-                }
-              }),
+                count: cat.count,
+                isExpanded: isExpanded,
+                isSelected: isSelected,
+                hasSubcategories: cat.subcategories.isNotEmpty,
+                onTap: () => setState(() {
+                  if (isExpanded) {
+                    _expandedCategoryId = null;
+                  } else {
+                    _expandedCategoryId = cat.id;
+                    _filters = _filters.copyWith(categoryId: cat.id);
+                  }
+                }),
               ),
             ),
             if (isExpanded && cat.subcategories.isNotEmpty)
@@ -444,9 +412,7 @@ class _CategoryTile extends StatelessWidget {
     final colorScheme = theme.colorScheme;
 
     return Material(
-      color: isSelected
-          ? colorScheme.primaryContainer.withValues(alpha: 0.5)
-          : Colors.transparent,
+      color: isSelected ? colorScheme.primaryContainer.withValues(alpha: 0.5) : Colors.transparent,
       borderRadius: BorderRadius.circular(10),
       child: InkWell(
         onTap: onTap,
@@ -464,24 +430,11 @@ class _CategoryTile extends StatelessWidget {
                   ),
                 ),
               ),
-              Text(
-                '$count',
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: colorScheme.onSurfaceVariant,
-                ),
-              ),
+              Text('$count', style: theme.textTheme.bodySmall?.copyWith(color: colorScheme.onSurfaceVariant)),
               if (hasSubcategories)
-                Icon(
-                  isExpanded ? Icons.expand_less : Icons.expand_more,
-                  color: colorScheme.onSurfaceVariant,
-                  size: 22,
-                )
+                Icon(isExpanded ? Icons.expand_less : Icons.expand_more, color: colorScheme.onSurfaceVariant, size: 22)
               else
-                Icon(
-                  Icons.chevron_right_rounded,
-                  color: colorScheme.onSurfaceVariant,
-                  size: 20,
-                ),
+                Icon(Icons.chevron_right_rounded, color: colorScheme.onSurfaceVariant, size: 20),
             ],
           ),
         ),
@@ -492,11 +445,7 @@ class _CategoryTile extends StatelessWidget {
 
 /// Multiselect subcategory: dropdown trigger that opens a bottom sheet with chips.
 class _SubcategoryMultiselect extends StatelessWidget {
-  const _SubcategoryMultiselect({
-    required this.subcategories,
-    required this.selectedIds,
-    required this.onChanged,
-  });
+  const _SubcategoryMultiselect({required this.subcategories, required this.selectedIds, required this.onChanged});
 
   final List<MockSubcategory> subcategories;
   final Set<String> selectedIds;
@@ -506,13 +455,8 @@ class _SubcategoryMultiselect extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
-    final selectedList = subcategories
-        .where((s) => selectedIds.contains(s.id))
-        .map((s) => s.name)
-        .toList();
-    final label = selectedList.isEmpty
-        ? 'Select type...'
-        : selectedList.join(', ');
+    final selectedList = subcategories.where((s) => selectedIds.contains(s.id)).map((s) => s.name).toList();
+    final label = selectedList.isEmpty ? 'Select type...' : selectedList.join(', ');
 
     return Material(
       color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
@@ -528,19 +472,13 @@ class _SubcategoryMultiselect extends StatelessWidget {
                 child: Text(
                   label,
                   style: theme.textTheme.bodySmall?.copyWith(
-                    color: selectedList.isEmpty
-                        ? colorScheme.onSurfaceVariant
-                        : colorScheme.onSurface,
+                    color: selectedList.isEmpty ? colorScheme.onSurfaceVariant : colorScheme.onSurface,
                   ),
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                 ),
               ),
-              Icon(
-                Icons.keyboard_arrow_down_rounded,
-                color: colorScheme.onSurfaceVariant,
-                size: 22,
-              ),
+              Icon(Icons.keyboard_arrow_down_rounded, color: colorScheme.onSurfaceVariant, size: 22),
             ],
           ),
         ),
@@ -570,28 +508,28 @@ class _SubcategoryMultiselect extends StatelessWidget {
                     children: [
                       Text(
                         'Select types (multi-select)',
-                        style: Theme.of(ctx).textTheme.titleMedium?.copyWith(
-                              fontWeight: FontWeight.w700,
-                            ),
+                        style: Theme.of(ctx).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
                       ),
                       const SizedBox(height: 16),
                       Expanded(
                         child: ListView(
                           controller: scrollController,
                           children: subcategories
-                              .map((s) => CheckboxListTile(
-                                    title: Text(s.name),
-                                    value: localSelected.contains(s.id),
-                                    onChanged: (v) {
-                                      setModalState(() {
-                                        if (v == true) {
-                                          localSelected.add(s.id);
-                                        } else {
-                                          localSelected.remove(s.id);
-                                        }
-                                      });
-                                    },
-                                  ))
+                              .map(
+                                (s) => CheckboxListTile(
+                                  title: Text(s.name),
+                                  value: localSelected.contains(s.id),
+                                  onChanged: (v) {
+                                    setModalState(() {
+                                      if (v == true) {
+                                        localSelected.add(s.id);
+                                      } else {
+                                        localSelected.remove(s.id);
+                                      }
+                                    });
+                                  },
+                                ),
+                              )
                               .toList(),
                         ),
                       ),
@@ -599,10 +537,7 @@ class _SubcategoryMultiselect extends StatelessWidget {
                       Row(
                         children: [
                           Expanded(
-                            child: OutlinedButton(
-                              onPressed: () => Navigator.pop(ctx),
-                              child: const Text('Cancel'),
-                            ),
+                            child: OutlinedButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
                           ),
                           const SizedBox(width: 12),
                           Expanded(

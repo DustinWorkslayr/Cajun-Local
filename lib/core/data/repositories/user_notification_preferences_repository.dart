@@ -1,5 +1,5 @@
-import 'package:my_app/core/api/api_client.dart';
-import 'package:my_app/core/api/user_notification_preferences_api.dart';
+import 'package:cajun_local/core/api/api_client.dart';
+import 'package:cajun_local/core/api/user_notification_preferences_api.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 part 'user_notification_preferences_repository.g.dart';

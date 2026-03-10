@@ -1,6 +1,6 @@
 import 'dart:typed_data';
 import 'package:dio/dio.dart';
-import 'package:my_app/core/api/api_client.dart';
+import 'package:cajun_local/core/api/api_client.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:http_parser/http_parser.dart';
 

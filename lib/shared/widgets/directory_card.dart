@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:my_app/core/theme/theme.dart';
+import 'package:cajun_local/core/theme/theme.dart';
 
 /// Directory-style card with image area, title, subtitle, gold accent bar; scale on tap.
 class DirectoryCard extends StatefulWidget {
@@ -20,6 +20,7 @@ class DirectoryCard extends StatefulWidget {
   final VoidCallback? onTap;
   final Color? accentColor;
   final bool showAccentBar;
+
   /// Optional badge (e.g. "Partner" for highest-tier businesses).
   final String? badgeLabel;
 
@@ -52,10 +53,7 @@ class _DirectoryCardState extends State<DirectoryCard> {
             decoration: BoxDecoration(
               color: colorScheme.surfaceContainerLow.withValues(alpha: 0.6),
               borderRadius: BorderRadius.circular(20),
-              border: Border.all(
-                color: colorScheme.outlineVariant.withValues(alpha: 0.5),
-                width: 1,
-              ),
+              border: Border.all(color: colorScheme.outlineVariant.withValues(alpha: 0.5), width: 1),
               boxShadow: [
                 BoxShadow(
                   color: colorScheme.shadow.withValues(alpha: 0.08),
@@ -79,24 +77,13 @@ class _DirectoryCardState extends State<DirectoryCard> {
                       gradient: LinearGradient(
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
-                        colors: [
-                          colorScheme.primaryContainer,
-                          colorScheme.secondaryContainer.withValues(alpha: 0.8),
-                        ],
+                        colors: [colorScheme.primaryContainer, colorScheme.secondaryContainer.withValues(alpha: 0.8)],
                       ),
                     ),
-                    child: Icon(
-                      Icons.place_rounded,
-                      size: 48,
-                      color: accent.withValues(alpha: 0.9),
-                    ),
+                    child: Icon(Icons.place_rounded, size: 48, color: accent.withValues(alpha: 0.9)),
                   ),
                 if (widget.showAccentBar)
-                  Container(
-                    height: 3,
-                    width: double.infinity,
-                    color: AppTheme.accentGold.withValues(alpha: 0.6),
-                  ),
+                  Container(height: 3, width: double.infinity, color: AppTheme.accentGold.withValues(alpha: 0.6)),
                 Padding(
                   padding: const EdgeInsets.fromLTRB(18, 14, 18, 16),
                   child: Column(
@@ -141,9 +128,7 @@ class _DirectoryCardState extends State<DirectoryCard> {
                         const SizedBox(height: 6),
                         Text(
                           widget.subtitle!,
-                          style: theme.textTheme.bodyMedium?.copyWith(
-                            color: colorScheme.onSurfaceVariant,
-                          ),
+                          style: theme.textTheme.bodyMedium?.copyWith(color: colorScheme.onSurfaceVariant),
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
                         ),
@@ -154,10 +139,7 @@ class _DirectoryCardState extends State<DirectoryCard> {
                           children: [
                             Text(
                               'Discover',
-                              style: theme.textTheme.labelLarge?.copyWith(
-                                color: accent,
-                                fontWeight: FontWeight.w600,
-                              ),
+                              style: theme.textTheme.labelLarge?.copyWith(color: accent, fontWeight: FontWeight.w600),
                             ),
                             const SizedBox(width: 4),
                             Icon(Icons.arrow_forward_rounded, size: 16, color: accent),

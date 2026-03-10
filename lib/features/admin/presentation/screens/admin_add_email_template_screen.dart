@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:my_app/core/data/models/email_template.dart';
-import 'package:my_app/core/data/repositories/email_templates_repository.dart';
-import 'package:my_app/core/theme/app_layout.dart';
-import 'package:my_app/core/theme/theme.dart';
-import 'package:my_app/shared/widgets/app_buttons.dart';
+import 'package:cajun_local/core/data/models/email_template.dart';
+import 'package:cajun_local/core/data/repositories/email_templates_repository.dart';
+import 'package:cajun_local/core/theme/app_layout.dart';
+import 'package:cajun_local/core/theme/theme.dart';
+import 'package:cajun_local/shared/widgets/app_buttons.dart';
 
 /// Admin: create a new email template. Uses homepage-style theme.
 class AdminAddEmailTemplateScreen extends StatefulWidget {
@@ -79,10 +79,7 @@ class _AdminAddEmailTemplateScreenState extends State<AdminAddEmailTemplateScree
         ),
         title: Text(
           'Add email template',
-          style: theme.textTheme.titleLarge?.copyWith(
-            fontWeight: FontWeight.w700,
-            color: AppTheme.specNavy,
-          ),
+          style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700, color: AppTheme.specNavy),
         ),
       ),
       body: SingleChildScrollView(
@@ -131,9 +128,7 @@ class _AdminAddEmailTemplateScreenState extends State<AdminAddEmailTemplateScree
                 const SizedBox(height: 16),
                 Text(
                   _message!,
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: _success ? Colors.green : AppTheme.specRed,
-                  ),
+                  style: theme.textTheme.bodySmall?.copyWith(color: _success ? Colors.green : AppTheme.specRed),
                 ),
               ],
               const SizedBox(height: 24),

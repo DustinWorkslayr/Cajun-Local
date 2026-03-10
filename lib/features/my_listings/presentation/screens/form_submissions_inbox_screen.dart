@@ -1,17 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:my_app/core/auth/providers/auth_provider.dart';
-import 'package:my_app/core/data/contact_form_templates.dart';
-import 'package:my_app/core/data/models/form_submission.dart';
-import 'package:my_app/core/data/models/profile.dart';
-import 'package:my_app/core/data/repositories/business_managers_repository.dart';
-import 'package:my_app/core/data/repositories/business_repository.dart';
-import 'package:my_app/core/data/repositories/conversations_repository.dart';
-import 'package:my_app/core/data/repositories/form_submissions_repository.dart';
-import 'package:my_app/core/data/repositories/profiles_repository.dart';
-import 'package:my_app/core/theme/theme.dart';
-import 'package:my_app/shared/widgets/app_buttons.dart';
-import 'package:my_app/features/messaging/presentation/screens/conversation_thread_screen.dart';
+import 'package:cajun_local/core/auth/providers/auth_provider.dart';
+import 'package:cajun_local/core/data/contact_form_templates.dart';
+import 'package:cajun_local/core/data/models/form_submission.dart';
+import 'package:cajun_local/core/data/models/profile.dart';
+import 'package:cajun_local/core/data/repositories/business_managers_repository.dart';
+import 'package:cajun_local/core/data/repositories/business_repository.dart';
+import 'package:cajun_local/core/data/repositories/conversations_repository.dart';
+import 'package:cajun_local/core/data/repositories/form_submissions_repository.dart';
+import 'package:cajun_local/core/data/repositories/profiles_repository.dart';
+import 'package:cajun_local/core/theme/theme.dart';
+import 'package:cajun_local/shared/widgets/app_buttons.dart';
+import 'package:cajun_local/features/messaging/presentation/screens/conversation_thread_screen.dart';
 
 /// Inbox of contact form submissions for businesses the current user manages.
 /// Shows which listing each submission is for when user has multiple businesses.

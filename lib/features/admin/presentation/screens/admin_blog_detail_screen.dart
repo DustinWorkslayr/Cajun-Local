@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:my_app/core/auth/providers/auth_provider.dart';
-import 'package:my_app/core/data/models/blog_post.dart';
-import 'package:my_app/core/data/models/parish.dart';
-import 'package:my_app/core/data/repositories/audit_log_repository.dart';
-import 'package:my_app/core/data/repositories/blog_posts_repository.dart';
-import 'package:my_app/core/data/repositories/parish_repository.dart';
-import 'package:my_app/features/admin/presentation/screens/admin_add_blog_post_screen.dart';
+import 'package:cajun_local/core/auth/providers/auth_provider.dart';
+import 'package:cajun_local/core/data/models/blog_post.dart';
+import 'package:cajun_local/core/data/models/parish.dart';
+import 'package:cajun_local/core/data/repositories/audit_log_repository.dart';
+import 'package:cajun_local/core/data/repositories/blog_posts_repository.dart';
+import 'package:cajun_local/core/data/repositories/parish_repository.dart';
+import 'package:cajun_local/features/admin/presentation/screens/admin_add_blog_post_screen.dart';
 
 class AdminBlogDetailScreen extends ConsumerStatefulWidget {
   const AdminBlogDetailScreen({super.key, required this.postId});

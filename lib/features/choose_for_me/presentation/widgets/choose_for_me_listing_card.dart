@@ -1,17 +1,12 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
-import 'package:my_app/core/data/mock_data.dart';
-import 'package:my_app/core/theme/theme.dart';
-import 'package:my_app/features/listing/presentation/screens/listing_detail_screen.dart';
+import 'package:cajun_local/core/data/mock_data.dart';
+import 'package:cajun_local/core/theme/theme.dart';
+import 'package:cajun_local/features/listing/presentation/screens/listing_detail_screen.dart';
 
 /// Compact listing card for slot machine (minimal style).
 class ChooseForMeListingCard extends StatelessWidget {
-  const ChooseForMeListingCard({
-    super.key,
-    required this.listing,
-    this.cardHeight = 96,
-    this.onTap,
-  });
+  const ChooseForMeListingCard({super.key, required this.listing, this.cardHeight = 96, this.onTap});
 
   final MockListing listing;
   final double cardHeight;
@@ -27,13 +22,13 @@ class ChooseForMeListingCard extends StatelessWidget {
     return Material(
       color: Colors.transparent,
       child: InkWell(
-        onTap: onTap ?? () {
-          Navigator.of(context).push(
-            MaterialPageRoute<void>(
-              builder: (_) => ListingDetailScreen(listingId: listing.id),
-            ),
-          );
-        },
+        onTap:
+            onTap ??
+            () {
+              Navigator.of(
+                context,
+              ).push(MaterialPageRoute<void>(builder: (_) => ListingDetailScreen(listingId: listing.id)));
+            },
         borderRadius: BorderRadius.circular(16),
         child: Container(
           height: cardHeight,
@@ -42,11 +37,7 @@ class ChooseForMeListingCard extends StatelessWidget {
             color: AppTheme.specWhite,
             borderRadius: BorderRadius.circular(16),
             boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.06),
-                blurRadius: 10,
-                offset: const Offset(0, 2),
-              ),
+              BoxShadow(color: Colors.black.withValues(alpha: 0.06), blurRadius: 10, offset: const Offset(0, 2)),
             ],
           ),
           child: Row(
@@ -73,12 +64,9 @@ class ChooseForMeListingCard extends StatelessWidget {
                         Row(
                           mainAxisSize: MainAxisSize.min,
                           children: List.generate(5, (i) {
-                            final filled = rating != null &&
-                                i < rating.floor().clamp(0, 5);
+                            final filled = rating != null && i < rating.floor().clamp(0, 5);
                             return Icon(
-                              filled
-                                  ? Icons.star_rounded
-                                  : Icons.star_outline_rounded,
+                              filled ? Icons.star_rounded : Icons.star_outline_rounded,
                               size: 14,
                               color: AppTheme.specGold,
                             );
@@ -87,18 +75,14 @@ class ChooseForMeListingCard extends StatelessWidget {
                         const SizedBox(width: 4),
                         Text(
                           ratingStr,
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: theme.colorScheme.onSurfaceVariant,
-                          ),
+                          style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
                         ),
                       ],
                     ),
                     const SizedBox(height: 2),
                     Text(
                       location,
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: theme.colorScheme.onSurfaceVariant,
-                      ),
+                      style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -137,26 +121,20 @@ class ExploreStyleListingCard extends StatelessWidget {
     final rating = listing.rating;
     final ratingStr = rating != null ? '(${rating.toStringAsFixed(1)})' : '—';
     final location = listing.address ?? '—';
-    final distanceStr = listing.distanceMiles != null
-        ? '${listing.distanceMiles!.toStringAsFixed(1)} mi'
-        : null;
-    final subName = listing.subcategoryId != null
-        ? subcategoryNames[listing.subcategoryId!]
-        : null;
-    final categorySubLine = subName != null
-        ? '${listing.categoryName} · $subName'
-        : listing.categoryName;
+    final distanceStr = listing.distanceMiles != null ? '${listing.distanceMiles!.toStringAsFixed(1)} mi' : null;
+    final subName = listing.subcategoryId != null ? subcategoryNames[listing.subcategoryId!] : null;
+    final categorySubLine = subName != null ? '${listing.categoryName} · $subName' : listing.categoryName;
 
     return Material(
       color: Colors.transparent,
       child: InkWell(
-        onTap: onTap ?? () {
-          Navigator.of(context).push(
-            MaterialPageRoute<void>(
-              builder: (_) => ListingDetailScreen(listingId: listing.id),
-            ),
-          );
-        },
+        onTap:
+            onTap ??
+            () {
+              Navigator.of(
+                context,
+              ).push(MaterialPageRoute<void>(builder: (_) => ListingDetailScreen(listingId: listing.id)));
+            },
         borderRadius: BorderRadius.circular(cardRadius),
         child: Container(
           height: cardHeight,
@@ -165,11 +143,7 @@ class ExploreStyleListingCard extends StatelessWidget {
             color: AppTheme.specWhite,
             borderRadius: BorderRadius.circular(cardRadius),
             boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.06),
-                blurRadius: 10,
-                offset: const Offset(0, 2),
-              ),
+              BoxShadow(color: Colors.black.withValues(alpha: 0.06), blurRadius: 10, offset: const Offset(0, 2)),
             ],
           ),
           child: Row(
@@ -196,12 +170,9 @@ class ExploreStyleListingCard extends StatelessWidget {
                         Row(
                           mainAxisSize: MainAxisSize.min,
                           children: List.generate(5, (i) {
-                            final filled = rating != null &&
-                                i < rating.floor().clamp(0, 5);
+                            final filled = rating != null && i < rating.floor().clamp(0, 5);
                             return Icon(
-                              filled
-                                  ? Icons.star_rounded
-                                  : Icons.star_outline_rounded,
+                              filled ? Icons.star_rounded : Icons.star_outline_rounded,
                               size: 16,
                               color: AppTheme.specGold,
                             );
@@ -210,18 +181,14 @@ class ExploreStyleListingCard extends StatelessWidget {
                         const SizedBox(width: 4),
                         Text(
                           ratingStr,
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: theme.colorScheme.onSurfaceVariant,
-                          ),
+                          style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
                         ),
                       ],
                     ),
                     const SizedBox(height: 2),
                     Text(
                       location,
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: theme.colorScheme.onSurfaceVariant,
-                      ),
+                      style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -235,26 +202,18 @@ class ExploreStyleListingCard extends StatelessWidget {
                               Flexible(
                                 child: Text(
                                   categorySubLine,
-                                  style: theme.textTheme.bodySmall?.copyWith(
-                                    color: theme.colorScheme.onSurfaceVariant,
-                                  ),
+                                  style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
                                 ),
                               ),
                               if (distanceStr != null) ...[
                                 const SizedBox(width: 8),
-                                Icon(
-                                  Icons.location_on_outlined,
-                                  size: 14,
-                                  color: theme.colorScheme.onSurfaceVariant,
-                                ),
+                                Icon(Icons.location_on_outlined, size: 14, color: theme.colorScheme.onSurfaceVariant),
                                 const SizedBox(width: 2),
                                 Text(
                                   distanceStr,
-                                  style: theme.textTheme.bodySmall?.copyWith(
-                                    color: theme.colorScheme.onSurfaceVariant,
-                                  ),
+                                  style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
                                 ),
                               ],
                             ],
@@ -274,11 +233,7 @@ class ExploreStyleListingCard extends StatelessWidget {
 }
 
 class _Logo extends StatelessWidget {
-  const _Logo({
-    required this.logoUrl,
-    this.size = 48,
-    this.radius = 12,
-  });
+  const _Logo({required this.logoUrl, this.size = 48, this.radius = 12});
 
   final String? logoUrl;
   final double size;
@@ -303,16 +258,10 @@ class _Logo extends StatelessWidget {
           memCacheWidth: 200,
           memCacheHeight: 200,
           height: size,
-          placeholder: (_, _) => Icon(
-            Icons.store_rounded,
-            size: size * 0.5,
-            color: AppTheme.specNavy.withValues(alpha: 0.7),
-          ),
-          errorWidget: (_, _, _) => Icon(
-            Icons.store_rounded,
-            size: size * 0.5,
-            color: AppTheme.specNavy.withValues(alpha: 0.7),
-          ),
+          placeholder: (_, _) =>
+              Icon(Icons.store_rounded, size: size * 0.5, color: AppTheme.specNavy.withValues(alpha: 0.7)),
+          errorWidget: (_, _, _) =>
+              Icon(Icons.store_rounded, size: size * 0.5, color: AppTheme.specNavy.withValues(alpha: 0.7)),
         ),
       );
     }
@@ -320,11 +269,7 @@ class _Logo extends StatelessWidget {
       width: size,
       height: size,
       decoration: boxDecoration,
-      child: Icon(
-        Icons.store_rounded,
-        size: size * 0.5,
-        color: AppTheme.specNavy.withValues(alpha: 0.7),
-      ),
+      child: Icon(Icons.store_rounded, size: size * 0.5, color: AppTheme.specNavy.withValues(alpha: 0.7)),
     );
   }
 }

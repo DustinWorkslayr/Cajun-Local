@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:my_app/core/theme/theme.dart';
-import 'package:my_app/shared/widgets/app_buttons.dart';
+import 'package:cajun_local/core/theme/theme.dart';
+import 'package:cajun_local/shared/widgets/app_buttons.dart';
 
 /// Dialog shown when a business owner hits a tier limit (deal limit or advanced feature).
 /// Displays [message] and a "View plans" CTA. Reuses spec navy/gold styling.
@@ -57,11 +57,7 @@ class BusinessTierUpgradeDialog extends StatelessWidget {
           color: AppTheme.specOffWhite,
           borderRadius: BorderRadius.circular(_cardRadius),
           boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.15),
-              blurRadius: 24,
-              offset: const Offset(0, 8),
-            ),
+            BoxShadow(color: Colors.black.withValues(alpha: 0.15), blurRadius: 24, offset: const Offset(0, 8)),
           ],
         ),
         child: Stack(
@@ -74,27 +70,17 @@ class BusinessTierUpgradeDialog extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   const SizedBox(height: 8),
-                  Icon(
-                    Icons.lock_outline_rounded,
-                    size: 48,
-                    color: AppTheme.specGold,
-                  ),
+                  Icon(Icons.lock_outline_rounded, size: 48, color: AppTheme.specGold),
                   const SizedBox(height: 16),
                   Text(
                     title,
-                    style: theme.textTheme.titleLarge?.copyWith(
-                      fontWeight: FontWeight.w700,
-                      color: nav,
-                    ),
+                    style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700, color: nav),
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 12),
                   Text(
                     message,
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      color: sub,
-                      height: 1.4,
-                    ),
+                    style: theme.textTheme.bodyMedium?.copyWith(color: sub, height: 1.4),
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 24),
@@ -106,12 +92,7 @@ class BusinessTierUpgradeDialog extends StatelessWidget {
                         onViewPlans?.call();
                       },
                       expanded: false,
-                      child: Text(
-                        viewPlansLabel,
-                        style: const TextStyle(
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
+                      child: Text(viewPlansLabel, style: const TextStyle(fontWeight: FontWeight.w700)),
                     ),
                   ),
                   const SizedBox(height: 12),
@@ -119,10 +100,7 @@ class BusinessTierUpgradeDialog extends StatelessWidget {
                     onPressed: () => Navigator.of(context).pop(),
                     child: Text(
                       'Maybe later',
-                      style: TextStyle(
-                        color: sub,
-                        fontWeight: FontWeight.w500,
-                      ),
+                      style: TextStyle(color: sub, fontWeight: FontWeight.w500),
                     ),
                   ),
                 ],
@@ -133,11 +111,7 @@ class BusinessTierUpgradeDialog extends StatelessWidget {
               right: 12,
               child: IconButton(
                 onPressed: () => Navigator.of(context).pop(),
-                icon: Icon(
-                  Icons.close_rounded,
-                  size: 22,
-                  color: nav.withValues(alpha: 0.6),
-                ),
+                icon: Icon(Icons.close_rounded, size: 22, color: nav.withValues(alpha: 0.6)),
               ),
             ),
           ],

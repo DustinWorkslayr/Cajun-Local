@@ -1,14 +1,14 @@
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
-import 'package:my_app/core/data/models/business_category.dart';
-import 'package:my_app/core/data/models/category_banner.dart';
-import 'package:my_app/core/data/repositories/category_repository.dart';
-import 'package:my_app/core/data/repositories/category_banners_repository.dart';
-import 'package:my_app/core/data/services/app_storage_service.dart';
-import 'package:my_app/core/data/services/storage_upload_constants.dart';
-import 'package:my_app/core/theme/app_layout.dart';
-import 'package:my_app/core/theme/theme.dart';
-import 'package:my_app/shared/widgets/app_buttons.dart';
+import 'package:cajun_local/core/data/models/business_category.dart';
+import 'package:cajun_local/core/data/models/category_banner.dart';
+import 'package:cajun_local/core/data/repositories/category_repository.dart';
+import 'package:cajun_local/core/data/repositories/category_banners_repository.dart';
+import 'package:cajun_local/core/data/services/app_storage_service.dart';
+import 'package:cajun_local/core/data/services/storage_upload_constants.dart';
+import 'package:cajun_local/core/theme/app_layout.dart';
+import 'package:cajun_local/core/theme/theme.dart';
+import 'package:cajun_local/shared/widgets/app_buttons.dart';
 
 /// Admin: create or edit a category banner.
 class AdminAddCategoryBannerScreen extends StatefulWidget {
@@ -57,9 +57,7 @@ class _AdminAddCategoryBannerScreenState extends State<AdminAddCategoryBannerScr
     } catch (e) {
       if (mounted) {
         setState(() => _uploadingImage = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Upload failed: $e')),
-        );
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Upload failed: $e')));
       }
     }
   }
@@ -165,10 +163,7 @@ class _AdminAddCategoryBannerScreenState extends State<AdminAddCategoryBannerScr
         ),
         title: Text(
           _isEdit ? 'Edit category banner' : 'Add category banner',
-          style: theme.textTheme.titleLarge?.copyWith(
-            fontWeight: FontWeight.w700,
-            color: AppTheme.specNavy,
-          ),
+          style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700, color: AppTheme.specNavy),
         ),
       ),
       body: SingleChildScrollView(
@@ -192,9 +187,7 @@ class _AdminAddCategoryBannerScreenState extends State<AdminAddCategoryBannerScr
                     filled: true,
                     fillColor: AppTheme.specWhite,
                   ),
-                  items: _categories
-                      .map((c) => DropdownMenuItem(value: c, child: Text(c.name)))
-                      .toList(),
+                  items: _categories.map((c) => DropdownMenuItem(value: c, child: Text(c.name))).toList(),
                   onChanged: (c) => setState(() => _selectedCategory = c),
                   validator: (v) => v == null ? 'Select a category' : null,
                 ),
@@ -202,11 +195,7 @@ class _AdminAddCategoryBannerScreenState extends State<AdminAddCategoryBannerScr
                 OutlinedButton.icon(
                   onPressed: _uploadingImage ? null : _pickAndUploadImage,
                   icon: _uploadingImage
-                      ? const SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
+                      ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
                       : const Icon(Icons.upload_rounded, size: 20),
                   label: Text(_uploadingImage ? 'Uploading...' : 'Upload image to category-banners bucket'),
                 ),
@@ -227,9 +216,7 @@ class _AdminAddCategoryBannerScreenState extends State<AdminAddCategoryBannerScr
                   const SizedBox(height: 16),
                   Text(
                     _message!,
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: _success ? Colors.green : AppTheme.specRed,
-                    ),
+                    style: theme.textTheme.bodySmall?.copyWith(color: _success ? Colors.green : AppTheme.specRed),
                   ),
                 ],
                 const SizedBox(height: 24),

@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:my_app/core/auth/providers/auth_provider.dart';
-import 'package:my_app/core/data/models/app_notification.dart';
-import 'package:my_app/core/data/repositories/notifications_repository.dart';
-import 'package:my_app/core/theme/app_layout.dart';
-import 'package:my_app/core/theme/theme.dart';
+import 'package:cajun_local/core/auth/providers/auth_provider.dart';
+import 'package:cajun_local/core/data/models/app_notification.dart';
+import 'package:cajun_local/core/data/repositories/notifications_repository.dart';
+import 'package:cajun_local/core/theme/app_layout.dart';
+import 'package:cajun_local/core/theme/theme.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 /// Per-user notifications list: filter by type, mark read, delete, open action links.

@@ -1,6 +1,6 @@
-import 'package:my_app/core/api/api_client.dart';
-import 'package:my_app/core/api/form_submissions_api.dart';
-import 'package:my_app/core/data/models/form_submission.dart';
+import 'package:cajun_local/core/api/api_client.dart';
+import 'package:cajun_local/core/api/form_submissions_api.dart';
+import 'package:cajun_local/core/data/models/form_submission.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 part 'form_submissions_repository.g.dart';

@@ -5,12 +5,12 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:my_app/core/data/providers/app_data_providers.dart';
-import 'package:my_app/core/data/mock_data.dart';
-import 'package:my_app/core/theme/theme.dart';
-import 'package:my_app/shared/widgets/app_buttons.dart';
-import 'package:my_app/features/listing/presentation/screens/listing_detail_screen.dart';
-import 'package:my_app/features/choose_for_me/presentation/widgets/choose_for_me_listing_card.dart';
+import 'package:cajun_local/core/data/providers/app_data_providers.dart';
+import 'package:cajun_local/core/data/mock_data.dart';
+import 'package:cajun_local/core/theme/theme.dart';
+import 'package:cajun_local/shared/widgets/app_buttons.dart';
+import 'package:cajun_local/features/listing/presentation/screens/listing_detail_screen.dart';
+import 'package:cajun_local/features/choose_for_me/presentation/widgets/choose_for_me_listing_card.dart';
 
 /// Shows the "Choose for me" slot as a modal popup: listing cards spin in place and land on a random pick.
 void showChooseForMeSlotDialog({

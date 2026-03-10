@@ -1,6 +1,6 @@
-import 'package:my_app/core/api/api_client.dart';
-import 'package:my_app/core/api/amenities_api.dart';
-import 'package:my_app/core/data/models/amenity.dart';
+import 'package:cajun_local/core/api/api_client.dart';
+import 'package:cajun_local/core/api/amenities_api.dart';
+import 'package:cajun_local/core/data/models/amenity.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 part 'amenities_repository.g.dart';

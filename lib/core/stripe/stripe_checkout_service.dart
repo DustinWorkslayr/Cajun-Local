@@ -1,10 +1,10 @@
 import 'package:dio/dio.dart';
-import 'package:my_app/core/api/api_client.dart';
-import 'package:my_app/core/stripe/stripe_checkout_exception.dart';
-import 'package:my_app/core/stripe/stripe_config.dart';
+import 'package:cajun_local/core/api/api_client.dart';
+import 'package:cajun_local/core/stripe/stripe_checkout_exception.dart';
+import 'package:cajun_local/core/stripe/stripe_config.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
-export 'package:my_app/core/stripe/stripe_checkout_exception.dart';
+export 'package:cajun_local/core/stripe/stripe_checkout_exception.dart';
 
 part 'stripe_checkout_service.g.dart';
 

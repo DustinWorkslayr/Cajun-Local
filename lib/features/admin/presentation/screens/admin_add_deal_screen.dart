@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:my_app/core/data/models/business.dart';
-import 'package:my_app/core/data/repositories/deals_repository.dart';
-import 'package:my_app/core/data/repositories/business_repository.dart';
-import 'package:my_app/core/subscription/business_tier_service.dart';
-import 'package:my_app/core/theme/app_layout.dart';
-import 'package:my_app/core/theme/theme.dart';
-import 'package:my_app/shared/widgets/app_buttons.dart';
+import 'package:cajun_local/core/data/models/business.dart';
+import 'package:cajun_local/core/data/repositories/deals_repository.dart';
+import 'package:cajun_local/core/data/repositories/business_repository.dart';
+import 'package:cajun_local/core/subscription/business_tier_service.dart';
+import 'package:cajun_local/core/theme/app_layout.dart';
+import 'package:cajun_local/core/theme/theme.dart';
+import 'package:cajun_local/shared/widgets/app_buttons.dart';
 
 /// Admin: create a new deal. Uses homepage-style theme (specOffWhite, specNavy, specGold).
 /// [initialBusinessId] pre-selects the business when opening from a business detail screen.
@@ -104,7 +104,8 @@ class _AdminAddDealScreenState extends State<AdminAddDealScreen> {
       final maxAllowed = BusinessTierService.maxActiveDeals(_tier!);
       if (_activeDealCount >= maxAllowed) {
         setState(() {
-          _message = 'This business has reached the active deal limit ($maxAllowed) for their plan. Create as inactive or they can upgrade.';
+          _message =
+              'This business has reached the active deal limit ($maxAllowed) for their plan. Create as inactive or they can upgrade.';
           _success = false;
         });
         return;
@@ -180,10 +181,7 @@ class _AdminAddDealScreenState extends State<AdminAddDealScreen> {
         ),
         title: Text(
           'Add deal',
-          style: theme.textTheme.titleLarge?.copyWith(
-            fontWeight: FontWeight.w700,
-            color: AppTheme.specNavy,
-          ),
+          style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700, color: AppTheme.specNavy),
         ),
       ),
       body: SingleChildScrollView(
@@ -211,9 +209,7 @@ class _AdminAddDealScreenState extends State<AdminAddDealScreen> {
                       fillColor: AppTheme.specWhite,
                     ),
                     hint: const Text('Select business'),
-                    items: _businesses
-                        .map((b) => DropdownMenuItem(value: b, child: Text(b.name)))
-                        .toList(),
+                    items: _businesses.map((b) => DropdownMenuItem(value: b, child: Text(b.name))).toList(),
                     onChanged: (b) {
                       setState(() => _selectedBusiness = b);
                       if (b != null) _loadTierAndCount(b.id);
@@ -255,9 +251,7 @@ class _AdminAddDealScreenState extends State<AdminAddDealScreen> {
                           padding: const EdgeInsets.only(left: 8),
                           child: Text(
                             '$_activeDealCount active deal(s)',
-                            style: theme.textTheme.bodySmall?.copyWith(
-                              color: AppTheme.specNavy.withValues(alpha: 0.8),
-                            ),
+                            style: theme.textTheme.bodySmall?.copyWith(color: AppTheme.specNavy.withValues(alpha: 0.8)),
                           ),
                         ),
                     ],
@@ -335,7 +329,10 @@ class _AdminAddDealScreenState extends State<AdminAddDealScreen> {
                 if (_tier != null && BusinessTierService.canScheduleDealDates(_tier!)) ...[
                   const SizedBox(height: 16),
                   ListTile(
-                    title: Text('Start date (optional)', style: theme.textTheme.bodyMedium?.copyWith(color: AppTheme.specNavy)),
+                    title: Text(
+                      'Start date (optional)',
+                      style: theme.textTheme.bodyMedium?.copyWith(color: AppTheme.specNavy),
+                    ),
                     subtitle: Text(
                       _startDate == null
                           ? 'None'
@@ -349,7 +346,10 @@ class _AdminAddDealScreenState extends State<AdminAddDealScreen> {
                   ),
                   const SizedBox(height: 8),
                   ListTile(
-                    title: Text('End date (optional)', style: theme.textTheme.bodyMedium?.copyWith(color: AppTheme.specNavy)),
+                    title: Text(
+                      'End date (optional)',
+                      style: theme.textTheme.bodyMedium?.copyWith(color: AppTheme.specNavy),
+                    ),
                     subtitle: Text(
                       _endDate == null
                           ? 'None'
@@ -385,9 +385,7 @@ class _AdminAddDealScreenState extends State<AdminAddDealScreen> {
                   const SizedBox(height: 16),
                   Text(
                     _message!,
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: _success ? Colors.green : AppTheme.specRed,
-                    ),
+                    style: theme.textTheme.bodySmall?.copyWith(color: _success ? Colors.green : AppTheme.specRed),
                   ),
                 ],
                 const SizedBox(height: 24),

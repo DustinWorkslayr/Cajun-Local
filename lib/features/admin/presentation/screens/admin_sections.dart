@@ -1,36 +1,31 @@
 import 'package:flutter/material.dart';
-import 'package:my_app/features/admin/presentation/screens/admin_ad_packages_screen.dart';
-import 'package:my_app/features/admin/presentation/screens/admin_amenities_screen.dart';
-import 'package:my_app/features/admin/presentation/screens/admin_audit_log_screen.dart';
-import 'package:my_app/features/admin/presentation/screens/admin_blog_screen.dart';
-import 'package:my_app/features/admin/presentation/screens/admin_business_ads_screen.dart';
-import 'package:my_app/features/admin/presentation/screens/admin_businesses_screen.dart';
-import 'package:my_app/features/admin/presentation/screens/admin_categories_screen.dart';
-import 'package:my_app/features/admin/presentation/screens/admin_parishes_screen.dart';
-import 'package:my_app/features/admin/presentation/screens/admin_claims_screen.dart';
-import 'package:my_app/features/admin/presentation/screens/admin_dashboard_screen.dart';
-import 'package:my_app/features/admin/presentation/screens/admin_email_templates_screen.dart';
-import 'package:my_app/features/admin/presentation/screens/admin_form_submissions_screen.dart';
-import 'package:my_app/features/admin/presentation/screens/admin_images_screen.dart';
-import 'package:my_app/features/admin/presentation/screens/admin_pending_approvals_screen.dart';
-import 'package:my_app/features/admin/presentation/screens/admin_manage_banners_screen.dart';
-import 'package:my_app/features/admin/presentation/screens/admin_payment_history_screen.dart';
-import 'package:my_app/features/admin/presentation/screens/admin_send_notification_screen.dart';
-import 'package:my_app/features/admin/presentation/screens/admin_reviews_screen.dart';
-import 'package:my_app/features/admin/presentation/screens/admin_subscriptions_screen.dart';
-import 'package:my_app/features/admin/presentation/screens/admin_user_roles_screen.dart';
+import 'package:cajun_local/features/admin/presentation/screens/admin_ad_packages_screen.dart';
+import 'package:cajun_local/features/admin/presentation/screens/admin_amenities_screen.dart';
+import 'package:cajun_local/features/admin/presentation/screens/admin_audit_log_screen.dart';
+import 'package:cajun_local/features/admin/presentation/screens/admin_blog_screen.dart';
+import 'package:cajun_local/features/admin/presentation/screens/admin_business_ads_screen.dart';
+import 'package:cajun_local/features/admin/presentation/screens/admin_businesses_screen.dart';
+import 'package:cajun_local/features/admin/presentation/screens/admin_categories_screen.dart';
+import 'package:cajun_local/features/admin/presentation/screens/admin_parishes_screen.dart';
+import 'package:cajun_local/features/admin/presentation/screens/admin_claims_screen.dart';
+import 'package:cajun_local/features/admin/presentation/screens/admin_dashboard_screen.dart';
+import 'package:cajun_local/features/admin/presentation/screens/admin_email_templates_screen.dart';
+import 'package:cajun_local/features/admin/presentation/screens/admin_form_submissions_screen.dart';
+import 'package:cajun_local/features/admin/presentation/screens/admin_images_screen.dart';
+import 'package:cajun_local/features/admin/presentation/screens/admin_pending_approvals_screen.dart';
+import 'package:cajun_local/features/admin/presentation/screens/admin_manage_banners_screen.dart';
+import 'package:cajun_local/features/admin/presentation/screens/admin_payment_history_screen.dart';
+import 'package:cajun_local/features/admin/presentation/screens/admin_send_notification_screen.dart';
+import 'package:cajun_local/features/admin/presentation/screens/admin_reviews_screen.dart';
+import 'package:cajun_local/features/admin/presentation/screens/admin_subscriptions_screen.dart';
+import 'package:cajun_local/features/admin/presentation/screens/admin_user_roles_screen.dart';
 
 /// Callback for in-shell navigation: index and optional status filter (e.g. 'pending').
 typedef OnNavigateToSection = void Function(int index, {String? status});
 
 /// One admin section: label, icon, optional group (for rail), and builder.
 class AdminSectionItem {
-  const AdminSectionItem({
-    required this.label,
-    required this.icon,
-    this.group,
-    required this.builder,
-  });
+  const AdminSectionItem({required this.label, required this.icon, this.group, required this.builder});
 
   final String label;
   final IconData icon;
@@ -40,7 +35,8 @@ class AdminSectionItem {
     required bool embedded,
     String? status,
     OnNavigateToSection? onNavigateToSection,
-  }) builder;
+  })
+  builder;
 }
 
 /// Ordered list of admin sections. Index 0 = Dashboard, 1 = Businesses, etc.
@@ -51,89 +47,63 @@ List<AdminSectionItem> buildAdminSections() {
       icon: Icons.dashboard_rounded,
       group: 'Overview',
       builder: (context, {required embedded, status, onNavigateToSection}) =>
-          AdminDashboardScreen(
-        embeddedInShell: embedded,
-        onNavigateToSection: onNavigateToSection,
-      ),
+          AdminDashboardScreen(embeddedInShell: embedded, onNavigateToSection: onNavigateToSection),
     ),
     AdminSectionItem(
       label: 'Businesses',
       icon: Icons.store_rounded,
       group: 'Listings',
       builder: (context, {required embedded, status, onNavigateToSection}) =>
-          AdminBusinessesScreen(
-        status: status,
-        embeddedInShell: embedded,
-      ),
+          AdminBusinessesScreen(status: status, embeddedInShell: embedded),
     ),
     AdminSectionItem(
       label: 'Reviews',
       icon: Icons.star_rounded,
       group: 'Listings',
       builder: (context, {required embedded, status, onNavigateToSection}) =>
-          AdminReviewsScreen(
-        status: status,
-        embeddedInShell: embedded,
-      ),
+          AdminReviewsScreen(status: status, embeddedInShell: embedded),
     ),
     AdminSectionItem(
       label: 'Claims',
       icon: Icons.handshake_rounded,
       group: 'Listings',
       builder: (context, {required embedded, status, onNavigateToSection}) =>
-          AdminClaimsScreen(
-        status: status,
-        embeddedInShell: embedded,
-      ),
+          AdminClaimsScreen(status: status, embeddedInShell: embedded),
     ),
     AdminSectionItem(
       label: 'Pending approvals',
       icon: Icons.pending_actions_rounded,
       group: 'Listings',
       builder: (context, {required embedded, status, onNavigateToSection}) =>
-          AdminPendingApprovalsScreen(
-        status: status,
-        embeddedInShell: embedded,
-      ),
+          AdminPendingApprovalsScreen(status: status, embeddedInShell: embedded),
     ),
     AdminSectionItem(
       label: 'Images',
       icon: Icons.image_rounded,
       group: 'Listings',
       builder: (context, {required embedded, status, onNavigateToSection}) =>
-          AdminImagesScreen(
-        status: status,
-        embeddedInShell: embedded,
-      ),
+          AdminImagesScreen(status: status, embeddedInShell: embedded),
     ),
     AdminSectionItem(
       label: 'Form submissions',
       icon: Icons.inbox_rounded,
       group: 'Listings',
       builder: (context, {required embedded, status, onNavigateToSection}) =>
-          AdminFormSubmissionsScreen(
-        embeddedInShell: embedded,
-      ),
+          AdminFormSubmissionsScreen(embeddedInShell: embedded),
     ),
     AdminSectionItem(
       label: 'Blog posts',
       icon: Icons.article_rounded,
       group: 'Content',
       builder: (context, {required embedded, status, onNavigateToSection}) =>
-          AdminBlogScreen(
-        status: status,
-        embeddedInShell: embedded,
-      ),
+          AdminBlogScreen(status: status, embeddedInShell: embedded),
     ),
     AdminSectionItem(
       label: 'Manage banners',
       icon: Icons.perm_media_rounded,
       group: 'Content',
       builder: (context, {required embedded, status, onNavigateToSection}) =>
-          AdminManageBannersScreen(
-        status: status,
-        embeddedInShell: embedded,
-      ),
+          AdminManageBannersScreen(status: status, embeddedInShell: embedded),
     ),
     AdminSectionItem(
       label: 'Categories',

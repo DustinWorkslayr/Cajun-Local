@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:my_app/core/auth/providers/auth_provider.dart';
-import 'package:my_app/core/data/models/business_claim.dart';
-import 'package:my_app/core/data/models/profile.dart';
-import 'package:my_app/core/data/repositories/audit_log_repository.dart';
-import 'package:my_app/core/data/repositories/business_claims_repository.dart';
-import 'package:my_app/core/data/repositories/business_managers_repository.dart';
-import 'package:my_app/core/data/repositories/business_repository.dart';
-import 'package:my_app/core/data/repositories/profiles_repository.dart';
+import 'package:cajun_local/core/auth/providers/auth_provider.dart';
+import 'package:cajun_local/core/data/models/business_claim.dart';
+import 'package:cajun_local/core/data/models/profile.dart';
+import 'package:cajun_local/core/data/repositories/audit_log_repository.dart';
+import 'package:cajun_local/core/data/repositories/business_claims_repository.dart';
+import 'package:cajun_local/core/data/repositories/business_managers_repository.dart';
+import 'package:cajun_local/core/data/repositories/business_repository.dart';
+import 'package:cajun_local/core/data/repositories/profiles_repository.dart';
 
 class AdminClaimDetailScreen extends ConsumerStatefulWidget {
   const AdminClaimDetailScreen({super.key, required this.claimId});

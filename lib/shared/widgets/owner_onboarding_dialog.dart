@@ -1,16 +1,12 @@
 import 'package:flutter/material.dart';
-import 'package:my_app/core/theme/theme.dart';
-import 'package:my_app/shared/widgets/app_buttons.dart';
-import 'package:my_app/shared/widgets/app_logo.dart';
+import 'package:cajun_local/core/theme/theme.dart';
+import 'package:cajun_local/shared/widgets/app_buttons.dart';
+import 'package:cajun_local/shared/widgets/app_logo.dart';
 
 /// First-time business owner onboarding: welcome + plan upsell (Free, \$9.99, \$29.99).
 /// Caller marks completed via onComplete and can start checkout via onSelectPlan.
 class OwnerOnboardingDialog extends StatefulWidget {
-  const OwnerOnboardingDialog({
-    super.key,
-    required this.onComplete,
-    this.onSelectPlan,
-  });
+  const OwnerOnboardingDialog({super.key, required this.onComplete, this.onSelectPlan});
 
   /// Called when user finishes (with or without selecting a paid plan). Caller should mark onboarding done and pop.
   final void Function() onComplete;
@@ -42,8 +38,7 @@ class OwnerOnboardingDialog extends StatefulWidget {
   State<OwnerOnboardingDialog> createState() => _OwnerOnboardingDialogState();
 }
 
-class _OwnerOnboardingDialogState extends State<OwnerOnboardingDialog>
-    with SingleTickerProviderStateMixin {
+class _OwnerOnboardingDialogState extends State<OwnerOnboardingDialog> with SingleTickerProviderStateMixin {
   static const int _totalSteps = 2;
   int _step = 0;
 
@@ -57,16 +52,15 @@ class _OwnerOnboardingDialogState extends State<OwnerOnboardingDialog>
   @override
   void initState() {
     super.initState();
-    _entranceController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 350),
-    );
-    _entranceScale = Tween<double>(begin: 0.92, end: 1).animate(
-      CurvedAnimation(parent: _entranceController, curve: Curves.easeOutCubic),
-    );
-    _entranceOpacity = Tween<double>(begin: 0, end: 1).animate(
-      CurvedAnimation(parent: _entranceController, curve: Curves.easeOut),
-    );
+    _entranceController = AnimationController(vsync: this, duration: const Duration(milliseconds: 350));
+    _entranceScale = Tween<double>(
+      begin: 0.92,
+      end: 1,
+    ).animate(CurvedAnimation(parent: _entranceController, curve: Curves.easeOutCubic));
+    _entranceOpacity = Tween<double>(
+      begin: 0,
+      end: 1,
+    ).animate(CurvedAnimation(parent: _entranceController, curve: Curves.easeOut));
     _entranceController.forward();
   }
 
@@ -112,11 +106,7 @@ class _OwnerOnboardingDialogState extends State<OwnerOnboardingDialog>
         builder: (context, child) {
           return Opacity(
             opacity: _entranceOpacity.value,
-            child: Transform.scale(
-              scale: _entranceScale.value,
-              alignment: Alignment.center,
-              child: child,
-            ),
+            child: Transform.scale(scale: _entranceScale.value, alignment: Alignment.center, child: child),
           );
         },
         child: Material(
@@ -142,21 +132,13 @@ class _OwnerOnboardingDialogState extends State<OwnerOnboardingDialog>
                           position: Tween<Offset>(
                             begin: const Offset(0.15, 0),
                             end: Offset.zero,
-                          ).animate(CurvedAnimation(
-                            parent: animation,
-                            curve: Curves.easeOutCubic,
-                          )),
-                          child: FadeTransition(
-                            opacity: animation,
-                            child: child,
-                          ),
+                          ).animate(CurvedAnimation(parent: animation, curve: Curves.easeOutCubic)),
+                          child: FadeTransition(opacity: animation, child: child),
                         );
                       },
                       child: KeyedSubtree(
                         key: ValueKey<int>(_step),
-                        child: _step == 0
-                            ? _buildWelcomeStep(theme)
-                            : _buildPlanStep(theme),
+                        child: _step == 0 ? _buildWelcomeStep(theme) : _buildPlanStep(theme),
                       ),
                     ),
                   ),
@@ -177,19 +159,14 @@ class _OwnerOnboardingDialogState extends State<OwnerOnboardingDialog>
       decoration: BoxDecoration(
         color: AppTheme.specOffWhite,
         borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-        border: Border(
-          bottom: BorderSide(color: AppTheme.specNavy.withValues(alpha: 0.08)),
-        ),
+        border: Border(bottom: BorderSide(color: AppTheme.specNavy.withValues(alpha: 0.08))),
       ),
       child: Column(
         children: [
           if (_step == 0)
             Text(
               "You're a business owner!",
-              style: theme.textTheme.titleMedium?.copyWith(
-                color: AppTheme.specGold,
-                fontWeight: FontWeight.w600,
-              ),
+              style: theme.textTheme.titleMedium?.copyWith(color: AppTheme.specGold, fontWeight: FontWeight.w600),
             ),
           if (_step == 0) const SizedBox(height: 8),
           if (_step == 0)
@@ -211,13 +188,8 @@ class _OwnerOnboardingDialogState extends State<OwnerOnboardingDialog>
           ),
           const SizedBox(height: 10),
           Text(
-            _step == 0
-                ? 'Welcome to your listing dashboard'
-                : 'Choose your plan',
-            style: theme.textTheme.titleLarge?.copyWith(
-              color: AppTheme.specNavy,
-              fontWeight: FontWeight.w700,
-            ),
+            _step == 0 ? 'Welcome to your listing dashboard' : 'Choose your plan',
+            style: theme.textTheme.titleLarge?.copyWith(color: AppTheme.specNavy, fontWeight: FontWeight.w700),
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 6),
@@ -225,9 +197,7 @@ class _OwnerOnboardingDialogState extends State<OwnerOnboardingDialog>
             _step == 0
                 ? 'Update your details, add photos, manage deals and events — all in one place.'
                 : 'Start free or unlock more visibility and features for your business.',
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: AppTheme.specNavy.withValues(alpha: 0.8),
-            ),
+            style: theme.textTheme.bodySmall?.copyWith(color: AppTheme.specNavy.withValues(alpha: 0.8)),
             textAlign: TextAlign.center,
           ),
         ],
@@ -285,9 +255,7 @@ class _OwnerOnboardingDialogState extends State<OwnerOnboardingDialog>
                         : AppTheme.specNavy.withValues(alpha: 0.06),
                     borderRadius: BorderRadius.circular(14),
                     border: Border.all(
-                      color: selected
-                          ? AppTheme.specGold
-                          : AppTheme.specNavy.withValues(alpha: 0.2),
+                      color: selected ? AppTheme.specGold : AppTheme.specNavy.withValues(alpha: 0.2),
                       width: selected ? 2 : 1,
                     ),
                   ),
@@ -305,17 +273,11 @@ class _OwnerOnboardingDialogState extends State<OwnerOnboardingDialog>
                           children: [
                             Text(
                               plan.name,
-                              style: theme.textTheme.titleMedium?.copyWith(
-                                fontWeight: FontWeight.w700,
-                                color: nav,
-                              ),
+                              style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700, color: nav),
                             ),
                             if (plan.sub != null) ...[
                               const SizedBox(height: 2),
-                              Text(
-                                plan.sub!,
-                                style: theme.textTheme.bodySmall?.copyWith(color: sub),
-                              ),
+                              Text(plan.sub!, style: theme.textTheme.bodySmall?.copyWith(color: sub)),
                             ],
                           ],
                         ),
@@ -348,11 +310,7 @@ class _OwnerOnboardingDialogState extends State<OwnerOnboardingDialog>
           const Divider(height: 1),
           Padding(
             padding: padding,
-            child: AppSecondaryButton(
-              onPressed: _next,
-              expanded: true,
-              child: const Text('Continue'),
-            ),
+            child: AppSecondaryButton(onPressed: _next, expanded: true, child: const Text('Continue')),
           ),
         ],
       );
@@ -379,10 +337,7 @@ class _OwnerOnboardingDialogState extends State<OwnerOnboardingDialog>
               SizedBox(height: 10),
               TextButton(
                 onPressed: _finish,
-                child: Text(
-                  'Maybe later',
-                  style: TextStyle(color: AppTheme.specNavy.withValues(alpha: 0.8)),
-                ),
+                child: Text('Maybe later', style: TextStyle(color: AppTheme.specNavy.withValues(alpha: 0.8))),
               ),
             ],
           ),
@@ -408,20 +363,14 @@ class _OwnerFeatureRow extends StatelessWidget {
         Container(
           width: 22,
           height: 22,
-          decoration: const BoxDecoration(
-            color: AppTheme.specGold,
-            shape: BoxShape.circle,
-          ),
+          decoration: const BoxDecoration(color: AppTheme.specGold, shape: BoxShape.circle),
           child: Icon(Icons.check_rounded, size: 14, color: nav),
         ),
         const SizedBox(width: 12),
         Expanded(
           child: Text(
             label,
-            style: theme.textTheme.bodyMedium?.copyWith(
-              color: nav.withValues(alpha: 0.9),
-              height: 1.35,
-            ),
+            style: theme.textTheme.bodyMedium?.copyWith(color: nav.withValues(alpha: 0.9), height: 1.35),
           ),
         ),
       ],

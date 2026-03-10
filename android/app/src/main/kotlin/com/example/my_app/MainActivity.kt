@@ -1,4 +1,4 @@
-package com.example.my_app
+package com.sitesnapps.cajun_local
 
 import io.flutter.embedding.android.FlutterFragmentActivity
 

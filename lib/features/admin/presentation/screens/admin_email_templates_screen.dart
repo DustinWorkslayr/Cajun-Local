@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:my_app/core/data/models/email_template.dart';
-import 'package:my_app/core/data/repositories/email_templates_repository.dart';
-import 'package:my_app/core/theme/theme.dart';
-import 'package:my_app/features/admin/presentation/widgets/admin_shared.dart';
-import 'package:my_app/shared/widgets/app_buttons.dart';
+import 'package:cajun_local/core/data/models/email_template.dart';
+import 'package:cajun_local/core/data/repositories/email_templates_repository.dart';
+import 'package:cajun_local/core/theme/theme.dart';
+import 'package:cajun_local/features/admin/presentation/widgets/admin_shared.dart';
+import 'package:cajun_local/shared/widgets/app_buttons.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:my_app/core/auth/providers/auth_provider.dart';
+import 'package:cajun_local/core/auth/providers/auth_provider.dart';
 
 class AdminEmailTemplatesScreen extends StatefulWidget {
   const AdminEmailTemplatesScreen({super.key, this.embeddedInShell = false});

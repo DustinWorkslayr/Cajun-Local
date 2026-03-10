@@ -1,6 +1,6 @@
-import 'package:my_app/core/api/api_client.dart';
-import 'package:my_app/core/api/notifications_api.dart';
-import 'package:my_app/core/data/models/app_notification.dart';
+import 'package:cajun_local/core/api/api_client.dart';
+import 'package:cajun_local/core/api/notifications_api.dart';
+import 'package:cajun_local/core/data/models/app_notification.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 part 'notifications_repository.g.dart';

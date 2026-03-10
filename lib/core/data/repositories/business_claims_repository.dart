@@ -1,6 +1,6 @@
-import 'package:my_app/core/api/api_client.dart';
-import 'package:my_app/core/api/business_claims_api.dart';
-import 'package:my_app/core/data/models/business_claim.dart';
+import 'package:cajun_local/core/api/api_client.dart';
+import 'package:cajun_local/core/api/business_claims_api.dart';
+import 'package:cajun_local/core/data/models/business_claim.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 part 'business_claims_repository.g.dart';

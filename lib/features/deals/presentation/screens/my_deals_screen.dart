@@ -1,14 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:my_app/core/auth/providers/auth_provider.dart';
-import 'package:my_app/core/data/providers/app_data_providers.dart';
-import 'package:my_app/core/data/mock_data.dart';
-import 'package:my_app/core/data/models/user_deal.dart';
-import 'package:my_app/core/theme/app_layout.dart';
-import 'package:my_app/core/theme/theme.dart';
-import 'package:my_app/features/listing/presentation/screens/listing_detail_screen.dart';
-import 'package:my_app/shared/widgets/app_buttons.dart';
-import 'package:my_app/shared/widgets/deal_detail_popup.dart';
+import 'package:cajun_local/core/auth/providers/auth_provider.dart';
+import 'package:cajun_local/core/data/providers/app_data_providers.dart';
+import 'package:cajun_local/core/data/mock_data.dart';
+import 'package:cajun_local/core/data/models/user_deal.dart';
+import 'package:cajun_local/core/theme/app_layout.dart';
+import 'package:cajun_local/core/theme/theme.dart';
+import 'package:cajun_local/features/listing/presentation/screens/listing_detail_screen.dart';
+import 'package:cajun_local/shared/widgets/app_buttons.dart';
+import 'package:cajun_local/shared/widgets/deal_detail_popup.dart';
 
 /// Badge shown when a deal has been redeemed/used. Checkmark + "Redeemed" for clarity.
 Widget _redeemedBadge(BuildContext context) {

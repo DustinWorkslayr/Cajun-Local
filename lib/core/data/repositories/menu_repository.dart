@@ -1,7 +1,7 @@
-import 'package:my_app/core/api/api_client.dart';
-import 'package:my_app/core/api/menu_api.dart';
-import 'package:my_app/core/data/models/menu_item.dart';
-import 'package:my_app/core/data/models/menu_section.dart';
+import 'package:cajun_local/core/api/api_client.dart';
+import 'package:cajun_local/core/api/menu_api.dart';
+import 'package:cajun_local/core/data/models/menu_item.dart';
+import 'package:cajun_local/core/data/models/menu_section.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 part 'menu_repository.g.dart';

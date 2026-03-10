@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:my_app/core/theme/theme.dart';
+import 'package:cajun_local/core/theme/theme.dart';
 
 /// Responsive layout helpers: padding, max width, tablet breakpoint.
 class AppLayout {

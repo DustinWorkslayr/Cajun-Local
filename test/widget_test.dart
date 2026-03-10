@@ -7,7 +7,7 @@
 
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:my_app/app/app.dart';
+import 'package:cajun_local/app/app.dart';
 
 void main() {
   testWidgets('Cajun Local app loads and shows main navigation', (WidgetTester tester) async {

@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:my_app/core/auth/providers/auth_provider.dart';
-import 'package:my_app/core/preferences/sign_in_preferences.dart';
-import 'package:my_app/core/theme/theme.dart';
-import 'package:my_app/features/auth/presentation/screens/forgot_password_request_screen.dart';
-import 'package:my_app/features/auth/presentation/screens/privacy_policy_agreement_screen.dart';
-import 'package:my_app/shared/widgets/app_buttons.dart';
-import 'package:my_app/shared/widgets/app_logo.dart';
+import 'package:cajun_local/core/auth/providers/auth_provider.dart';
+import 'package:cajun_local/core/preferences/sign_in_preferences.dart';
+import 'package:cajun_local/core/theme/theme.dart';
+import 'package:cajun_local/features/auth/presentation/screens/forgot_password_request_screen.dart';
+import 'package:cajun_local/features/auth/presentation/screens/privacy_policy_agreement_screen.dart';
+import 'package:cajun_local/shared/widgets/app_buttons.dart';
+import 'package:cajun_local/shared/widgets/app_logo.dart';
 
 /// Branded sign-in/sign-up screen. Uses Supabase Auth when configured
 /// (backend-cheatsheet §9: handle_new_user creates profile + user role on signup).

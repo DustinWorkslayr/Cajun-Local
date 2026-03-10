@@ -1,15 +1,15 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:my_app/core/auth/providers/auth_provider.dart';
-import 'package:my_app/core/data/providers/app_data_providers.dart';
-import 'package:my_app/core/data/models/business_event.dart';
-import 'package:my_app/core/data/models/event_rsvp.dart';
-import 'package:my_app/core/data/repositories/business_events_repository.dart';
-import 'package:my_app/core/data/repositories/business_repository.dart';
-import 'package:my_app/core/theme/app_layout.dart';
-import 'package:my_app/core/theme/theme.dart';
-import 'package:my_app/features/listing/presentation/screens/listing_detail_screen.dart';
+import 'package:cajun_local/core/auth/providers/auth_provider.dart';
+import 'package:cajun_local/core/data/providers/app_data_providers.dart';
+import 'package:cajun_local/core/data/models/business_event.dart';
+import 'package:cajun_local/core/data/models/event_rsvp.dart';
+import 'package:cajun_local/core/data/repositories/business_events_repository.dart';
+import 'package:cajun_local/core/data/repositories/business_repository.dart';
+import 'package:cajun_local/core/theme/app_layout.dart';
+import 'package:cajun_local/core/theme/theme.dart';
+import 'package:cajun_local/features/listing/presentation/screens/listing_detail_screen.dart';
 
 /// Local Events — approved events from all businesses. Theme aligned with home/news.
 /// Shows "My RSVPs" when signed in and RSVP chips on each event card.

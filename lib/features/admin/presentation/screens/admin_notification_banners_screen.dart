@@ -1,38 +1,30 @@
 import 'package:flutter/material.dart';
-import 'package:my_app/core/data/models/notification_banner.dart';
-import 'package:my_app/core/data/repositories/notification_banners_repository.dart';
-import 'package:my_app/core/theme/app_layout.dart';
-import 'package:my_app/core/theme/theme.dart';
-import 'package:my_app/features/admin/presentation/screens/admin_add_notification_banner_screen.dart';
-import 'package:my_app/features/admin/presentation/widgets/admin_shared.dart';
-import 'package:my_app/shared/widgets/app_buttons.dart';
+import 'package:cajun_local/core/data/models/notification_banner.dart';
+import 'package:cajun_local/core/data/repositories/notification_banners_repository.dart';
+import 'package:cajun_local/core/theme/app_layout.dart';
+import 'package:cajun_local/core/theme/theme.dart';
+import 'package:cajun_local/features/admin/presentation/screens/admin_add_notification_banner_screen.dart';
+import 'package:cajun_local/features/admin/presentation/widgets/admin_shared.dart';
+import 'package:cajun_local/shared/widgets/app_buttons.dart';
 
 class AdminNotificationBannersScreen extends StatefulWidget {
-  const AdminNotificationBannersScreen({
-    super.key,
-    this.embeddedInShell = false,
-    this.hideFab = false,
-  });
+  const AdminNotificationBannersScreen({super.key, this.embeddedInShell = false, this.hideFab = false});
 
   final bool embeddedInShell;
+
   /// When true and [embeddedInShell] is true, the FAB is not shown (e.g. when used inside Manage banners tabs).
   final bool hideFab;
 
   @override
-  State<AdminNotificationBannersScreen> createState() =>
-      _AdminNotificationBannersScreenState();
+  State<AdminNotificationBannersScreen> createState() => _AdminNotificationBannersScreenState();
 }
 
-class _AdminNotificationBannersScreenState
-    extends State<AdminNotificationBannersScreen> {
+class _AdminNotificationBannersScreenState extends State<AdminNotificationBannersScreen> {
   int _refreshKey = 0;
 
   void _openAddBanner(BuildContext context) {
     Navigator.of(context)
-        .push<void>(
-          MaterialPageRoute<void>(
-              builder: (_) => const AdminAddNotificationBannerScreen()),
-        )
+        .push<void>(MaterialPageRoute<void>(builder: (_) => const AdminAddNotificationBannerScreen()))
         .then((_) => setState(() => _refreshKey++));
   }
 
@@ -40,10 +32,7 @@ class _AdminNotificationBannersScreenState
     AdminDetailPanel.show(
       context: context,
       title: 'Notification banner',
-      child: _NotificationBannerPanelContent(
-        banner: b,
-        onUpdated: () => setState(() => _refreshKey++),
-      ),
+      child: _NotificationBannerPanelContent(banner: b, onUpdated: () => setState(() => _refreshKey++)),
     ).then((_) => setState(() => _refreshKey++));
   }
 
@@ -54,18 +43,15 @@ class _AdminNotificationBannersScreenState
       key: ValueKey(_refreshKey),
       future: repo.list(),
       builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting &&
-            !snapshot.hasData) {
-          return const Center(
-              child: CircularProgressIndicator(color: AppTheme.specNavy));
+        if (snapshot.connectionState == ConnectionState.waiting && !snapshot.hasData) {
+          return const Center(child: CircularProgressIndicator(color: AppTheme.specNavy));
         }
         final list = snapshot.data ?? [];
         if (list.isEmpty) {
           return Center(
             child: Text(
               'No notification banners.',
-              style: theme.textTheme.bodyLarge
-                  ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+              style: theme.textTheme.bodyLarge?.copyWith(color: theme.colorScheme.onSurfaceVariant),
             ),
           );
         }
@@ -74,19 +60,14 @@ class _AdminNotificationBannersScreenState
           itemCount: list.length,
           itemBuilder: (context, index) {
             final b = list[index];
-            final messagePreview = b.message.length > 90
-                ? '${b.message.substring(0, 90)}…'
-                : b.message;
+            final messagePreview = b.message.length > 90 ? '${b.message.substring(0, 90)}…' : b.message;
             return Padding(
               padding: const EdgeInsets.only(bottom: 10),
               child: AdminListCard(
                 title: b.title,
                 subtitle: messagePreview,
                 badges: [
-                  AdminBadgeData(
-                    b.isActive ? 'Active' : 'Inactive',
-                    color: b.isActive ? null : AppTheme.specRed,
-                  ),
+                  AdminBadgeData(b.isActive ? 'Active' : 'Inactive', color: b.isActive ? null : AppTheme.specRed),
                 ],
                 leading: Container(
                   width: 48,
@@ -95,11 +76,7 @@ class _AdminNotificationBannersScreenState
                     color: AppTheme.specGold.withValues(alpha: 0.2),
                     borderRadius: BorderRadius.circular(10),
                   ),
-                  child: const Icon(
-                    Icons.campaign_rounded,
-                    color: AppTheme.specNavy,
-                    size: 26,
-                  ),
+                  child: const Icon(Icons.campaign_rounded, color: AppTheme.specNavy, size: 26),
                 ),
                 trailing: const Icon(Icons.chevron_right_rounded),
                 onTap: () => _openDetail(context, b),
@@ -148,21 +125,16 @@ class _AdminNotificationBannersScreenState
 
 /// Detail/edit panel for a single notification banner (Save + Delete).
 class _NotificationBannerPanelContent extends StatefulWidget {
-  const _NotificationBannerPanelContent({
-    required this.banner,
-    required this.onUpdated,
-  });
+  const _NotificationBannerPanelContent({required this.banner, required this.onUpdated});
 
   final NotificationBanner banner;
   final VoidCallback onUpdated;
 
   @override
-  State<_NotificationBannerPanelContent> createState() =>
-      _NotificationBannerPanelContentState();
+  State<_NotificationBannerPanelContent> createState() => _NotificationBannerPanelContentState();
 }
 
-class _NotificationBannerPanelContentState
-    extends State<_NotificationBannerPanelContent> {
+class _NotificationBannerPanelContentState extends State<_NotificationBannerPanelContent> {
   late final TextEditingController _titleController;
   late final TextEditingController _messageController;
   late bool _isActive;
@@ -171,10 +143,8 @@ class _NotificationBannerPanelContentState
   @override
   void initState() {
     super.initState();
-    _titleController =
-        TextEditingController(text: widget.banner.title);
-    _messageController =
-        TextEditingController(text: widget.banner.message);
+    _titleController = TextEditingController(text: widget.banner.title);
+    _messageController = TextEditingController(text: widget.banner.message);
     _isActive = widget.banner.isActive;
   }
 
@@ -189,9 +159,7 @@ class _NotificationBannerPanelContentState
     final title = _titleController.text.trim();
     final message = _messageController.text.trim();
     if (title.isEmpty || message.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Title and message are required')),
-      );
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Title and message are required')));
       return;
     }
     setState(() => _saving = true);
@@ -203,9 +171,7 @@ class _NotificationBannerPanelContentState
       });
       if (mounted) {
         widget.onUpdated();
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Banner updated')),
-        );
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Banner updated')));
         Navigator.of(context).pop();
       }
     } finally {
@@ -218,18 +184,10 @@ class _NotificationBannerPanelContentState
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Delete banner?'),
-        content: const Text(
-          'This notification banner will be removed. This cannot be undone.',
-        ),
+        content: const Text('This notification banner will be removed. This cannot be undone.'),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('Cancel'),
-          ),
-          AppDangerButton(
-            onPressed: () => Navigator.of(ctx).pop(true),
-            child: const Text('Delete'),
-          ),
+          TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Cancel')),
+          AppDangerButton(onPressed: () => Navigator.of(ctx).pop(true), child: const Text('Delete')),
         ],
       ),
     );
@@ -239,9 +197,7 @@ class _NotificationBannerPanelContentState
       await NotificationBannersRepository().delete(widget.banner.id);
       if (mounted) {
         widget.onUpdated();
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Banner deleted')),
-        );
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Banner deleted')));
         Navigator.of(context).pop();
       }
     } finally {
@@ -264,15 +220,9 @@ class _NotificationBannerPanelContentState
             spacing: 8,
             runSpacing: 8,
             children: [
-              AdminBadge(
-                label: b.isActive ? 'Active' : 'Inactive',
-                color: b.isActive ? null : AppTheme.specRed,
-              ),
+              AdminBadge(label: b.isActive ? 'Active' : 'Inactive', color: b.isActive ? null : AppTheme.specRed),
               if (b.createdAt != null)
-                AdminBadge(
-                  label:
-                      'Created ${b.createdAt!.month}/${b.createdAt!.day}/${b.createdAt!.year}',
-                ),
+                AdminBadge(label: 'Created ${b.createdAt!.month}/${b.createdAt!.day}/${b.createdAt!.year}'),
             ],
           ),
           const SizedBox(height: 24),
@@ -301,12 +251,7 @@ class _NotificationBannerPanelContentState
           ),
           const SizedBox(height: 16),
           SwitchListTile(
-            title: Text(
-              'Active',
-              style: theme.textTheme.titleSmall?.copyWith(
-                color: AppTheme.specNavy,
-              ),
-            ),
+            title: Text('Active', style: theme.textTheme.titleSmall?.copyWith(color: AppTheme.specNavy)),
             value: _isActive,
             onChanged: (v) => setState(() => _isActive = v),
             activeThumbColor: AppTheme.specGold,
@@ -315,11 +260,7 @@ class _NotificationBannerPanelContentState
           AppSecondaryButton(
             onPressed: _saving ? null : _save,
             icon: _saving
-                ? const SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
+                ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
                 : const Icon(Icons.save_rounded, size: 20),
             label: Text(_saving ? 'Saving…' : 'Save changes'),
           ),

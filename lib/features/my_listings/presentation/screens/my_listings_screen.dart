@@ -1,18 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:my_app/core/auth/providers/auth_provider.dart';
-import 'package:my_app/core/data/providers/app_data_providers.dart';
-import 'package:my_app/core/data/mock_data.dart';
-import 'package:my_app/core/stripe/stripe_checkout_service.dart';
-import 'package:my_app/core/stripe/stripe_config.dart';
-import 'package:my_app/core/theme/app_layout.dart';
-import 'package:my_app/core/theme/theme.dart';
-import 'package:my_app/features/my_listings/presentation/screens/create_listing_screen.dart';
-import 'package:my_app/features/my_listings/presentation/screens/listing_edit_screen.dart';
-import 'package:my_app/shared/widgets/app_buttons.dart';
-import 'package:my_app/shared/widgets/animated_entrance.dart';
-import 'package:my_app/core/revenuecat/present_subscription_paywall.dart';
-import 'package:my_app/core/subscription/resolved_permissions.dart';
+import 'package:cajun_local/core/auth/providers/auth_provider.dart';
+import 'package:cajun_local/core/data/providers/app_data_providers.dart';
+import 'package:cajun_local/core/data/mock_data.dart';
+import 'package:cajun_local/core/stripe/stripe_checkout_service.dart';
+import 'package:cajun_local/core/stripe/stripe_config.dart';
+import 'package:cajun_local/core/theme/app_layout.dart';
+import 'package:cajun_local/core/theme/theme.dart';
+import 'package:cajun_local/features/my_listings/presentation/screens/create_listing_screen.dart';
+import 'package:cajun_local/features/my_listings/presentation/screens/listing_edit_screen.dart';
+import 'package:cajun_local/shared/widgets/app_buttons.dart';
+import 'package:cajun_local/shared/widgets/animated_entrance.dart';
+import 'package:cajun_local/core/revenuecat/present_subscription_paywall.dart';
+import 'package:cajun_local/core/subscription/resolved_permissions.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 /// List of businesses owned by the current user. Brand theme (specOffWhite, specNavy, specGold).

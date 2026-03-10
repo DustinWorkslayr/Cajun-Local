@@ -1,6 +1,6 @@
 import 'package:dio/dio.dart';
-import 'package:my_app/core/api/api_client.dart';
-import 'package:my_app/core/data/models/audit_log_entry.dart';
+import 'package:cajun_local/core/api/api_client.dart';
+import 'package:cajun_local/core/data/models/audit_log_entry.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 part 'audit_log_api.g.dart';

@@ -1,20 +1,16 @@
 import 'package:flutter/material.dart';
-import 'package:my_app/core/data/models/amenity.dart';
-import 'package:my_app/core/data/repositories/amenities_repository.dart';
-import 'package:my_app/core/subscription/business_tier_service.dart';
-import 'package:my_app/core/theme/theme.dart';
+import 'package:cajun_local/core/data/models/amenity.dart';
+import 'package:cajun_local/core/data/repositories/amenities_repository.dart';
+import 'package:cajun_local/core/subscription/business_tier_service.dart';
+import 'package:cajun_local/core/theme/theme.dart';
 
 /// Amenity picker for listing edit: shows Global + category bucket amenities.
 /// Free: up to 4; Local+ or Local Partner: up to 8. Enforced by DB; UI shows limit and upgrade hint.
 class BusinessAmenitiesEditor extends StatefulWidget {
-  const BusinessAmenitiesEditor({
-    super.key,
-    required this.businessId,
-    required this.categoryBucket,
-    this.onSaved,
-  });
+  const BusinessAmenitiesEditor({super.key, required this.businessId, required this.categoryBucket, this.onSaved});
 
   final String businessId;
+
   /// hire | eat | shop | explore. When null, only global amenities are shown.
   final String? categoryBucket;
   final VoidCallback? onSaved;
@@ -89,9 +85,9 @@ class _BusinessAmenitiesEditorState extends State<BusinessAmenitiesEditor> {
     } catch (e) {
       if (mounted) {
         setState(() => _saving = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(e.toString().replaceFirst(RegExp(r'^Exception:?\s*'), ''))),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(e.toString().replaceFirst(RegExp(r'^Exception:?\s*'), ''))));
       }
     }
   }

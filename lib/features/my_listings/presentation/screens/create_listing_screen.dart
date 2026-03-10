@@ -1,17 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:my_app/core/auth/providers/auth_provider.dart';
-import 'package:my_app/core/data/providers/app_data_providers.dart';
-import 'package:my_app/core/data/mock_data.dart';
-import 'package:my_app/core/data/models/business_category.dart';
-import 'package:my_app/core/data/models/subcategory.dart';
-import 'package:my_app/core/data/repositories/business_repository.dart';
-import 'package:my_app/core/data/repositories/category_repository.dart';
-import 'package:my_app/core/theme/app_layout.dart';
-import 'package:my_app/core/theme/theme.dart';
-import 'package:my_app/shared/widgets/app_buttons.dart';
-import 'package:my_app/features/my_listings/presentation/screens/pending_approval_screen.dart';
-import 'package:my_app/features/profile/presentation/screens/privacy_policy_screen.dart';
+import 'package:cajun_local/core/auth/providers/auth_provider.dart';
+import 'package:cajun_local/core/data/providers/app_data_providers.dart';
+import 'package:cajun_local/core/data/mock_data.dart';
+import 'package:cajun_local/core/data/models/business_category.dart';
+import 'package:cajun_local/core/data/models/subcategory.dart';
+import 'package:cajun_local/core/data/repositories/business_repository.dart';
+import 'package:cajun_local/core/data/repositories/category_repository.dart';
+import 'package:cajun_local/core/theme/app_layout.dart';
+import 'package:cajun_local/core/theme/theme.dart';
+import 'package:cajun_local/shared/widgets/app_buttons.dart';
+import 'package:cajun_local/features/my_listings/presentation/screens/pending_approval_screen.dart';
+import 'package:cajun_local/features/profile/presentation/screens/privacy_policy_screen.dart';
 
 const String _kStateLouisiana = 'LA';
 

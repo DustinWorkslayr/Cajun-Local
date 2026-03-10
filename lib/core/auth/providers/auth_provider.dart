@@ -1,5 +1,5 @@
-import 'package:my_app/core/auth/api/auth_api.dart';
-import 'package:my_app/core/auth/models/user_model.dart';
+import 'package:cajun_local/core/auth/api/auth_api.dart';
+import 'package:cajun_local/core/auth/models/user_model.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:google_sign_in/google_sign_in.dart' as gsi;
 

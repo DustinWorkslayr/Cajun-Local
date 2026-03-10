@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:my_app/core/data/services/punch_service.dart';
-import 'package:my_app/core/theme/theme.dart';
+import 'package:cajun_local/core/data/services/punch_service.dart';
+import 'package:cajun_local/core/theme/theme.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 
 /// Shows a bottom sheet that generates a punch token and displays it as QR.

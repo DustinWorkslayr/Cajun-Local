@@ -1,16 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:my_app/core/theme/theme.dart';
+import 'package:cajun_local/core/theme/theme.dart';
 
 /// Section card: title + icon + children in a white card.
 /// Use for "Basic info", "Category", etc. sections in forms and detail views.
 class AppSectionCard extends StatelessWidget {
-  const AppSectionCard({
-    super.key,
-    required this.title,
-    required this.icon,
-    required this.children,
-    this.padding,
-  });
+  const AppSectionCard({super.key, required this.title, required this.icon, required this.children, this.padding});
 
   final String title;
   final IconData icon;
@@ -28,13 +22,7 @@ class AppSectionCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppTheme.specWhite,
         borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.06),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
-          ),
-        ],
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.06), blurRadius: 12, offset: const Offset(0, 4))],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -45,10 +33,7 @@ class AppSectionCard extends StatelessWidget {
               const SizedBox(width: 10),
               Text(
                 title,
-                style: theme.textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.w700,
-                  color: AppTheme.specNavy,
-                ),
+                style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700, color: AppTheme.specNavy),
               ),
             ],
           ),

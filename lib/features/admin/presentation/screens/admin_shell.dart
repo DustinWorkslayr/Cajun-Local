@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:my_app/core/auth/providers/auth_provider.dart';
-import 'package:my_app/core/theme/theme.dart';
-import 'package:my_app/features/admin/presentation/screens/admin_sections.dart';
+import 'package:cajun_local/core/auth/providers/auth_provider.dart';
+import 'package:cajun_local/core/theme/theme.dart';
+import 'package:cajun_local/features/admin/presentation/screens/admin_sections.dart';
 
 /// Admin shell: verifies admin role, then shows dashboard or section content.
 /// Tablet: left NavigationRail with grouped sections. Mobile: scrollable TabBar + TabBarView.

@@ -1,6 +1,6 @@
-import 'package:my_app/core/api/api_client.dart';
-import 'package:my_app/core/api/user_roles_api.dart';
-import 'package:my_app/core/data/models/user_role.dart';
+import 'package:cajun_local/core/api/api_client.dart';
+import 'package:cajun_local/core/api/user_roles_api.dart';
+import 'package:cajun_local/core/data/models/user_role.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 part 'user_roles_repository.g.dart';

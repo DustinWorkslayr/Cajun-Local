@@ -1,7 +1,7 @@
 import 'package:dio/dio.dart';
-import 'package:my_app/core/api/api_client.dart';
-import 'package:my_app/core/data/models/business_category.dart';
-import 'package:my_app/core/data/models/subcategory.dart';
+import 'package:cajun_local/core/api/api_client.dart';
+import 'package:cajun_local/core/data/models/business_category.dart';
+import 'package:cajun_local/core/data/models/subcategory.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 part 'category_api.g.dart';

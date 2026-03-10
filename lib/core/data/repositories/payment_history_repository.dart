@@ -1,6 +1,6 @@
-import 'package:my_app/core/api/api_client.dart';
-import 'package:my_app/core/api/payment_history_api.dart';
-import 'package:my_app/core/data/models/payment_history_entry.dart';
+import 'package:cajun_local/core/api/api_client.dart';
+import 'package:cajun_local/core/api/payment_history_api.dart';
+import 'package:cajun_local/core/data/models/payment_history_entry.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 part 'payment_history_repository.g.dart';

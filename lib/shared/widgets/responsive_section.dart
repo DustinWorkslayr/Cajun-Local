@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:my_app/core/theme/app_layout.dart';
-import 'package:my_app/shared/widgets/section_divider.dart';
+import 'package:cajun_local/core/theme/app_layout.dart';
+import 'package:cajun_local/shared/widgets/section_divider.dart';
 
 /// Section wrapper: consistent horizontal padding, optional max-width for tablet,
 /// optional section header and festival-style divider.
@@ -28,11 +28,7 @@ class ResponsiveSection extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final content = Padding(
-      padding: AppLayout.padding(
-        context,
-        top: topPadding,
-        bottom: bottomPadding,
-      ),
+      padding: AppLayout.padding(context, top: topPadding, bottom: bottomPadding),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,

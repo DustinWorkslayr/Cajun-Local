@@ -1,17 +1,13 @@
 import 'package:flutter/material.dart';
-import 'package:my_app/core/data/models/business_link.dart';
-import 'package:my_app/shared/widgets/app_buttons.dart';
-import 'package:my_app/core/data/repositories/business_links_repository.dart';
-import 'package:my_app/core/theme/theme.dart';
+import 'package:cajun_local/core/data/models/business_link.dart';
+import 'package:cajun_local/shared/widgets/app_buttons.dart';
+import 'package:cajun_local/core/data/repositories/business_links_repository.dart';
+import 'package:cajun_local/core/theme/theme.dart';
 
 /// Editable social/website links. Loads from/saves to BusinessLinksRepository.
 /// Use in listing edit (More tab) and admin business overview.
 class BusinessLinksEditor extends StatefulWidget {
-  const BusinessLinksEditor({
-    super.key,
-    required this.businessId,
-    this.onSaved,
-  });
+  const BusinessLinksEditor({super.key, required this.businessId, this.onSaved});
 
   final String businessId;
   final VoidCallback? onSaved;
@@ -33,7 +29,11 @@ class _BusinessLinksEditorState extends State<BusinessLinksEditor> {
 
   Future<void> _load() async {
     final list = await _repo.getForBusiness(widget.businessId);
-    if (mounted) setState(() { _links = list; _loading = false; });
+    if (mounted)
+      setState(() {
+        _links = list;
+        _loading = false;
+      });
   }
 
   Future<void> _addLink() async {
@@ -49,18 +49,12 @@ class _BusinessLinksEditorState extends State<BusinessLinksEditor> {
             children: [
               TextField(
                 controller: labelController,
-                decoration: const InputDecoration(
-                  labelText: 'Label',
-                  hintText: 'e.g. Facebook, Website',
-                ),
+                decoration: const InputDecoration(labelText: 'Label', hintText: 'e.g. Facebook, Website'),
               ),
               const SizedBox(height: 12),
               TextField(
                 controller: urlController,
-                decoration: const InputDecoration(
-                  labelText: 'URL',
-                  hintText: 'https://...',
-                ),
+                decoration: const InputDecoration(labelText: 'URL', hintText: 'https://...'),
                 keyboardType: TextInputType.url,
               ),
             ],
@@ -68,11 +62,7 @@ class _BusinessLinksEditorState extends State<BusinessLinksEditor> {
         ),
         actions: [
           TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Cancel')),
-          AppPrimaryButton(
-            onPressed: () => Navigator.of(ctx).pop(true),
-            expanded: false,
-            child: const Text('Add'),
-          ),
+          AppPrimaryButton(onPressed: () => Navigator.of(ctx).pop(true), expanded: false, child: const Text('Add')),
         ],
       ),
     );
@@ -102,10 +92,7 @@ class _BusinessLinksEditorState extends State<BusinessLinksEditor> {
         content: Text('Remove "${link.label ?? link.url}"?'),
         actions: [
           TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Cancel')),
-          AppDangerButton(
-            onPressed: () => Navigator.of(ctx).pop(true),
-            child: const Text('Remove'),
-          ),
+          AppDangerButton(onPressed: () => Navigator.of(ctx).pop(true), child: const Text('Remove')),
         ],
       ),
     );
@@ -139,44 +126,39 @@ class _BusinessLinksEditorState extends State<BusinessLinksEditor> {
             padding: const EdgeInsets.symmetric(vertical: 12),
             child: Text(
               'No links yet. Add your website, Facebook, Instagram, etc.',
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: AppTheme.specNavy.withValues(alpha: 0.75),
-              ),
+              style: theme.textTheme.bodyMedium?.copyWith(color: AppTheme.specNavy.withValues(alpha: 0.75)),
             ),
           )
         else
-          ..._links.map((link) => Padding(
-                padding: const EdgeInsets.only(bottom: 8),
-                child: Material(
-                  color: AppTheme.specWhite,
-                  borderRadius: BorderRadius.circular(12),
-                  child: ListTile(
-                    leading: Icon(Icons.link_rounded, color: AppTheme.specNavy, size: 22),
-                    title: Text(
-                      link.label ?? link.url,
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        color: AppTheme.specNavy,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                    subtitle: link.label != null && link.label != link.url
-                        ? Text(
-                            link.url,
-                            style: theme.textTheme.bodySmall?.copyWith(
-                              color: AppTheme.specNavy.withValues(alpha: 0.7),
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          )
-                        : null,
-                    trailing: IconButton(
-                      icon: Icon(Icons.delete_outline_rounded, color: AppTheme.specRed, size: 22),
-                      onPressed: () => _deleteLink(link),
-                      tooltip: 'Remove link',
-                    ),
+          ..._links.map(
+            (link) => Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Material(
+                color: AppTheme.specWhite,
+                borderRadius: BorderRadius.circular(12),
+                child: ListTile(
+                  leading: Icon(Icons.link_rounded, color: AppTheme.specNavy, size: 22),
+                  title: Text(
+                    link.label ?? link.url,
+                    style: theme.textTheme.bodyMedium?.copyWith(color: AppTheme.specNavy, fontWeight: FontWeight.w500),
+                  ),
+                  subtitle: link.label != null && link.label != link.url
+                      ? Text(
+                          link.url,
+                          style: theme.textTheme.bodySmall?.copyWith(color: AppTheme.specNavy.withValues(alpha: 0.7)),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        )
+                      : null,
+                  trailing: IconButton(
+                    icon: Icon(Icons.delete_outline_rounded, color: AppTheme.specRed, size: 22),
+                    onPressed: () => _deleteLink(link),
+                    tooltip: 'Remove link',
                   ),
                 ),
-              )),
+              ),
+            ),
+          ),
         const SizedBox(height: 8),
         AppOutlinedButton(
           onPressed: _addLink,

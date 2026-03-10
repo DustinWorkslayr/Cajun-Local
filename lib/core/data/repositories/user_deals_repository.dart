@@ -1,6 +1,6 @@
-import 'package:my_app/core/api/api_client.dart';
-import 'package:my_app/core/api/deals_api.dart';
-import 'package:my_app/core/data/models/user_deal.dart';
+import 'package:cajun_local/core/api/api_client.dart';
+import 'package:cajun_local/core/api/deals_api.dart';
+import 'package:cajun_local/core/data/models/user_deal.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 part 'user_deals_repository.g.dart';

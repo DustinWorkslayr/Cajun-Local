@@ -1,17 +1,12 @@
 import 'package:flutter/material.dart';
-import 'package:my_app/core/data/repositories/category_repository.dart';
-import 'package:my_app/shared/widgets/app_buttons.dart';
-import 'package:my_app/core/theme/app_layout.dart';
-import 'package:my_app/core/theme/theme.dart';
+import 'package:cajun_local/core/data/repositories/category_repository.dart';
+import 'package:cajun_local/shared/widgets/app_buttons.dart';
+import 'package:cajun_local/core/theme/app_layout.dart';
+import 'package:cajun_local/core/theme/theme.dart';
 import 'package:uuid/uuid.dart';
 
 /// Bucket options for grouping categories (hire, eat, shop, explore).
-const _kBucketOptions = [
-  ('hire', 'Hire'),
-  ('eat', 'Eat'),
-  ('shop', 'Shop'),
-  ('explore', 'Explore'),
-];
+const _kBucketOptions = [('hire', 'Hire'), ('eat', 'Eat'), ('shop', 'Shop'), ('explore', 'Explore')];
 
 /// Admin: create a new category. Uses homepage-style theme.
 class AdminAddCategoryScreen extends StatefulWidget {
@@ -47,12 +42,7 @@ class _AdminAddCategoryScreenState extends State<AdminAddCategoryScreen> {
       final name = _nameController.text.trim();
       final sortOrder = int.tryParse(_sortOrderController.text.trim()) ?? 0;
       final id = const Uuid().v4();
-      await CategoryRepository().insertCategory({
-        'id': id,
-        'name': name,
-        'bucket': _bucket,
-        'sort_order': sortOrder,
-      });
+      await CategoryRepository().insertCategory({'id': id, 'name': name, 'bucket': _bucket, 'sort_order': sortOrder});
       if (mounted) {
         setState(() {
           _saving = false;
@@ -89,10 +79,7 @@ class _AdminAddCategoryScreenState extends State<AdminAddCategoryScreen> {
         ),
         title: Text(
           'Add category',
-          style: theme.textTheme.titleLarge?.copyWith(
-            fontWeight: FontWeight.w700,
-            color: AppTheme.specNavy,
-          ),
+          style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700, color: AppTheme.specNavy),
         ),
       ),
       body: SingleChildScrollView(
@@ -122,9 +109,7 @@ class _AdminAddCategoryScreenState extends State<AdminAddCategoryScreen> {
                   filled: true,
                   fillColor: AppTheme.specWhite,
                 ),
-                items: _kBucketOptions
-                    .map((e) => DropdownMenuItem(value: e.$1, child: Text(e.$2)))
-                    .toList(),
+                items: _kBucketOptions.map((e) => DropdownMenuItem(value: e.$1, child: Text(e.$2))).toList(),
                 onChanged: (v) => setState(() => _bucket = v ?? 'explore'),
               ),
               const SizedBox(height: 16),
@@ -142,9 +127,7 @@ class _AdminAddCategoryScreenState extends State<AdminAddCategoryScreen> {
                 const SizedBox(height: 16),
                 Text(
                   _message!,
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: _success ? Colors.green : AppTheme.specRed,
-                  ),
+                  style: theme.textTheme.bodySmall?.copyWith(color: _success ? Colors.green : AppTheme.specRed),
                 ),
               ],
               const SizedBox(height: 24),

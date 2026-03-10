@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:my_app/core/theme/theme.dart';
-import 'package:my_app/shared/widgets/app_buttons.dart';
+import 'package:cajun_local/core/theme/theme.dart';
+import 'package:cajun_local/shared/widgets/app_buttons.dart';
 
 /// Themed dialog when a scanned punch QR code is already used or invalid.
 /// Uses spec navy/gold/offWhite styling.

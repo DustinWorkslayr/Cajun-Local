@@ -1,7 +1,7 @@
 import 'package:dio/dio.dart';
-import 'package:my_app/core/api/api_client.dart';
-import 'package:my_app/core/api/token_storage.dart';
-import 'package:my_app/core/auth/models/user_model.dart';
+import 'package:cajun_local/core/api/api_client.dart';
+import 'package:cajun_local/core/api/token_storage.dart';
+import 'package:cajun_local/core/auth/models/user_model.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 part 'auth_api.g.dart';

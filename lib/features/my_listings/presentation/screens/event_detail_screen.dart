@@ -1,12 +1,12 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
-import 'package:my_app/core/data/models/business.dart';
-import 'package:my_app/core/data/models/business_event.dart';
-import 'package:my_app/core/data/repositories/business_events_repository.dart';
-import 'package:my_app/core/data/repositories/business_repository.dart';
-import 'package:my_app/core/data/repositories/event_rsvps_repository.dart';
-import 'package:my_app/core/theme/app_layout.dart';
-import 'package:my_app/core/theme/theme.dart';
+import 'package:cajun_local/core/data/models/business.dart';
+import 'package:cajun_local/core/data/models/business_event.dart';
+import 'package:cajun_local/core/data/repositories/business_events_repository.dart';
+import 'package:cajun_local/core/data/repositories/business_repository.dart';
+import 'package:cajun_local/core/data/repositories/event_rsvps_repository.dart';
+import 'package:cajun_local/core/theme/app_layout.dart';
+import 'package:cajun_local/core/theme/theme.dart';
 
 /// Full event details + attendee/RSVP analytics for listing owner or admin.
 class EventDetailScreen extends StatelessWidget {

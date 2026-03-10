@@ -1,13 +1,13 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
-import 'package:my_app/core/data/models/blog_post.dart';
-import 'package:my_app/core/data/models/parish.dart';
-import 'package:my_app/core/data/repositories/blog_posts_repository.dart';
-import 'package:my_app/core/data/repositories/parish_repository.dart';
-import 'package:my_app/core/preferences/user_parish_preferences.dart';
-import 'package:my_app/core/theme/app_layout.dart';
-import 'package:my_app/core/theme/theme.dart';
-import 'package:my_app/features/news/presentation/screens/news_post_detail_screen.dart';
+import 'package:cajun_local/core/data/models/blog_post.dart';
+import 'package:cajun_local/core/data/models/parish.dart';
+import 'package:cajun_local/core/data/repositories/blog_posts_repository.dart';
+import 'package:cajun_local/core/data/repositories/parish_repository.dart';
+import 'package:cajun_local/core/preferences/user_parish_preferences.dart';
+import 'package:cajun_local/core/theme/app_layout.dart';
+import 'package:cajun_local/core/theme/theme.dart';
+import 'package:cajun_local/features/news/presentation/screens/news_post_detail_screen.dart';
 
 /// Public News (blog) screen — approved posts only. News-focused, blog-style layout.
 class NewsScreen extends StatelessWidget {

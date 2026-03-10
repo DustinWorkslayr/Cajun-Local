@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:my_app/core/theme/theme.dart';
+import 'package:cajun_local/core/theme/theme.dart';
 
 /// Reusable admin UI: search bar, pagination, slide-out detail panel.
 /// Uses app theme (navy, gold, off-white) for consistency.
@@ -9,13 +9,7 @@ const int _defaultPageSize = 10;
 
 /// Search field with hint and optional onChanged.
 class AdminSearchBar extends StatelessWidget {
-  const AdminSearchBar({
-    super.key,
-    this.hint = 'Search…',
-    this.controller,
-    this.onChanged,
-    this.autofocus = false,
-  });
+  const AdminSearchBar({super.key, this.hint = 'Search…', this.controller, this.onChanged, this.autofocus = false});
 
   final String hint;
   final TextEditingController? controller;
@@ -34,10 +28,7 @@ class AdminSearchBar extends StatelessWidget {
         prefixIcon: Icon(Icons.search_rounded, color: theme.colorScheme.onSurfaceVariant),
         filled: true,
         fillColor: theme.colorScheme.surfaceContainerLowest,
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide.none,
-        ),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         isDense: true,
       ),
@@ -79,40 +70,26 @@ class AdminPaginationFooter extends StatelessWidget {
         children: [
           Text(
             '${totalCount == 0 ? 0 : startItem}–$endItem of $totalCount',
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
-            ),
+            style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
           ),
           const SizedBox(width: 16),
           IconButton.filledTonal(
             icon: const Icon(Icons.chevron_left_rounded),
             onPressed: canPrev ? () => onPageChanged(pageIndex - 1) : null,
-            style: IconButton.styleFrom(
-              backgroundColor: theme.colorScheme.surfaceContainerHighest,
-            ),
+            style: IconButton.styleFrom(backgroundColor: theme.colorScheme.surfaceContainerHighest),
           ),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 12),
-            child: Text(
-              'Page ${pageIndex + 1} of $totalPages',
-              style: theme.textTheme.labelMedium,
-            ),
+            child: Text('Page ${pageIndex + 1} of $totalPages', style: theme.textTheme.labelMedium),
           ),
           IconButton.filledTonal(
             icon: const Icon(Icons.chevron_right_rounded),
             onPressed: canNext ? () => onPageChanged(pageIndex + 1) : null,
-            style: IconButton.styleFrom(
-              backgroundColor: theme.colorScheme.surfaceContainerHighest,
-            ),
+            style: IconButton.styleFrom(backgroundColor: theme.colorScheme.surfaceContainerHighest),
           ),
           if (onPageSizeChanged != null) ...[
             const SizedBox(width: 24),
-            Text(
-              'Per page',
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
-              ),
-            ),
+            Text('Per page', style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
             const SizedBox(width: 8),
             DropdownButton<int>(
               value: pageSize.clamp(10, 100),
@@ -131,14 +108,7 @@ class AdminPaginationFooter extends StatelessWidget {
 /// Slide-out panel from the right for detail view / approve actions.
 /// On tablet: fixed width. On phone: can be full width or 90%.
 class AdminDetailPanel extends StatelessWidget {
-  const AdminDetailPanel({
-    super.key,
-    required this.title,
-    required this.child,
-    this.onClose,
-    this.actions,
-    this.width,
-  });
+  const AdminDetailPanel({super.key, required this.title, required this.child, this.onClose, this.actions, this.width});
 
   final String title;
   final Widget child;
@@ -204,27 +174,17 @@ class AdminDetailPanel extends StatelessWidget {
       children: [
         // Header
         Container(
-          padding: EdgeInsets.only(
-            left: 20,
-            right: 8,
-            top: MediaQuery.paddingOf(context).top + 8,
-            bottom: 12,
-          ),
+          padding: EdgeInsets.only(left: 20, right: 8, top: MediaQuery.paddingOf(context).top + 8, bottom: 12),
           decoration: BoxDecoration(
             color: colorScheme.surfaceContainerLowest,
-            border: Border(
-              bottom: BorderSide(color: colorScheme.outlineVariant.withValues(alpha: 0.5)),
-            ),
+            border: Border(bottom: BorderSide(color: colorScheme.outlineVariant.withValues(alpha: 0.5))),
           ),
           child: Row(
             children: [
               Expanded(
                 child: Text(
                   title,
-                  style: theme.textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.w700,
-                    color: AppTheme.specNavy,
-                  ),
+                  style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700, color: AppTheme.specNavy),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -240,10 +200,7 @@ class AdminDetailPanel extends StatelessWidget {
         ),
         // Body
         Expanded(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(20),
-            child: child,
-          ),
+          child: SingleChildScrollView(padding: const EdgeInsets.all(20), child: child),
         ),
       ],
     );
@@ -281,12 +238,7 @@ class AdminBadgeData {
 
 /// Small chip for status, count, or category in admin list items.
 class AdminBadge extends StatelessWidget {
-  const AdminBadge({
-    super.key,
-    required this.label,
-    this.color,
-    this.backgroundColor,
-  });
+  const AdminBadge({super.key, required this.label, this.color, this.backgroundColor});
 
   final String label;
   final Color? color;
@@ -308,11 +260,7 @@ class AdminBadge extends StatelessWidget {
       ),
       child: Text(
         label,
-        style: theme.textTheme.labelSmall?.copyWith(
-          fontWeight: FontWeight.w600,
-          color: fg,
-          fontSize: 11,
-        ),
+        style: theme.textTheme.labelSmall?.copyWith(fontWeight: FontWeight.w600, color: fg, fontSize: 11),
       ),
     );
   }
@@ -339,6 +287,7 @@ class AdminListCard extends StatelessWidget {
   final Widget? leading;
   final String? statusLabel;
   final Color? statusColor;
+
   /// Multiple badges (e.g. status, category, date). Shown in a row; overrides statusLabel if non-null.
   final List<AdminBadgeData>? badges;
   final VoidCallback? onTap;
@@ -359,24 +308,15 @@ class AdminListCard extends StatelessWidget {
           decoration: BoxDecoration(
             color: colorScheme.surface,
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(
-              color: colorScheme.outlineVariant.withValues(alpha: 0.4),
-            ),
+            border: Border.all(color: colorScheme.outlineVariant.withValues(alpha: 0.4)),
             boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.04),
-                blurRadius: 8,
-                offset: const Offset(0, 2),
-              ),
+              BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 8, offset: const Offset(0, 2)),
             ],
           ),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              if (leading != null) ...[
-                leading!,
-                const SizedBox(width: 14),
-              ],
+              if (leading != null) ...[leading!, const SizedBox(width: 14)],
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -395,10 +335,7 @@ class AdminListCard extends StatelessWidget {
                       const SizedBox(height: 6),
                       Text(
                         subtitle!,
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: colorScheme.onSurfaceVariant,
-                          height: 1.35,
-                        ),
+                        style: theme.textTheme.bodySmall?.copyWith(color: colorScheme.onSurfaceVariant, height: 1.35),
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -408,10 +345,7 @@ class AdminListCard extends StatelessWidget {
                       Wrap(
                         spacing: 6,
                         runSpacing: 6,
-                        children: badgeList.map((b) => AdminBadge(
-                          label: b.label,
-                          color: b.color,
-                        )).toList(),
+                        children: badgeList.map((b) => AdminBadge(label: b.label, color: b.color)).toList(),
                       ),
                     ],
                   ],

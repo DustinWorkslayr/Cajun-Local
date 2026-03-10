@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
-import 'package:my_app/core/data/models/business_plan.dart';
-import 'package:my_app/core/data/models/user_plan.dart';
-import 'package:my_app/core/data/repositories/business_plans_repository.dart';
-import 'package:my_app/core/data/repositories/user_plans_repository.dart';
-import 'package:my_app/core/theme/theme.dart';
-import 'package:my_app/features/admin/presentation/screens/admin_business_plan_form_screen.dart';
-import 'package:my_app/features/admin/presentation/screens/admin_user_plan_form_screen.dart';
-import 'package:my_app/features/admin/presentation/widgets/admin_shared.dart';
-import 'package:my_app/shared/widgets/app_buttons.dart';
+import 'package:cajun_local/core/data/models/business_plan.dart';
+import 'package:cajun_local/core/data/models/user_plan.dart';
+import 'package:cajun_local/core/data/repositories/business_plans_repository.dart';
+import 'package:cajun_local/core/data/repositories/user_plans_repository.dart';
+import 'package:cajun_local/core/theme/theme.dart';
+import 'package:cajun_local/features/admin/presentation/screens/admin_business_plan_form_screen.dart';
+import 'package:cajun_local/features/admin/presentation/screens/admin_user_plan_form_screen.dart';
+import 'package:cajun_local/features/admin/presentation/widgets/admin_shared.dart';
+import 'package:cajun_local/shared/widgets/app_buttons.dart';
 
 /// Admin: manage business and user subscription plans. Same theme as dashboard.
 class AdminSubscriptionsScreen extends StatelessWidget {
@@ -25,11 +25,7 @@ class AdminSubscriptionsScreen extends StatelessWidget {
           backgroundColor: AppTheme.specOffWhite,
           surfaceTintColor: Colors.transparent,
           title: const Text('Subscriptions'),
-          titleTextStyle: TextStyle(
-            color: AppTheme.specNavy,
-            fontWeight: FontWeight.w700,
-            fontSize: 20,
-          ),
+          titleTextStyle: TextStyle(color: AppTheme.specNavy, fontWeight: FontWeight.w700, fontSize: 20),
           iconTheme: const IconThemeData(color: AppTheme.specNavy),
           bottom: TabBar(
             labelColor: AppTheme.specNavy,
@@ -58,11 +54,9 @@ class _BusinessPlansTab extends StatelessWidget {
   final bool embeddedInShell;
 
   void _openForm(BuildContext context, [BusinessPlan? plan]) async {
-    final result = await Navigator.of(context).push<bool>(
-      MaterialPageRoute<bool>(
-        builder: (_) => AdminBusinessPlanFormScreen(plan: plan),
-      ),
-    );
+    final result = await Navigator.of(
+      context,
+    ).push<bool>(MaterialPageRoute<bool>(builder: (_) => AdminBusinessPlanFormScreen(plan: plan)));
     if (result == true && context.mounted) {
       // Refresh is handled by returning to a new future in parent if we use StatefulWidget;
       // for simplicity we don't refresh here - user can pull or re-open. Better: use a key.
@@ -78,10 +72,8 @@ class _BusinessPlansTab extends StatelessWidget {
         FutureBuilder<List<BusinessPlan>>(
           future: repo.list(),
           builder: (context, snapshot) {
-            if (snapshot.connectionState == ConnectionState.waiting &&
-                !snapshot.hasData) {
-              return const Center(
-                  child: CircularProgressIndicator(color: AppTheme.specNavy));
+            if (snapshot.connectionState == ConnectionState.waiting && !snapshot.hasData) {
+              return const Center(child: CircularProgressIndicator(color: AppTheme.specNavy));
             }
             final list = snapshot.data ?? [];
             if (list.isEmpty) {
@@ -92,9 +84,7 @@ class _BusinessPlansTab extends StatelessWidget {
                     Text(
                       'No business plans. Add one to define subscription tiers and limits.',
                       textAlign: TextAlign.center,
-                      style: theme.textTheme.bodyLarge?.copyWith(
-                        color: AppTheme.specNavy.withValues(alpha: 0.8),
-                      ),
+                      style: theme.textTheme.bodyLarge?.copyWith(color: AppTheme.specNavy.withValues(alpha: 0.8)),
                     ),
                     if (!embeddedInShell) ...[
                       const SizedBox(height: 16),
@@ -120,27 +110,30 @@ class _BusinessPlansTab extends StatelessWidget {
                       label: const Text('Add business plan'),
                     ),
                   ),
-                ...list.map((p) => Padding(
-                  padding: const EdgeInsets.only(bottom: 10),
-                  child: AdminListCard(
-                    title: p.name,
-                    subtitle: '\$${p.priceMonthly.toStringAsFixed(0)}/mo · \$${p.priceYearly.toStringAsFixed(0)}/yr · ${p.maxLocations} location(s)',
-                    badges: [
-                      AdminBadgeData(p.tier),
-                      AdminBadgeData(p.isActive ? 'Active' : 'Inactive', color: p.isActive ? null : AppTheme.specRed),
-                    ],
-                    leading: Container(
-                      width: 48,
-                      height: 48,
-                      decoration: BoxDecoration(
-                        color: AppTheme.specGold.withValues(alpha: 0.2),
-                        borderRadius: BorderRadius.circular(10),
+                ...list.map(
+                  (p) => Padding(
+                    padding: const EdgeInsets.only(bottom: 10),
+                    child: AdminListCard(
+                      title: p.name,
+                      subtitle:
+                          '\$${p.priceMonthly.toStringAsFixed(0)}/mo · \$${p.priceYearly.toStringAsFixed(0)}/yr · ${p.maxLocations} location(s)',
+                      badges: [
+                        AdminBadgeData(p.tier),
+                        AdminBadgeData(p.isActive ? 'Active' : 'Inactive', color: p.isActive ? null : AppTheme.specRed),
+                      ],
+                      leading: Container(
+                        width: 48,
+                        height: 48,
+                        decoration: BoxDecoration(
+                          color: AppTheme.specGold.withValues(alpha: 0.2),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: const Icon(Icons.business_center_rounded, color: AppTheme.specNavy, size: 26),
                       ),
-                      child: const Icon(Icons.business_center_rounded, color: AppTheme.specNavy, size: 26),
+                      onTap: () => _openForm(context, p),
                     ),
-                    onTap: () => _openForm(context, p),
                   ),
-                )),
+                ),
               ],
             );
           },
@@ -168,11 +161,9 @@ class _UserPlansTab extends StatelessWidget {
   final bool embeddedInShell;
 
   void _openForm(BuildContext context, [UserPlan? plan]) async {
-    await Navigator.of(context).push<bool>(
-      MaterialPageRoute<bool>(
-        builder: (_) => AdminUserPlanFormScreen(plan: plan),
-      ),
-    );
+    await Navigator.of(
+      context,
+    ).push<bool>(MaterialPageRoute<bool>(builder: (_) => AdminUserPlanFormScreen(plan: plan)));
   }
 
   @override
@@ -184,10 +175,8 @@ class _UserPlansTab extends StatelessWidget {
         FutureBuilder<List<UserPlan>>(
           future: repo.list(),
           builder: (context, snapshot) {
-            if (snapshot.connectionState == ConnectionState.waiting &&
-                !snapshot.hasData) {
-              return const Center(
-                  child: CircularProgressIndicator(color: AppTheme.specNavy));
+            if (snapshot.connectionState == ConnectionState.waiting && !snapshot.hasData) {
+              return const Center(child: CircularProgressIndicator(color: AppTheme.specNavy));
             }
             final list = snapshot.data ?? [];
             if (list.isEmpty) {
@@ -198,9 +187,7 @@ class _UserPlansTab extends StatelessWidget {
                     Text(
                       'No user plans. Add one to define subscriber tiers and features.',
                       textAlign: TextAlign.center,
-                      style: theme.textTheme.bodyLarge?.copyWith(
-                        color: AppTheme.specNavy.withValues(alpha: 0.8),
-                      ),
+                      style: theme.textTheme.bodyLarge?.copyWith(color: AppTheme.specNavy.withValues(alpha: 0.8)),
                     ),
                     if (!embeddedInShell) ...[
                       const SizedBox(height: 16),
@@ -226,27 +213,29 @@ class _UserPlansTab extends StatelessWidget {
                       label: const Text('Add user plan'),
                     ),
                   ),
-                ...list.map((p) => Padding(
-                  padding: const EdgeInsets.only(bottom: 10),
-                  child: AdminListCard(
-                    title: p.name,
-                    subtitle: '\$${p.priceMonthly.toStringAsFixed(0)}/mo · \$${p.priceYearly.toStringAsFixed(0)}/yr',
-                    badges: [
-                      AdminBadgeData(p.tier),
-                      AdminBadgeData(p.isActive ? 'Active' : 'Inactive', color: p.isActive ? null : AppTheme.specRed),
-                    ],
-                    leading: Container(
-                      width: 48,
-                      height: 48,
-                      decoration: BoxDecoration(
-                        color: AppTheme.specGold.withValues(alpha: 0.2),
-                        borderRadius: BorderRadius.circular(10),
+                ...list.map(
+                  (p) => Padding(
+                    padding: const EdgeInsets.only(bottom: 10),
+                    child: AdminListCard(
+                      title: p.name,
+                      subtitle: '\$${p.priceMonthly.toStringAsFixed(0)}/mo · \$${p.priceYearly.toStringAsFixed(0)}/yr',
+                      badges: [
+                        AdminBadgeData(p.tier),
+                        AdminBadgeData(p.isActive ? 'Active' : 'Inactive', color: p.isActive ? null : AppTheme.specRed),
+                      ],
+                      leading: Container(
+                        width: 48,
+                        height: 48,
+                        decoration: BoxDecoration(
+                          color: AppTheme.specGold.withValues(alpha: 0.2),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: const Icon(Icons.card_membership_rounded, color: AppTheme.specNavy, size: 26),
                       ),
-                      child: const Icon(Icons.card_membership_rounded, color: AppTheme.specNavy, size: 26),
+                      onTap: () => _openForm(context, p),
                     ),
-                    onTap: () => _openForm(context, p),
                   ),
-                )),
+                ),
               ],
             );
           },

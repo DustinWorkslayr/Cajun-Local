@@ -1,22 +1,22 @@
 import 'package:flutter/material.dart';
-import 'package:my_app/core/data/repositories/business_repository.dart';
-import 'package:my_app/core/data/repositories/business_claims_repository.dart';
-import 'package:my_app/core/data/repositories/business_images_repository.dart';
-import 'package:my_app/core/data/repositories/blog_posts_repository.dart';
-import 'package:my_app/core/data/repositories/category_banners_repository.dart';
-import 'package:my_app/core/data/repositories/reviews_repository.dart';
-import 'package:my_app/core/data/repositories/user_roles_repository.dart';
-import 'package:my_app/core/theme/app_layout.dart';
-import 'package:my_app/core/theme/theme.dart';
-import 'package:my_app/features/admin/presentation/screens/admin_sections.dart';
-import 'package:my_app/features/admin/presentation/screens/admin_businesses_screen.dart';
-import 'package:my_app/features/admin/presentation/screens/admin_reviews_screen.dart';
-import 'package:my_app/features/admin/presentation/screens/admin_claims_screen.dart';
-import 'package:my_app/features/admin/presentation/screens/admin_pending_approvals_screen.dart';
-import 'package:my_app/features/admin/presentation/screens/admin_images_screen.dart';
-import 'package:my_app/features/admin/presentation/screens/admin_blog_screen.dart';
-import 'package:my_app/features/admin/presentation/screens/admin_manage_banners_screen.dart';
-import 'package:my_app/features/admin/presentation/screens/admin_user_roles_screen.dart';
+import 'package:cajun_local/core/data/repositories/business_repository.dart';
+import 'package:cajun_local/core/data/repositories/business_claims_repository.dart';
+import 'package:cajun_local/core/data/repositories/business_images_repository.dart';
+import 'package:cajun_local/core/data/repositories/blog_posts_repository.dart';
+import 'package:cajun_local/core/data/repositories/category_banners_repository.dart';
+import 'package:cajun_local/core/data/repositories/reviews_repository.dart';
+import 'package:cajun_local/core/data/repositories/user_roles_repository.dart';
+import 'package:cajun_local/core/theme/app_layout.dart';
+import 'package:cajun_local/core/theme/theme.dart';
+import 'package:cajun_local/features/admin/presentation/screens/admin_sections.dart';
+import 'package:cajun_local/features/admin/presentation/screens/admin_businesses_screen.dart';
+import 'package:cajun_local/features/admin/presentation/screens/admin_reviews_screen.dart';
+import 'package:cajun_local/features/admin/presentation/screens/admin_claims_screen.dart';
+import 'package:cajun_local/features/admin/presentation/screens/admin_pending_approvals_screen.dart';
+import 'package:cajun_local/features/admin/presentation/screens/admin_images_screen.dart';
+import 'package:cajun_local/features/admin/presentation/screens/admin_blog_screen.dart';
+import 'package:cajun_local/features/admin/presentation/screens/admin_manage_banners_screen.dart';
+import 'package:cajun_local/features/admin/presentation/screens/admin_user_roles_screen.dart';
 
 /// Analytics data: totals and pending counts for dashboard.
 class _DashboardStats {

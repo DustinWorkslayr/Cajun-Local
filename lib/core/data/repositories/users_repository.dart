@@ -1,5 +1,5 @@
-import 'package:my_app/core/api/api_client.dart';
-import 'package:my_app/core/api/users_api.dart';
+import 'package:cajun_local/core/api/api_client.dart';
+import 'package:cajun_local/core/api/users_api.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 part 'users_repository.g.dart';

@@ -1,19 +1,15 @@
 import 'package:flutter/material.dart';
-import 'package:my_app/core/data/models/business.dart';
-import 'package:my_app/core/data/repositories/business_repository.dart';
-import 'package:my_app/core/theme/app_layout.dart';
-import 'package:my_app/core/theme/theme.dart';
-import 'package:my_app/features/admin/presentation/screens/admin_add_business_screen.dart';
-import 'package:my_app/features/admin/presentation/screens/admin_business_detail_screen.dart';
-import 'package:my_app/features/admin/presentation/widgets/admin_shared.dart';
+import 'package:cajun_local/core/data/models/business.dart';
+import 'package:cajun_local/core/data/repositories/business_repository.dart';
+import 'package:cajun_local/core/theme/app_layout.dart';
+import 'package:cajun_local/core/theme/theme.dart';
+import 'package:cajun_local/features/admin/presentation/screens/admin_add_business_screen.dart';
+import 'package:cajun_local/features/admin/presentation/screens/admin_business_detail_screen.dart';
+import 'package:cajun_local/features/admin/presentation/widgets/admin_shared.dart';
 
 /// Admin businesses: search, pagination, card grid. Tap opens full admin business edit (theme-styled, full control).
 class AdminBusinessesScreen extends StatefulWidget {
-  const AdminBusinessesScreen({
-    super.key,
-    this.status,
-    this.embeddedInShell = false,
-  });
+  const AdminBusinessesScreen({super.key, this.status, this.embeddedInShell = false});
 
   final String? status;
   final bool embeddedInShell;
@@ -73,10 +69,7 @@ class _AdminBusinessesScreenState extends State<AdminBusinessesScreen> {
         limit: _pageSize,
         offset: _pageIndex * _pageSize,
       );
-      final total = await repo.listForAdminCount(
-        status: widget.status,
-        search: _query.isEmpty ? null : _query,
-      );
+      final total = await repo.listForAdminCount(status: widget.status, search: _query.isEmpty ? null : _query);
       if (mounted) {
         setState(() {
           _page = list;
@@ -97,17 +90,15 @@ class _AdminBusinessesScreenState extends State<AdminBusinessesScreen> {
   }
 
   void _openAddBusiness() {
-    Navigator.of(context).push(
-      MaterialPageRoute<void>(builder: (_) => const AdminAddBusinessScreen()),
-    ).then((_) => _load());
+    Navigator.of(
+      context,
+    ).push(MaterialPageRoute<void>(builder: (_) => const AdminAddBusinessScreen())).then((_) => _load());
   }
 
   void _openDetail(Business b) {
-    Navigator.of(context).push(
-      MaterialPageRoute<void>(
-        builder: (_) => AdminBusinessDetailScreen(businessId: b.id),
-      ),
-    ).then((_) => _load());
+    Navigator.of(
+      context,
+    ).push(MaterialPageRoute<void>(builder: (_) => AdminBusinessDetailScreen(businessId: b.id))).then((_) => _load());
   }
 
   static Widget _leadingIcon(IconData icon) {
@@ -186,9 +177,7 @@ class _AdminBusinessesScreenState extends State<AdminBusinessesScreen> {
                     const SizedBox(height: 8),
                     Text(
                       'Filter: ${widget.status}',
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: theme.colorScheme.onSurfaceVariant,
-                      ),
+                      style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
                     ),
                   ],
                 ],
@@ -196,7 +185,9 @@ class _AdminBusinessesScreenState extends State<AdminBusinessesScreen> {
             ),
           ),
           if (_loading)
-            const Expanded(child: Center(child: CircularProgressIndicator(color: AppTheme.specNavy)))
+            const Expanded(
+              child: Center(child: CircularProgressIndicator(color: AppTheme.specNavy)),
+            )
           else if (_error != null)
             Expanded(
               child: Center(
@@ -209,7 +200,11 @@ class _AdminBusinessesScreenState extends State<AdminBusinessesScreen> {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(Icons.store_outlined, size: 64, color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.5)),
+                    Icon(
+                      Icons.store_outlined,
+                      size: 64,
+                      color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.5),
+                    ),
                     const SizedBox(height: 16),
                     Text(
                       _query.isEmpty ? 'No businesses yet.' : 'No matches for "$_query".',
@@ -304,15 +299,10 @@ class _AdminBusinessesScreenState extends State<AdminBusinessesScreen> {
         backgroundColor: AppTheme.specOffWhite,
         foregroundColor: AppTheme.specNavy,
         actions: [
-          IconButton(
-            icon: const Icon(Icons.add_rounded),
-            tooltip: 'Add business',
-            onPressed: _openAddBusiness,
-          ),
+          IconButton(icon: const Icon(Icons.add_rounded), tooltip: 'Add business', onPressed: _openAddBusiness),
         ],
       ),
       body: body,
     );
   }
 }
-

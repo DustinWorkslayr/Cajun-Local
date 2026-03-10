@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:my_app/core/data/models/notification_banner.dart';
-import 'package:my_app/core/data/repositories/notification_banners_repository.dart';
-import 'package:my_app/core/theme/app_layout.dart';
-import 'package:my_app/core/theme/theme.dart';
+import 'package:cajun_local/core/data/models/notification_banner.dart';
+import 'package:cajun_local/core/data/repositories/notification_banners_repository.dart';
+import 'package:cajun_local/core/theme/app_layout.dart';
+import 'package:cajun_local/core/theme/theme.dart';
 
 /// Dismissible alert banner for home: light gold card, icon, title/message, View button, close (X).
 /// Session-scoped dismiss (dismissed IDs stored in state for rest of session).
@@ -11,6 +11,7 @@ class DismissibleAlertBanner extends StatefulWidget {
 
   /// When set (e.g. from HomeScreen), aligns with page padding; otherwise uses AppLayout.
   final EdgeInsets? horizontalPadding;
+
   /// When true, reduces height (smaller padding, icon, and spacing) for placement below topbar.
   final bool compact;
 
@@ -56,31 +57,20 @@ class _DismissibleAlertBannerState extends State<DismissibleAlertBanner> {
     );
   }
 
-  Widget _buildCard(
-    BuildContext context,
-    ThemeData theme,
-    NotificationBanner banner,
-  ) {
+  Widget _buildCard(BuildContext context, ThemeData theme, NotificationBanner banner) {
     final compact = widget.compact;
     return Padding(
       padding: EdgeInsets.only(bottom: compact ? 6 : 12),
       child: Material(
         color: Colors.transparent,
         child: Container(
-          padding: EdgeInsets.symmetric(
-            horizontal: compact ? 10 : 14,
-            vertical: compact ? 6 : 12,
-          ),
+          padding: EdgeInsets.symmetric(horizontal: compact ? 10 : 14, vertical: compact ? 6 : 12),
           decoration: BoxDecoration(
             color: AppTheme.specGold.withValues(alpha: 0.15),
             borderRadius: BorderRadius.circular(compact ? 10 : 14),
             border: Border.all(color: AppTheme.specGold.withValues(alpha: 0.4)),
             boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.05),
-                blurRadius: 8,
-                offset: const Offset(0, 2),
-              ),
+              BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 8, offset: const Offset(0, 2)),
             ],
           ),
           child: Row(
@@ -89,15 +79,8 @@ class _DismissibleAlertBannerState extends State<DismissibleAlertBanner> {
               Container(
                 width: compact ? 28 : 36,
                 height: compact ? 28 : 36,
-                decoration: BoxDecoration(
-                  color: AppTheme.specGold.withValues(alpha: 0.35),
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(
-                  Icons.info_outline_rounded,
-                  color: AppTheme.specNavy,
-                  size: compact ? 16 : 20,
-                ),
+                decoration: BoxDecoration(color: AppTheme.specGold.withValues(alpha: 0.35), shape: BoxShape.circle),
+                child: Icon(Icons.info_outline_rounded, color: AppTheme.specNavy, size: compact ? 16 : 20),
               ),
               SizedBox(width: compact ? 8 : 12),
               Expanded(
@@ -159,10 +142,7 @@ class _DismissibleAlertBannerState extends State<DismissibleAlertBanner> {
                 ),
                 onPressed: () => _dismiss(banner.id),
                 padding: EdgeInsets.zero,
-                constraints: BoxConstraints(
-                  minWidth: compact ? 28 : 32,
-                  minHeight: compact ? 28 : 32,
-                ),
+                constraints: BoxConstraints(minWidth: compact ? 28 : 32, minHeight: compact ? 28 : 32),
                 tooltip: 'Dismiss',
               ),
             ],

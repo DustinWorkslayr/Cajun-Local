@@ -1,12 +1,8 @@
-import 'package:my_app/core/data/repositories/business_subscriptions_repository.dart';
+import 'package:cajun_local/core/data/repositories/business_subscriptions_repository.dart';
 
 /// Cajun Local business subscription tiers controlling deal creation and features.
 /// Resolved from business_plans.tier: free → Free, basic → Local+, premium/enterprise → Local Partner.
-enum BusinessTier {
-  free,
-  localPlus,
-  localPartner,
-}
+enum BusinessTier { free, localPlus, localPartner }
 
 /// Deal type values stored in DB. Simple = basic promotions; advanced = Flash, Member-only.
 class DealTypes {
@@ -31,9 +27,8 @@ class DealTypes {
 
 /// Resolves business plan tier and answers deal/permission questions for Cajun Local.
 class BusinessTierService {
-  BusinessTierService({
-    BusinessSubscriptionsRepository? subscriptionsRepository,
-  }) : _subRepo = subscriptionsRepository ?? BusinessSubscriptionsRepository();
+  BusinessTierService({BusinessSubscriptionsRepository? subscriptionsRepository})
+    : _subRepo = subscriptionsRepository ?? BusinessSubscriptionsRepository();
 
   final BusinessSubscriptionsRepository _subRepo;
 

@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:my_app/core/data/models/ad_package.dart';
-import 'package:my_app/core/data/repositories/ad_packages_repository.dart';
-import 'package:my_app/core/theme/app_layout.dart';
-import 'package:my_app/core/theme/theme.dart';
-import 'package:my_app/shared/widgets/app_buttons.dart';
+import 'package:cajun_local/core/data/models/ad_package.dart';
+import 'package:cajun_local/core/data/repositories/ad_packages_repository.dart';
+import 'package:cajun_local/core/theme/app_layout.dart';
+import 'package:cajun_local/core/theme/theme.dart';
+import 'package:cajun_local/shared/widgets/app_buttons.dart';
 
 /// Admin: add or edit an ad package.
 class AdminAdPackageFormScreen extends StatefulWidget {
@@ -12,8 +12,7 @@ class AdminAdPackageFormScreen extends StatefulWidget {
   final AdPackage? package;
 
   @override
-  State<AdminAdPackageFormScreen> createState() =>
-      _AdminAdPackageFormScreenState();
+  State<AdminAdPackageFormScreen> createState() => _AdminAdPackageFormScreenState();
 }
 
 class _AdminAdPackageFormScreenState extends State<AdminAdPackageFormScreen> {
@@ -78,8 +77,7 @@ class _AdminAdPackageFormScreenState extends State<AdminAdPackageFormScreen> {
     });
     try {
       final repo = AdPackagesRepository();
-      final duration =
-          int.tryParse(_durationDaysController.text.trim()) ?? 7;
+      final duration = int.tryParse(_durationDaysController.text.trim()) ?? 7;
       final price = double.tryParse(_priceController.text.trim()) ?? 0;
       final sortOrder = int.tryParse(_sortOrderController.text.trim()) ?? 0;
       final maxImp = _maxImpressionsController.text.trim().isEmpty
@@ -153,10 +151,7 @@ class _AdminAdPackageFormScreenState extends State<AdminAdPackageFormScreen> {
         ),
         title: Text(
           isEdit ? 'Edit ad package' : 'Add ad package',
-          style: theme.textTheme.titleLarge?.copyWith(
-            fontWeight: FontWeight.w700,
-            color: AppTheme.specNavy,
-          ),
+          style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700, color: AppTheme.specNavy),
         ),
       ),
       body: SingleChildScrollView(
@@ -175,16 +170,12 @@ class _AdminAdPackageFormScreenState extends State<AdminAdPackageFormScreen> {
                   fillColor: AppTheme.specWhite,
                   hintText: 'e.g. Homepage Spotlight - 7 Days',
                 ),
-                validator: (v) =>
-                    (v == null || v.trim().isEmpty) ? 'Required' : null,
+                validator: (v) => (v == null || v.trim().isEmpty) ? 'Required' : null,
               ),
               const SizedBox(height: 12),
               Text(
                 'Placement',
-                style: theme.textTheme.labelLarge?.copyWith(
-                  color: AppTheme.specNavy,
-                  fontWeight: FontWeight.w600,
-                ),
+                style: theme.textTheme.labelLarge?.copyWith(color: AppTheme.specNavy, fontWeight: FontWeight.w600),
               ),
               RadioGroup<String>(
                 groupValue: _placement,
@@ -193,21 +184,19 @@ class _AdminAdPackageFormScreenState extends State<AdminAdPackageFormScreen> {
                 },
                 child: Column(
                   children: _placements
-                      .map((p) => RadioListTile<String>(
-                            title: Text(
-                              AdPackage.placementLabel(p),
-                              style: theme.textTheme.bodyLarge?.copyWith(
-                                color: AppTheme.specNavy,
-                              ),
-                            ),
-                            value: p,
-                            fillColor: WidgetStateProperty.resolveWith(
-                              (Set<WidgetState> states) =>
-                                  states.contains(WidgetState.selected)
-                                      ? AppTheme.specNavy
-                                      : null,
-                            ),
-                          ))
+                      .map(
+                        (p) => RadioListTile<String>(
+                          title: Text(
+                            AdPackage.placementLabel(p),
+                            style: theme.textTheme.bodyLarge?.copyWith(color: AppTheme.specNavy),
+                          ),
+                          value: p,
+                          fillColor: WidgetStateProperty.resolveWith(
+                            (Set<WidgetState> states) =>
+                                states.contains(WidgetState.selected) ? AppTheme.specNavy : null,
+                          ),
+                        ),
+                      )
                       .toList(),
                 ),
               ),
@@ -241,8 +230,7 @@ class _AdminAdPackageFormScreenState extends State<AdminAdPackageFormScreen> {
                         filled: true,
                         fillColor: AppTheme.specWhite,
                       ),
-                      keyboardType:
-                          const TextInputType.numberWithOptions(decimal: true),
+                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
                       validator: (v) {
                         if (v == null || v.trim().isEmpty) return 'Required';
                         if (double.tryParse(v.trim()) == null) return 'Number';
@@ -278,17 +266,12 @@ class _AdminAdPackageFormScreenState extends State<AdminAdPackageFormScreen> {
               const SizedBox(height: 16),
               Text(
                 'RevenueCat (IAP)',
-                style: theme.textTheme.titleSmall?.copyWith(
-                  color: AppTheme.specNavy,
-                  fontWeight: FontWeight.w600,
-                ),
+                style: theme.textTheme.titleSmall?.copyWith(color: AppTheme.specNavy, fontWeight: FontWeight.w600),
               ),
               const SizedBox(height: 6),
               Text(
                 'Product ID from App Store Connect / Google Play, configured in RevenueCat.',
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: AppTheme.specNavy.withValues(alpha: 0.7),
-                ),
+                style: theme.textTheme.bodySmall?.copyWith(color: AppTheme.specNavy.withValues(alpha: 0.7)),
               ),
               const SizedBox(height: 8),
               TextFormField(
@@ -314,24 +297,14 @@ class _AdminAdPackageFormScreenState extends State<AdminAdPackageFormScreen> {
               ),
               const SizedBox(height: 16),
               SwitchListTile(
-                title: Text(
-                  'Active',
-                  style: theme.textTheme.bodyLarge?.copyWith(
-                    color: AppTheme.specNavy,
-                  ),
-                ),
+                title: Text('Active', style: theme.textTheme.bodyLarge?.copyWith(color: AppTheme.specNavy)),
                 value: _isActive,
                 onChanged: (v) => setState(() => _isActive = v),
                 activeThumbColor: AppTheme.specNavy,
               ),
               if (_message != null) ...[
                 const SizedBox(height: 12),
-                Text(
-                  _message!,
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: AppTheme.specRed,
-                  ),
-                ),
+                Text(_message!, style: theme.textTheme.bodySmall?.copyWith(color: AppTheme.specRed)),
               ],
               const SizedBox(height: 24),
               AppSecondaryButton(
@@ -341,10 +314,7 @@ class _AdminAdPackageFormScreenState extends State<AdminAdPackageFormScreen> {
                     ? const SizedBox(
                         height: 22,
                         width: 22,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: Colors.white,
-                        ),
+                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                       )
                     : Text(isEdit ? 'Save changes' : 'Create package'),
               ),

@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:my_app/core/data/models/audit_log_entry.dart';
-import 'package:my_app/shared/widgets/app_buttons.dart';
-import 'package:my_app/core/data/repositories/audit_log_repository.dart';
-import 'package:my_app/core/theme/app_layout.dart';
-import 'package:my_app/core/theme/theme.dart';
-import 'package:my_app/features/admin/presentation/screens/admin_audit_log_detail_screen.dart';
+import 'package:cajun_local/core/data/models/audit_log_entry.dart';
+import 'package:cajun_local/shared/widgets/app_buttons.dart';
+import 'package:cajun_local/core/data/repositories/audit_log_repository.dart';
+import 'package:cajun_local/core/theme/app_layout.dart';
+import 'package:cajun_local/core/theme/theme.dart';
+import 'package:cajun_local/features/admin/presentation/screens/admin_audit_log_detail_screen.dart';
 
 /// Compact single-line-style card to keep list height small for long audit logs.
 class _AuditLogCompactCard extends StatelessWidget {
@@ -64,19 +64,13 @@ class _AuditLogCompactCard extends StatelessWidget {
                         Flexible(
                           child: Text(
                             action,
-                            style: theme.textTheme.titleSmall?.copyWith(
-                              fontWeight: FontWeight.w700,
-                              color: nav,
-                            ),
+                            style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700, color: nav),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),
                         const SizedBox(width: 8),
-                        Text(
-                          timeStr,
-                          style: theme.textTheme.labelSmall?.copyWith(color: sub),
-                        ),
+                        Text(timeStr, style: theme.textTheme.labelSmall?.copyWith(color: sub)),
                       ],
                     ),
                     const SizedBox(height: 2),
@@ -92,10 +86,8 @@ class _AuditLogCompactCard extends StatelessWidget {
                         spacing: 6,
                         runSpacing: 2,
                         children: [
-                          if (userShort != '—')
-                            _tinyChip(theme, 'user: $userShort'),
-                          if (targetShort != null)
-                            _tinyChip(theme, targetShort!),
+                          if (userShort != '—') _tinyChip(theme, 'user: $userShort'),
+                          if (targetShort != null) _tinyChip(theme, targetShort!),
                         ],
                       ),
                     ],
@@ -120,10 +112,7 @@ class _AuditLogCompactCard extends StatelessWidget {
       ),
       child: Text(
         label,
-        style: theme.textTheme.labelSmall?.copyWith(
-          color: AppTheme.specNavy.withValues(alpha: 0.85),
-          fontSize: 11,
-        ),
+        style: theme.textTheme.labelSmall?.copyWith(color: AppTheme.specNavy.withValues(alpha: 0.85), fontSize: 11),
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
       ),
@@ -154,7 +143,6 @@ class _AdminAuditLogScreenState extends State<AdminAuditLogScreen> {
   int _pageSize = AuditLogRepository.defaultPageSize;
   String _searchQuery = '';
   String _searchDebounce = '';
-
 
   @override
   void dispose() {
@@ -202,9 +190,17 @@ class _AdminAuditLogScreenState extends State<AdminAuditLogScreen> {
     setState(() => _countLoading = true);
     try {
       final total = await _repo.count(search: _searchDebounce.isEmpty ? null : _searchDebounce);
-      if (mounted) setState(() { _totalCount = total; _countLoading = false; });
+      if (mounted)
+        setState(() {
+          _totalCount = total;
+          _countLoading = false;
+        });
     } catch (_) {
-      if (mounted) setState(() { _totalCount = -1; _countLoading = false; });
+      if (mounted)
+        setState(() {
+          _totalCount = -1;
+          _countLoading = false;
+        });
     }
   }
 
@@ -224,11 +220,7 @@ class _AdminAuditLogScreenState extends State<AdminAuditLogScreen> {
   }
 
   void _showDetail(AuditLogEntry e) {
-    Navigator.of(context).push(
-      MaterialPageRoute<void>(
-        builder: (_) => AdminAuditLogDetailScreen(entry: e),
-      ),
-    );
+    Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => AdminAuditLogDetailScreen(entry: e)));
   }
 
   @override
@@ -273,7 +265,9 @@ class _AdminAuditLogScreenState extends State<AdminAuditLogScreen> {
               AppPrimaryButton(
                 onPressed: _loading ? null : _runSearch,
                 expanded: false,
-                icon: _loading ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2)) : const Icon(Icons.search_rounded, size: 20),
+                icon: _loading
+                    ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
+                    : const Icon(Icons.search_rounded, size: 20),
                 label: const Text('Search'),
               ),
             ],
@@ -296,7 +290,10 @@ class _AdminAuditLogScreenState extends State<AdminAuditLogScreen> {
                 ],
                 onChanged: (v) {
                   if (v == null) return;
-                  setState(() { _pageSize = v; _page = 0; });
+                  setState(() {
+                    _pageSize = v;
+                    _page = 0;
+                  });
                   _load();
                   _loadCount();
                 },
@@ -317,62 +314,74 @@ class _AdminAuditLogScreenState extends State<AdminAuditLogScreen> {
           child: _loading && _entries.isEmpty && _loadError == null
               ? const Center(child: CircularProgressIndicator())
               : _loadError != null
-                  ? Center(
-                      child: Padding(
-                        padding: const EdgeInsets.all(24),
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(Icons.error_outline_rounded, size: 48, color: colorScheme.error),
-                            const SizedBox(height: 16),
-                            Text(
-                              _loadError!,
-                              style: theme.textTheme.bodyLarge?.copyWith(color: colorScheme.error),
-                              textAlign: TextAlign.center,
-                            ),
-                            const SizedBox(height: 16),
-                            FilledButton.icon(
-                              onPressed: _loading ? null : () { setState(() => _loadError = null); _load(); },
-                              icon: const Icon(Icons.refresh_rounded, size: 20),
-                              label: const Text('Retry'),
-                            ),
-                          ],
+              ? Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(24),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.error_outline_rounded, size: 48, color: colorScheme.error),
+                        const SizedBox(height: 16),
+                        Text(
+                          _loadError!,
+                          style: theme.textTheme.bodyLarge?.copyWith(color: colorScheme.error),
+                          textAlign: TextAlign.center,
                         ),
-                      ),
-                    )
-                  : _entries.isEmpty
-                      ? Center(
-                          child: Text(
-                            _searchDebounce.isEmpty ? 'No audit entries.' : 'No matches for "$_searchDebounce".',
-                            style: theme.textTheme.bodyLarge?.copyWith(color: colorScheme.onSurfaceVariant),
-                          ),
-                        )
-                      : ListView.builder(
-                      padding: EdgeInsets.fromLTRB(padding.left, 4, padding.right, 16),
-                      itemCount: _entries.length,
-                      itemBuilder: (context, index) {
-                        final e = _entries[index];
-                        final target = [
-                          if (e.targetTable != null) e.targetTable,
-                          if (e.targetId != null) (e.targetId!.length > 12 ? '${e.targetId!.substring(0, 8)}…' : e.targetId),
-                        ].whereType<String>().join(' · ');
-                        final subtitle = target.isNotEmpty
-                            ? target
-                            : ((e.details ?? '').length > 60 ? '${(e.details ?? '').substring(0, 60)}…' : (e.details ?? '—'));
-                        final userShort = e.userId != null && e.userId!.length > 8 ? '${e.userId!.substring(0, 8)}…' : (e.userId ?? '—');
-                        return Padding(
-                          padding: const EdgeInsets.only(bottom: 6),
-                          child: _AuditLogCompactCard(
-                            action: e.action,
-                            subtitle: subtitle,
-                            timeStr: _formatShort(e.createdAt),
-                            userShort: userShort,
-                            targetShort: target.isEmpty ? null : (target.length > 24 ? '${target.substring(0, 24)}…' : target),
-                            onTap: () => _showDetail(e),
-                          ),
-                        );
-                      },
+                        const SizedBox(height: 16),
+                        FilledButton.icon(
+                          onPressed: _loading
+                              ? null
+                              : () {
+                                  setState(() => _loadError = null);
+                                  _load();
+                                },
+                          icon: const Icon(Icons.refresh_rounded, size: 20),
+                          label: const Text('Retry'),
+                        ),
+                      ],
                     ),
+                  ),
+                )
+              : _entries.isEmpty
+              ? Center(
+                  child: Text(
+                    _searchDebounce.isEmpty ? 'No audit entries.' : 'No matches for "$_searchDebounce".',
+                    style: theme.textTheme.bodyLarge?.copyWith(color: colorScheme.onSurfaceVariant),
+                  ),
+                )
+              : ListView.builder(
+                  padding: EdgeInsets.fromLTRB(padding.left, 4, padding.right, 16),
+                  itemCount: _entries.length,
+                  itemBuilder: (context, index) {
+                    final e = _entries[index];
+                    final target = [
+                      if (e.targetTable != null) e.targetTable,
+                      if (e.targetId != null)
+                        (e.targetId!.length > 12 ? '${e.targetId!.substring(0, 8)}…' : e.targetId),
+                    ].whereType<String>().join(' · ');
+                    final subtitle = target.isNotEmpty
+                        ? target
+                        : ((e.details ?? '').length > 60
+                              ? '${(e.details ?? '').substring(0, 60)}…'
+                              : (e.details ?? '—'));
+                    final userShort = e.userId != null && e.userId!.length > 8
+                        ? '${e.userId!.substring(0, 8)}…'
+                        : (e.userId ?? '—');
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 6),
+                      child: _AuditLogCompactCard(
+                        action: e.action,
+                        subtitle: subtitle,
+                        timeStr: _formatShort(e.createdAt),
+                        userShort: userShort,
+                        targetShort: target.isEmpty
+                            ? null
+                            : (target.length > 24 ? '${target.substring(0, 24)}…' : target),
+                        onTap: () => _showDetail(e),
+                      ),
+                    );
+                  },
+                ),
         ),
         Padding(
           padding: EdgeInsets.fromLTRB(padding.left, 8, padding.right, 16),
@@ -399,12 +408,13 @@ class _AdminAuditLogScreenState extends State<AdminAuditLogScreen> {
               IconButton(
                 onPressed: _loading
                     ? null
-                    : (_totalCount >= 0 && (_page + 1) * _pageSize >= _totalCount) || (_totalCount < 0 && _entries.length < _pageSize)
-                        ? null
-                        : () {
-                            setState(() => _page++);
-                            _load();
-                          },
+                    : (_totalCount >= 0 && (_page + 1) * _pageSize >= _totalCount) ||
+                          (_totalCount < 0 && _entries.length < _pageSize)
+                    ? null
+                    : () {
+                        setState(() => _page++);
+                        _load();
+                      },
                 icon: const Icon(Icons.chevron_right_rounded),
                 tooltip: 'Next page',
               ),
@@ -424,7 +434,12 @@ class _AdminAuditLogScreenState extends State<AdminAuditLogScreen> {
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh_rounded),
-            onPressed: _loading ? null : () { _load(); _loadCount(); },
+            onPressed: _loading
+                ? null
+                : () {
+                    _load();
+                    _loadCount();
+                  },
             tooltip: 'Refresh',
           ),
         ],
@@ -433,4 +448,3 @@ class _AdminAuditLogScreenState extends State<AdminAuditLogScreen> {
     );
   }
 }
-

@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:my_app/core/data/models/ad_package.dart';
-import 'package:my_app/core/data/repositories/ad_packages_repository.dart';
-import 'package:my_app/core/theme/theme.dart';
-import 'package:my_app/features/admin/presentation/screens/admin_ad_package_form_screen.dart';
-import 'package:my_app/features/admin/presentation/widgets/admin_shared.dart';
-import 'package:my_app/shared/widgets/app_buttons.dart';
+import 'package:cajun_local/core/data/models/ad_package.dart';
+import 'package:cajun_local/core/data/repositories/ad_packages_repository.dart';
+import 'package:cajun_local/core/theme/theme.dart';
+import 'package:cajun_local/features/admin/presentation/screens/admin_ad_package_form_screen.dart';
+import 'package:cajun_local/features/admin/presentation/widgets/admin_shared.dart';
+import 'package:cajun_local/shared/widgets/app_buttons.dart';
 
 /// Admin: list and manage ad packages.
 class AdminAdPackagesScreen extends StatelessWidget {
@@ -13,11 +13,9 @@ class AdminAdPackagesScreen extends StatelessWidget {
   final bool embeddedInShell;
 
   void _openForm(BuildContext context, [AdPackage? pkg]) async {
-    final result = await Navigator.of(context).push<bool>(
-      MaterialPageRoute<bool>(
-        builder: (_) => AdminAdPackageFormScreen(package: pkg),
-      ),
-    );
+    final result = await Navigator.of(
+      context,
+    ).push<bool>(MaterialPageRoute<bool>(builder: (_) => AdminAdPackageFormScreen(package: pkg)));
     if (result == true && context.mounted) {
       // Parent can refresh by key or state; for Stateless we rely on user re-opening or pull.
     }
@@ -35,10 +33,7 @@ class AdminAdPackagesScreen extends StatelessWidget {
         surfaceTintColor: Colors.transparent,
         title: Text(
           'Ad packages',
-          style: theme.textTheme.titleLarge?.copyWith(
-            fontWeight: FontWeight.w700,
-            color: AppTheme.specNavy,
-          ),
+          style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700, color: AppTheme.specNavy),
         ),
         iconTheme: const IconThemeData(color: AppTheme.specNavy),
       ),
@@ -47,11 +42,8 @@ class AdminAdPackagesScreen extends StatelessWidget {
           FutureBuilder<List<AdPackage>>(
             future: repo.list(),
             builder: (context, snapshot) {
-              if (snapshot.connectionState == ConnectionState.waiting &&
-                  !snapshot.hasData) {
-                return const Center(
-                  child: CircularProgressIndicator(color: AppTheme.specNavy),
-                );
+              if (snapshot.connectionState == ConnectionState.waiting && !snapshot.hasData) {
+                return const Center(child: CircularProgressIndicator(color: AppTheme.specNavy));
               }
               final list = snapshot.data ?? [];
               if (list.isEmpty) {
@@ -62,9 +54,7 @@ class AdminAdPackagesScreen extends StatelessWidget {
                       Text(
                         'No ad packages. Add one to define placements and pricing.',
                         textAlign: TextAlign.center,
-                        style: theme.textTheme.bodyLarge?.copyWith(
-                          color: AppTheme.specNavy.withValues(alpha: 0.8),
-                        ),
+                        style: theme.textTheme.bodyLarge?.copyWith(color: AppTheme.specNavy.withValues(alpha: 0.8)),
                       ),
                       if (!embeddedInShell) ...[
                         const SizedBox(height: 16),
@@ -90,29 +80,32 @@ class AdminAdPackagesScreen extends StatelessWidget {
                         label: const Text('Add ad package'),
                       ),
                     ),
-                  ...list.map((p) => Padding(
-                        padding: const EdgeInsets.only(bottom: 10),
-                        child: AdminListCard(
-                          title: p.name,
-                          subtitle:
-                              '\$${p.price.toStringAsFixed(0)} · ${p.durationDays} days · ${AdPackage.placementLabel(p.placement)}',
-                          badges: [
-                            AdminBadgeData(p.isActive ? 'Active' : 'Inactive',
-                                color: p.isActive ? null : AppTheme.specRed),
-                          ],
-                          leading: Container(
-                            width: 48,
-                            height: 48,
-                            decoration: BoxDecoration(
-                              color: AppTheme.specGold.withValues(alpha: 0.2),
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                            child: const Icon(Icons.campaign_rounded,
-                                color: AppTheme.specNavy, size: 26),
+                  ...list.map(
+                    (p) => Padding(
+                      padding: const EdgeInsets.only(bottom: 10),
+                      child: AdminListCard(
+                        title: p.name,
+                        subtitle:
+                            '\$${p.price.toStringAsFixed(0)} · ${p.durationDays} days · ${AdPackage.placementLabel(p.placement)}',
+                        badges: [
+                          AdminBadgeData(
+                            p.isActive ? 'Active' : 'Inactive',
+                            color: p.isActive ? null : AppTheme.specRed,
                           ),
-                          onTap: () => _openForm(context, p),
+                        ],
+                        leading: Container(
+                          width: 48,
+                          height: 48,
+                          decoration: BoxDecoration(
+                            color: AppTheme.specGold.withValues(alpha: 0.2),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: const Icon(Icons.campaign_rounded, color: AppTheme.specNavy, size: 26),
                         ),
-                      )),
+                        onTap: () => _openForm(context, p),
+                      ),
+                    ),
+                  ),
                 ],
               );
             },

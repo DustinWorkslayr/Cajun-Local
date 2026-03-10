@@ -3,26 +3,15 @@ import 'package:flutter/services.dart';
 import 'package:purchases_flutter/purchases_flutter.dart';
 import 'package:purchases_ui_flutter/purchases_ui_flutter.dart';
 
-import 'package:my_app/core/revenuecat/revenuecat_config.dart';
+import 'package:cajun_local/core/revenuecat/revenuecat_config.dart';
 
 /// Result of purchasing an ad product (consumable / one-time).
-enum AdPurchaseResult {
-  purchased,
-  cancelled,
-  error,
-  productNotFound,
-}
+enum AdPurchaseResult { purchased, cancelled, error, productNotFound }
 
 // Use default API key. Set [RevenueCatConfig.iosApiKey] / [androidApiKey] for platform-specific keys.
 
 /// Result of presenting a paywall.
-enum PaywallPresentationResult {
-  notPresented,
-  purchased,
-  restored,
-  cancelled,
-  error,
-}
+enum PaywallPresentationResult { notPresented, purchased, restored, cancelled, error }
 
 /// RevenueCat service: initialization, entitlement checking (Cajun+),
 /// customer info, paywall and Customer Center presentation.
@@ -61,8 +50,7 @@ class RevenueCatService {
         await Purchases.setLogLevel(LogLevel.debug);
       }
       final apiKey = RevenueCatConfig.apiKey;
-      final config = PurchasesConfiguration(apiKey)
-        ..appUserID = appUserId;
+      final config = PurchasesConfiguration(apiKey)..appUserID = appUserId;
       await Purchases.configure(config);
       _configured = true;
 
@@ -182,9 +170,7 @@ class RevenueCatService {
   Future<PaywallPresentationResult> presentPaywallIfNeeded() async {
     if (!_configured) return PaywallPresentationResult.error;
     try {
-      final result = await RevenueCatUI.presentPaywallIfNeeded(
-        RevenueCatConfig.cajunPlusEntitlementId,
-      );
+      final result = await RevenueCatUI.presentPaywallIfNeeded(RevenueCatConfig.cajunPlusEntitlementId);
       return _mapPaywallResult(result);
     } catch (e, st) {
       if (kDebugMode) {

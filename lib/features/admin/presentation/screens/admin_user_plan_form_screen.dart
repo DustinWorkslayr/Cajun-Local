@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:my_app/core/data/models/user_plan.dart';
-import 'package:my_app/core/data/repositories/user_plans_repository.dart';
-import 'package:my_app/core/theme/app_layout.dart';
-import 'package:my_app/core/theme/theme.dart';
-import 'package:my_app/shared/widgets/app_buttons.dart';
+import 'package:cajun_local/core/data/models/user_plan.dart';
+import 'package:cajun_local/core/data/repositories/user_plans_repository.dart';
+import 'package:cajun_local/core/theme/app_layout.dart';
+import 'package:cajun_local/core/theme/theme.dart';
+import 'package:cajun_local/shared/widgets/app_buttons.dart';
 
 /// Admin: add or edit a user subscription plan.
 class AdminUserPlanFormScreen extends StatefulWidget {
@@ -126,8 +126,7 @@ class _AdminUserPlanFormScreenState extends State<AdminUserPlanFormScreen> {
         setState(() {
           _saving = false;
           _success = true;
-          _message =
-              widget.plan != null ? 'Plan updated.' : 'Plan created.';
+          _message = widget.plan != null ? 'Plan updated.' : 'Plan created.';
         });
         Navigator.of(context).pop(true);
       }
@@ -160,10 +159,7 @@ class _AdminUserPlanFormScreenState extends State<AdminUserPlanFormScreen> {
         ),
         title: Text(
           isEdit ? 'Edit user plan' : 'Add user plan',
-          style: theme.textTheme.titleLarge?.copyWith(
-            fontWeight: FontWeight.w700,
-            color: AppTheme.specNavy,
-          ),
+          style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700, color: AppTheme.specNavy),
         ),
       ),
       body: SingleChildScrollView(
@@ -182,16 +178,12 @@ class _AdminUserPlanFormScreenState extends State<AdminUserPlanFormScreen> {
                   fillColor: AppTheme.specWhite,
                   hintText: 'e.g. Plus',
                 ),
-                validator: (v) =>
-                    (v == null || v.trim().isEmpty) ? 'Required' : null,
+                validator: (v) => (v == null || v.trim().isEmpty) ? 'Required' : null,
               ),
               const SizedBox(height: 8),
               Text(
                 'Tier',
-                style: theme.textTheme.labelLarge?.copyWith(
-                  color: AppTheme.specNavy,
-                  fontWeight: FontWeight.w600,
-                ),
+                style: theme.textTheme.labelLarge?.copyWith(color: AppTheme.specNavy, fontWeight: FontWeight.w600),
               ),
               RadioGroup<String>(
                 groupValue: _tier,
@@ -205,16 +197,12 @@ class _AdminUserPlanFormScreenState extends State<AdminUserPlanFormScreen> {
                         (t) => RadioListTile<String>(
                           title: Text(
                             t.substring(0, 1).toUpperCase() + t.substring(1),
-                            style: theme.textTheme.bodyLarge?.copyWith(
-                              color: AppTheme.specNavy,
-                            ),
+                            style: theme.textTheme.bodyLarge?.copyWith(color: AppTheme.specNavy),
                           ),
                           value: t,
                           fillColor: WidgetStateProperty.resolveWith(
                             (Set<WidgetState> states) =>
-                                states.contains(WidgetState.selected)
-                                    ? AppTheme.specNavy
-                                    : null,
+                                states.contains(WidgetState.selected) ? AppTheme.specNavy : null,
                           ),
                         ),
                       )
@@ -224,17 +212,12 @@ class _AdminUserPlanFormScreenState extends State<AdminUserPlanFormScreen> {
               const SizedBox(height: 16),
               Text(
                 'Stripe (optional)',
-                style: theme.textTheme.titleSmall?.copyWith(
-                  color: AppTheme.specNavy,
-                  fontWeight: FontWeight.w600,
-                ),
+                style: theme.textTheme.titleSmall?.copyWith(color: AppTheme.specNavy, fontWeight: FontWeight.w600),
               ),
               const SizedBox(height: 8),
               Text(
                 'From Stripe Dashboard → Products → your product → copy Price ID and Product ID.',
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: AppTheme.specNavy.withValues(alpha: 0.7),
-                ),
+                style: theme.textTheme.bodySmall?.copyWith(color: AppTheme.specNavy.withValues(alpha: 0.7)),
               ),
               const SizedBox(height: 12),
               TextFormField(
@@ -282,8 +265,7 @@ class _AdminUserPlanFormScreenState extends State<AdminUserPlanFormScreen> {
                         filled: true,
                         fillColor: AppTheme.specWhite,
                       ),
-                      keyboardType: const TextInputType.numberWithOptions(
-                          decimal: true),
+                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
                       validator: (v) {
                         if (v == null || v.trim().isEmpty) return 'Required';
                         if (double.tryParse(v.trim()) == null) return 'Number';
@@ -301,8 +283,7 @@ class _AdminUserPlanFormScreenState extends State<AdminUserPlanFormScreen> {
                         filled: true,
                         fillColor: AppTheme.specWhite,
                       ),
-                      keyboardType: const TextInputType.numberWithOptions(
-                          decimal: true),
+                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
                       validator: (v) {
                         if (v == null || v.trim().isEmpty) return 'Required';
                         if (double.tryParse(v.trim()) == null) return 'Number';
@@ -326,26 +307,14 @@ class _AdminUserPlanFormScreenState extends State<AdminUserPlanFormScreen> {
               ),
               const SizedBox(height: 12),
               SwitchListTile(
-                title: Text(
-                  'Exclusive deals',
-                  style: theme.textTheme.bodyLarge?.copyWith(
-                    color: AppTheme.specNavy,
-                  ),
-                ),
-                subtitle: const Text(
-                  'Allow access to exclusive local deals',
-                ),
+                title: Text('Exclusive deals', style: theme.textTheme.bodyLarge?.copyWith(color: AppTheme.specNavy)),
+                subtitle: const Text('Allow access to exclusive local deals'),
                 value: _exclusiveDeals,
                 onChanged: (v) => setState(() => _exclusiveDeals = v),
                 activeThumbColor: AppTheme.specNavy,
               ),
               SwitchListTile(
-                title: Text(
-                  'Active',
-                  style: theme.textTheme.bodyLarge?.copyWith(
-                    color: AppTheme.specNavy,
-                  ),
-                ),
+                title: Text('Active', style: theme.textTheme.bodyLarge?.copyWith(color: AppTheme.specNavy)),
                 subtitle: const Text('Inactive plans are hidden from selection'),
                 value: _isActive,
                 onChanged: (v) => setState(() => _isActive = v),
@@ -355,9 +324,7 @@ class _AdminUserPlanFormScreenState extends State<AdminUserPlanFormScreen> {
                 const SizedBox(height: 16),
                 Text(
                   _message!,
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: _success ? Colors.green : AppTheme.specRed,
-                  ),
+                  style: theme.textTheme.bodySmall?.copyWith(color: _success ? Colors.green : AppTheme.specRed),
                 ),
               ],
               const SizedBox(height: 24),
@@ -365,11 +332,7 @@ class _AdminUserPlanFormScreenState extends State<AdminUserPlanFormScreen> {
                 onPressed: _saving ? null : _submit,
                 expanded: true,
                 child: _saving
-                    ? const SizedBox(
-                        height: 24,
-                        width: 24,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
+                    ? const SizedBox(height: 24, width: 24, child: CircularProgressIndicator(strokeWidth: 2))
                     : Text(isEdit ? 'Save changes' : 'Create plan'),
               ),
             ],

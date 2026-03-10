@@ -1,4 +1,4 @@
-import 'package:my_app/core/data/models/subcategory.dart';
+import 'package:cajun_local/core/data/models/subcategory.dart';
 
 class BusinessCategory {
   const BusinessCategory({

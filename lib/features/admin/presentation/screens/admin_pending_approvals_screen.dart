@@ -1,20 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:my_app/core/auth/providers/auth_provider.dart';
-import 'package:my_app/core/data/models/business.dart';
-import 'package:my_app/core/data/models/business_event.dart';
-import 'package:my_app/core/data/models/business_image.dart';
-import 'package:my_app/core/data/models/deal.dart';
-import 'package:my_app/core/data/repositories/audit_log_repository.dart';
-import 'package:my_app/core/data/repositories/business_events_repository.dart';
-import 'package:my_app/core/data/repositories/business_images_repository.dart';
-import 'package:my_app/core/data/repositories/business_repository.dart';
-import 'package:my_app/core/data/repositories/deals_repository.dart';
-import 'package:my_app/core/theme/app_layout.dart';
-import 'package:my_app/core/theme/theme.dart';
-import 'package:my_app/features/admin/presentation/screens/admin_business_detail_screen.dart';
-import 'package:my_app/features/admin/presentation/screens/admin_image_detail_screen.dart';
-import 'package:my_app/shared/widgets/app_buttons.dart';
+import 'package:cajun_local/core/auth/providers/auth_provider.dart';
+import 'package:cajun_local/core/data/models/business.dart';
+import 'package:cajun_local/core/data/models/business_event.dart';
+import 'package:cajun_local/core/data/models/business_image.dart';
+import 'package:cajun_local/core/data/models/deal.dart';
+import 'package:cajun_local/core/data/repositories/audit_log_repository.dart';
+import 'package:cajun_local/core/data/repositories/business_events_repository.dart';
+import 'package:cajun_local/core/data/repositories/business_images_repository.dart';
+import 'package:cajun_local/core/data/repositories/business_repository.dart';
+import 'package:cajun_local/core/data/repositories/deals_repository.dart';
+import 'package:cajun_local/core/theme/app_layout.dart';
+import 'package:cajun_local/core/theme/theme.dart';
+import 'package:cajun_local/features/admin/presentation/screens/admin_business_detail_screen.dart';
+import 'package:cajun_local/features/admin/presentation/screens/admin_image_detail_screen.dart';
+import 'package:cajun_local/shared/widgets/app_buttons.dart';
 
 /// Per-business pending items (images, deals, events).
 class _BusinessPending {

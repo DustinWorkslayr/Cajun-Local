@@ -1,7 +1,7 @@
 import 'dart:typed_data';
-import 'package:my_app/core/api/api_client.dart';
-import 'package:my_app/core/api/uploads_api.dart';
-import 'package:my_app/core/data/services/storage_upload_constants.dart';
+import 'package:cajun_local/core/api/api_client.dart';
+import 'package:cajun_local/core/api/uploads_api.dart';
+import 'package:cajun_local/core/data/services/storage_upload_constants.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 part 'app_storage_service.g.dart';

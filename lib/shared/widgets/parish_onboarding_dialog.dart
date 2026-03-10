@@ -1,21 +1,16 @@
 import 'package:flutter/material.dart';
-import 'package:my_app/core/data/app_data_scope.dart';
-import 'package:my_app/core/data/mock_data.dart';
-import 'package:my_app/core/theme/theme.dart';
-import 'package:my_app/shared/widgets/app_buttons.dart';
-import 'package:my_app/shared/widgets/app_logo.dart';
+import 'package:cajun_local/core/data/app_data_scope.dart';
+import 'package:cajun_local/core/data/mock_data.dart';
+import 'package:cajun_local/core/theme/theme.dart';
+import 'package:cajun_local/shared/widgets/app_buttons.dart';
+import 'package:cajun_local/shared/widgets/app_logo.dart';
 
 /// First-time onboarding or parish selector: pick parishes; optionally a second step for interests.
 /// Caller saves parish IDs via UserParishPreferences and dismisses on completion.
 /// Use [initialParishIds] when re-opening to change parishes (e.g. from home chip).
 /// Use [parishOnly: true] to show only the parish step with a "Done" button.
 class ParishOnboardingDialog extends StatefulWidget {
-  const ParishOnboardingDialog({
-    super.key,
-    required this.onComplete,
-    this.initialParishIds,
-    this.parishOnly = false,
-  });
+  const ParishOnboardingDialog({super.key, required this.onComplete, this.initialParishIds, this.parishOnly = false});
 
   /// Called with selected parish IDs when user finishes the flow. Caller saves and dismisses.
   final void Function(Set<String> selectedParishIds) onComplete;
@@ -30,8 +25,7 @@ class ParishOnboardingDialog extends StatefulWidget {
   State<ParishOnboardingDialog> createState() => _ParishOnboardingDialogState();
 }
 
-class _ParishOnboardingDialogState extends State<ParishOnboardingDialog>
-    with SingleTickerProviderStateMixin {
+class _ParishOnboardingDialogState extends State<ParishOnboardingDialog> with SingleTickerProviderStateMixin {
   int _step = 0;
 
   late Set<String> _selectedParishIds;
@@ -49,16 +43,15 @@ class _ParishOnboardingDialogState extends State<ParishOnboardingDialog>
   void initState() {
     super.initState();
     _selectedParishIds = Set.from(widget.initialParishIds ?? []);
-    _entranceController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 350),
-    );
-    _entranceScale = Tween<double>(begin: 0.92, end: 1).animate(
-      CurvedAnimation(parent: _entranceController, curve: Curves.easeOutCubic),
-    );
-    _entranceOpacity = Tween<double>(begin: 0, end: 1).animate(
-      CurvedAnimation(parent: _entranceController, curve: Curves.easeOut),
-    );
+    _entranceController = AnimationController(vsync: this, duration: const Duration(milliseconds: 350));
+    _entranceScale = Tween<double>(
+      begin: 0.92,
+      end: 1,
+    ).animate(CurvedAnimation(parent: _entranceController, curve: Curves.easeOutCubic));
+    _entranceOpacity = Tween<double>(
+      begin: 0,
+      end: 1,
+    ).animate(CurvedAnimation(parent: _entranceController, curve: Curves.easeOut));
     _entranceController.forward();
   }
 
@@ -110,11 +103,7 @@ class _ParishOnboardingDialogState extends State<ParishOnboardingDialog>
         builder: (context, child) {
           return Opacity(
             opacity: _entranceOpacity.value,
-            child: Transform.scale(
-              scale: _entranceScale.value,
-              alignment: Alignment.center,
-              child: child,
-            ),
+            child: Transform.scale(scale: _entranceScale.value, alignment: Alignment.center, child: child),
           );
         },
         child: Material(
@@ -143,21 +132,13 @@ class _ParishOnboardingDialogState extends State<ParishOnboardingDialog>
                               position: Tween<Offset>(
                                 begin: const Offset(0.15, 0),
                                 end: Offset.zero,
-                              ).animate(CurvedAnimation(
-                                parent: animation,
-                                curve: Curves.easeOutCubic,
-                              )),
-                              child: FadeTransition(
-                                opacity: animation,
-                                child: child,
-                              ),
+                              ).animate(CurvedAnimation(parent: animation, curve: Curves.easeOutCubic)),
+                              child: FadeTransition(opacity: animation, child: child),
                             );
                           },
                           child: KeyedSubtree(
                             key: ValueKey<int>(_step),
-                            child: _step == 0
-                                ? _buildParishStep(theme)
-                                : _buildInterestsStep(theme),
+                            child: _step == 0 ? _buildParishStep(theme) : _buildInterestsStep(theme),
                           ),
                         ),
                       ),
@@ -180,19 +161,14 @@ class _ParishOnboardingDialogState extends State<ParishOnboardingDialog>
       decoration: BoxDecoration(
         color: AppTheme.specOffWhite,
         borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-        border: Border(
-          bottom: BorderSide(color: AppTheme.specNavy.withValues(alpha: 0.08)),
-        ),
+        border: Border(bottom: BorderSide(color: AppTheme.specNavy.withValues(alpha: 0.08))),
       ),
       child: Column(
         children: [
           if (_step == 0)
             Text(
               "We're glad you're here!",
-              style: theme.textTheme.titleMedium?.copyWith(
-                color: AppTheme.specGold,
-                fontWeight: FontWeight.w600,
-              ),
+              style: theme.textTheme.titleMedium?.copyWith(color: AppTheme.specGold, fontWeight: FontWeight.w600),
             ),
           if (_step == 0) const SizedBox(height: 8),
           const AppLogo(height: 64),
@@ -206,13 +182,8 @@ class _ParishOnboardingDialogState extends State<ParishOnboardingDialog>
           ),
           const SizedBox(height: 12),
           Text(
-            _step == 0
-                ? 'Pick the parishes to explore'
-                : 'What do you hope to get from the app?',
-            style: theme.textTheme.titleLarge?.copyWith(
-              color: AppTheme.specNavy,
-              fontWeight: FontWeight.w700,
-            ),
+            _step == 0 ? 'Pick the parishes to explore' : 'What do you hope to get from the app?',
+            style: theme.textTheme.titleLarge?.copyWith(color: AppTheme.specNavy, fontWeight: FontWeight.w700),
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 6),
@@ -220,9 +191,7 @@ class _ParishOnboardingDialogState extends State<ParishOnboardingDialog>
             _step == 0
                 ? "Choose one or more areas — we'll show you local businesses and events there. You can change this anytime in Filters."
                 : "Select what you're most excited about. We'll use this to tailor your experience.",
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: AppTheme.specNavy.withValues(alpha: 0.8),
-            ),
+            style: theme.textTheme.bodySmall?.copyWith(color: AppTheme.specNavy.withValues(alpha: 0.8)),
             textAlign: TextAlign.center,
           ),
         ],
@@ -327,11 +296,7 @@ class _ParishOnboardingDialogState extends State<ParishOnboardingDialog>
             child: AppSecondaryButton(
               onPressed: canContinue ? (isDone ? _finish : _next) : null,
               expanded: true,
-              child: Text(
-                canContinue
-                    ? (isDone ? 'Done' : 'Continue')
-                    : 'Select at least one parish',
-              ),
+              child: Text(canContinue ? (isDone ? 'Done' : 'Continue') : 'Select at least one parish'),
             ),
           ),
         ],
@@ -345,11 +310,7 @@ class _ParishOnboardingDialogState extends State<ParishOnboardingDialog>
         const Divider(height: 1),
         Padding(
           padding: padding,
-          child: AppSecondaryButton(
-            onPressed: _next,
-            expanded: true,
-            child: const Text('Continue'),
-          ),
+          child: AppSecondaryButton(onPressed: _next, expanded: true, child: const Text('Continue')),
         ),
       ],
     );

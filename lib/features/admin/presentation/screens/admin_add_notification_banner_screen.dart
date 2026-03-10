@@ -1,20 +1,18 @@
 import 'package:flutter/material.dart';
-import 'package:my_app/core/data/repositories/notification_banners_repository.dart';
-import 'package:my_app/shared/widgets/app_buttons.dart';
-import 'package:my_app/core/theme/app_layout.dart';
-import 'package:my_app/core/theme/theme.dart';
+import 'package:cajun_local/core/data/repositories/notification_banners_repository.dart';
+import 'package:cajun_local/shared/widgets/app_buttons.dart';
+import 'package:cajun_local/core/theme/app_layout.dart';
+import 'package:cajun_local/core/theme/theme.dart';
 
 /// Admin: create a notification banner. Uses homepage-style theme.
 class AdminAddNotificationBannerScreen extends StatefulWidget {
   const AdminAddNotificationBannerScreen({super.key});
 
   @override
-  State<AdminAddNotificationBannerScreen> createState() =>
-      _AdminAddNotificationBannerScreenState();
+  State<AdminAddNotificationBannerScreen> createState() => _AdminAddNotificationBannerScreenState();
 }
 
-class _AdminAddNotificationBannerScreenState
-    extends State<AdminAddNotificationBannerScreen> {
+class _AdminAddNotificationBannerScreenState extends State<AdminAddNotificationBannerScreen> {
   final _formKey = GlobalKey<FormState>();
   final _titleController = TextEditingController();
   final _messageController = TextEditingController();
@@ -37,8 +35,7 @@ class _AdminAddNotificationBannerScreenState
       _saving = true;
     });
     try {
-      final id =
-          'nb-${DateTime.now().millisecondsSinceEpoch}-${_titleController.text.hashCode.abs()}';
+      final id = 'nb-${DateTime.now().millisecondsSinceEpoch}-${_titleController.text.hashCode.abs()}';
       await NotificationBannersRepository().insert({
         'id': id,
         'title': _titleController.text.trim(),
@@ -81,10 +78,7 @@ class _AdminAddNotificationBannerScreenState
         ),
         title: Text(
           'Add notification banner',
-          style: theme.textTheme.titleLarge?.copyWith(
-            fontWeight: FontWeight.w700,
-            color: AppTheme.specNavy,
-          ),
+          style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700, color: AppTheme.specNavy),
         ),
       ),
       body: SingleChildScrollView(
@@ -102,8 +96,7 @@ class _AdminAddNotificationBannerScreenState
                   filled: true,
                   fillColor: AppTheme.specWhite,
                 ),
-                validator: (v) =>
-                    (v == null || v.trim().isEmpty) ? 'Required' : null,
+                validator: (v) => (v == null || v.trim().isEmpty) ? 'Required' : null,
               ),
               const SizedBox(height: 16),
               TextFormField(
@@ -116,17 +109,11 @@ class _AdminAddNotificationBannerScreenState
                   alignLabelWithHint: true,
                 ),
                 maxLines: 3,
-                validator: (v) =>
-                    (v == null || v.trim().isEmpty) ? 'Required' : null,
+                validator: (v) => (v == null || v.trim().isEmpty) ? 'Required' : null,
               ),
               const SizedBox(height: 16),
               SwitchListTile(
-                title: Text(
-                  'Active',
-                  style: theme.textTheme.titleSmall?.copyWith(
-                    color: AppTheme.specNavy,
-                  ),
-                ),
+                title: Text('Active', style: theme.textTheme.titleSmall?.copyWith(color: AppTheme.specNavy)),
                 value: _isActive,
                 onChanged: (v) => setState(() => _isActive = v),
                 activeThumbColor: AppTheme.specGold,
@@ -135,9 +122,7 @@ class _AdminAddNotificationBannerScreenState
                 const SizedBox(height: 16),
                 Text(
                   _message!,
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: _success ? Colors.green : AppTheme.specRed,
-                  ),
+                  style: theme.textTheme.bodySmall?.copyWith(color: _success ? Colors.green : AppTheme.specRed),
                 ),
               ],
               const SizedBox(height: 24),
@@ -145,11 +130,7 @@ class _AdminAddNotificationBannerScreenState
                 onPressed: _saving ? null : _submit,
                 expanded: false,
                 child: _saving
-                    ? const SizedBox(
-                        height: 24,
-                        width: 24,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
+                    ? const SizedBox(height: 24, width: 24, child: CircularProgressIndicator(strokeWidth: 2))
                     : const Text('Create banner'),
               ),
             ],

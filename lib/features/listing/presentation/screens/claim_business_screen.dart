@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:my_app/core/data/repositories/business_claims_repository.dart';
-import 'package:my_app/core/theme/app_layout.dart';
-import 'package:my_app/core/theme/theme.dart';
-import 'package:my_app/shared/widgets/app_buttons.dart';
+import 'package:cajun_local/core/data/repositories/business_claims_repository.dart';
+import 'package:cajun_local/core/theme/app_layout.dart';
+import 'package:cajun_local/core/theme/theme.dart';
+import 'package:cajun_local/shared/widgets/app_buttons.dart';
 
 /// Acceptable forms of business identification for claiming a listing.
 /// Shown to the user so they know what they can submit; claim is only approved after admin review.
@@ -19,12 +19,7 @@ const List<String> kAcceptableClaimDocumentTypes = [
 /// Screen for a signed-in user to submit a claim for an unclaimed business.
 /// User must choose a document type and provide details; admin approves before the listing is claimed.
 class ClaimBusinessScreen extends StatefulWidget {
-  const ClaimBusinessScreen({
-    super.key,
-    required this.businessId,
-    required this.businessName,
-    required this.userId,
-  });
+  const ClaimBusinessScreen({super.key, required this.businessId, required this.businessName, required this.userId});
 
   final String businessId;
   final String businessName;
@@ -77,9 +72,7 @@ class _ClaimBusinessScreenState extends State<ClaimBusinessScreen> {
       Navigator.of(context).pop(true);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: const Text(
-            'Claim submitted. We\'ll review your information and get back to you.',
-          ),
+          content: const Text('Claim submitted. We\'ll review your information and get back to you.'),
           backgroundColor: AppTheme.specNavy,
           behavior: SnackBarBehavior.floating,
         ),
@@ -111,33 +104,23 @@ class _ClaimBusinessScreenState extends State<ClaimBusinessScreen> {
           children: [
             Text(
               widget.businessName,
-              style: theme.textTheme.titleLarge?.copyWith(
-                color: AppTheme.specNavy,
-                fontWeight: FontWeight.w700,
-              ),
+              style: theme.textTheme.titleLarge?.copyWith(color: AppTheme.specNavy, fontWeight: FontWeight.w700),
             ),
             const SizedBox(height: 8),
             Text(
               'Sorry for the hassle—we just don\'t want anyone else claiming your business! '
               'To keep things safe, we need to verify you really represent this one. '
               'Please use one of the document types below (only these count), and we\'ll take a look and get back to you.',
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: AppTheme.specNavy.withValues(alpha: 0.85),
-              ),
+              style: theme.textTheme.bodyMedium?.copyWith(color: AppTheme.specNavy.withValues(alpha: 0.85)),
             ),
             const SizedBox(height: 20),
             Text(
               'Accepted proof (choose one)',
-              style: theme.textTheme.titleSmall?.copyWith(
-                color: AppTheme.specNavy,
-                fontWeight: FontWeight.w600,
-              ),
+              style: theme.textTheme.titleSmall?.copyWith(color: AppTheme.specNavy, fontWeight: FontWeight.w600),
             ),
             Text(
               'If you\'re sending a file, PDF, JPG, or PNG works.',
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: AppTheme.specNavy.withValues(alpha: 0.7),
-              ),
+              style: theme.textTheme.bodySmall?.copyWith(color: AppTheme.specNavy.withValues(alpha: 0.7)),
             ),
             const SizedBox(height: 10),
             ...kAcceptableClaimDocumentTypes.map((label) {
@@ -153,14 +136,10 @@ class _ClaimBusinessScreenState extends State<ClaimBusinessScreen> {
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                     decoration: BoxDecoration(
-                      color: isSelected
-                          ? AppTheme.specGold.withValues(alpha: 0.2)
-                          : AppTheme.specWhite,
+                      color: isSelected ? AppTheme.specGold.withValues(alpha: 0.2) : AppTheme.specWhite,
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(
-                        color: isSelected
-                            ? AppTheme.specGold
-                            : AppTheme.specNavy.withValues(alpha: 0.15),
+                        color: isSelected ? AppTheme.specGold : AppTheme.specNavy.withValues(alpha: 0.15),
                         width: isSelected ? 2 : 1,
                       ),
                     ),
@@ -190,17 +169,12 @@ class _ClaimBusinessScreenState extends State<ClaimBusinessScreen> {
             const SizedBox(height: 20),
             Text(
               'Details (required)',
-              style: theme.textTheme.titleSmall?.copyWith(
-                color: AppTheme.specNavy,
-                fontWeight: FontWeight.w600,
-              ),
+              style: theme.textTheme.titleSmall?.copyWith(color: AppTheme.specNavy, fontWeight: FontWeight.w600),
             ),
             const SizedBox(height: 6),
             Text(
               'e.g. license number, permit number, or where we can verify this document',
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: AppTheme.specNavy.withValues(alpha: 0.7),
-              ),
+              style: theme.textTheme.bodySmall?.copyWith(color: AppTheme.specNavy.withValues(alpha: 0.7)),
             ),
             const SizedBox(height: 8),
             TextField(
@@ -228,20 +202,13 @@ class _ClaimBusinessScreenState extends State<ClaimBusinessScreen> {
             ),
             if (_error != null) ...[
               const SizedBox(height: 12),
-              Text(
-                _error!,
-                style: theme.textTheme.bodySmall?.copyWith(color: AppTheme.specRed),
-              ),
+              Text(_error!, style: theme.textTheme.bodySmall?.copyWith(color: AppTheme.specRed)),
             ],
             const SizedBox(height: 24),
             AppPrimaryButton(
               onPressed: _submitting ? null : _submit,
               child: _submitting
-                  ? const SizedBox(
-                      height: 22,
-                      width: 22,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
+                  ? const SizedBox(height: 22, width: 22, child: CircularProgressIndicator(strokeWidth: 2))
                   : const Text('Submit claim for review'),
             ),
           ],

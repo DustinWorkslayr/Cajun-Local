@@ -1,6 +1,6 @@
-import 'package:my_app/core/api/api_client.dart';
-import 'package:my_app/core/api/email_templates_api.dart';
-import 'package:my_app/core/data/models/email_template.dart';
+import 'package:cajun_local/core/api/api_client.dart';
+import 'package:cajun_local/core/api/email_templates_api.dart';
+import 'package:cajun_local/core/data/models/email_template.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 part 'email_templates_repository.g.dart';

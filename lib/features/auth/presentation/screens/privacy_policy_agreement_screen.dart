@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:my_app/core/theme/app_layout.dart';
-import 'package:my_app/core/theme/theme.dart';
-import 'package:my_app/shared/widgets/app_buttons.dart';
+import 'package:cajun_local/core/theme/app_layout.dart';
+import 'package:cajun_local/core/theme/theme.dart';
+import 'package:cajun_local/shared/widgets/app_buttons.dart';
 
 /// Shown during sign-up: user must scroll to the bottom of the privacy policy
 /// and tap "I agree" to continue creating an account. Pops with `true` when agreed.
@@ -9,12 +9,10 @@ class PrivacyPolicyAgreementScreen extends StatefulWidget {
   const PrivacyPolicyAgreementScreen({super.key});
 
   @override
-  State<PrivacyPolicyAgreementScreen> createState() =>
-      _PrivacyPolicyAgreementScreenState();
+  State<PrivacyPolicyAgreementScreen> createState() => _PrivacyPolicyAgreementScreenState();
 }
 
-class _PrivacyPolicyAgreementScreenState
-    extends State<PrivacyPolicyAgreementScreen> {
+class _PrivacyPolicyAgreementScreenState extends State<PrivacyPolicyAgreementScreen> {
   final ScrollController _scrollController = ScrollController();
   bool _hasScrolledToBottom = false;
 
@@ -49,10 +47,7 @@ class _PrivacyPolicyAgreementScreenState
       appBar: AppBar(
         title: Text(
           'Privacy Policy',
-          style: theme.textTheme.titleLarge?.copyWith(
-            fontWeight: FontWeight.w700,
-            color: AppTheme.specNavy,
-          ),
+          style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700, color: AppTheme.specNavy),
         ),
         backgroundColor: AppTheme.specOffWhite,
         foregroundColor: AppTheme.specNavy,
@@ -131,8 +126,7 @@ class _PrivacyPolicyAgreementScreenState
                     ),
                     _Section(
                       title: 'Contact',
-                      body:
-                          'For privacy questions or requests, contact us through the app or at cajunlocal.com.',
+                      body: 'For privacy questions or requests, contact us through the app or at cajunlocal.com.',
                     ),
                     const SizedBox(height: 24),
                     if (!_hasScrolledToBottom)
@@ -140,8 +134,7 @@ class _PrivacyPolicyAgreementScreenState
                         padding: const EdgeInsets.only(bottom: 16),
                         child: Row(
                           children: [
-                            Icon(Icons.keyboard_arrow_down_rounded,
-                                size: 20, color: AppTheme.specGold),
+                            Icon(Icons.keyboard_arrow_down_rounded, size: 20, color: AppTheme.specGold),
                             const SizedBox(width: 8),
                             Text(
                               'Scroll to the bottom to enable "I agree"',
@@ -170,17 +163,10 @@ class _PrivacyPolicyAgreementScreenState
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     AppSecondaryButton(
-                      onPressed: _hasScrolledToBottom
-                          ? () => Navigator.of(context).pop(true)
-                          : null,
+                      onPressed: _hasScrolledToBottom ? () => Navigator.of(context).pop(true) : null,
                       child: Text(
-                        _hasScrolledToBottom
-                            ? 'I agree'
-                            : 'Scroll to bottom to agree',
-                        style: const TextStyle(
-                          fontWeight: FontWeight.w600,
-                          fontSize: 16,
-                        ),
+                        _hasScrolledToBottom ? 'I agree' : 'Scroll to bottom to agree',
+                        style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
                       ),
                     ),
                   ],
@@ -211,27 +197,18 @@ class _Section extends StatelessWidget {
         children: [
           Text(
             title,
-            style: theme.textTheme.titleSmall?.copyWith(
-              fontWeight: FontWeight.w700,
-              color: AppTheme.specNavy,
-            ),
+            style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700, color: AppTheme.specNavy),
           ),
           const SizedBox(height: 6),
           Container(
             width: 40,
             height: 2,
-            decoration: BoxDecoration(
-              color: AppTheme.specGold,
-              borderRadius: BorderRadius.circular(1),
-            ),
+            decoration: BoxDecoration(color: AppTheme.specGold, borderRadius: BorderRadius.circular(1)),
           ),
           const SizedBox(height: 10),
           Text(
             body,
-            style: theme.textTheme.bodyMedium?.copyWith(
-              color: AppTheme.specNavy.withValues(alpha: 0.9),
-              height: 1.5,
-            ),
+            style: theme.textTheme.bodyMedium?.copyWith(color: AppTheme.specNavy.withValues(alpha: 0.9), height: 1.5),
           ),
         ],
       ),

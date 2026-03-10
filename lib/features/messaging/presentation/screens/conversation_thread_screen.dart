@@ -1,15 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:my_app/core/auth/providers/auth_provider.dart';
-import 'package:my_app/core/data/models/conversation.dart';
-import 'package:my_app/core/data/models/message.dart';
-import 'package:my_app/core/data/repositories/business_repository.dart';
-import 'package:my_app/core/data/repositories/conversations_repository.dart';
-import 'package:my_app/core/data/repositories/messages_repository.dart';
-import 'package:my_app/core/data/repositories/profiles_repository.dart';
-import 'package:my_app/core/theme/app_layout.dart';
-import 'package:my_app/core/theme/theme.dart';
-import 'package:my_app/shared/widgets/app_buttons.dart';
+import 'package:cajun_local/core/auth/providers/auth_provider.dart';
+import 'package:cajun_local/core/data/models/conversation.dart';
+import 'package:cajun_local/core/data/models/message.dart';
+import 'package:cajun_local/core/data/repositories/business_repository.dart';
+import 'package:cajun_local/core/data/repositories/conversations_repository.dart';
+import 'package:cajun_local/core/data/repositories/messages_repository.dart';
+import 'package:cajun_local/core/data/repositories/profiles_repository.dart';
+import 'package:cajun_local/core/theme/app_layout.dart';
+import 'package:cajun_local/core/theme/theme.dart';
+import 'package:cajun_local/shared/widgets/app_buttons.dart';
 
 /// Two-way conversation thread. User messages on right, business on left.
 /// User can only send when the last message is from the business.

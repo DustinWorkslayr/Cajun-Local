@@ -1,7 +1,7 @@
 import 'package:dio/dio.dart';
-import 'package:my_app/core/api/api_client.dart';
-import 'package:my_app/core/data/models/event_rsvp.dart';
-import 'package:my_app/core/data/repositories/event_rsvps_repository.dart';
+import 'package:cajun_local/core/api/api_client.dart';
+import 'package:cajun_local/core/data/models/event_rsvp.dart';
+import 'package:cajun_local/core/data/repositories/event_rsvps_repository.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 part 'event_rsvps_api.g.dart';

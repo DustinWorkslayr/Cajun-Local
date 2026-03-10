@@ -1,20 +1,16 @@
 import 'package:flutter/material.dart';
-import 'package:my_app/core/data/app_data_scope.dart';
-import 'package:my_app/shared/widgets/app_buttons.dart';
-import 'package:my_app/core/data/mock_data.dart';
-import 'package:my_app/core/data/services/ask_local_service.dart';
-import 'package:my_app/core/preferences/user_parish_preferences.dart';
-import 'package:my_app/core/revenuecat/present_subscription_paywall.dart';
-import 'package:my_app/core/theme/theme.dart';
-import 'package:my_app/features/listing/presentation/screens/listing_detail_screen.dart';
+import 'package:cajun_local/core/data/app_data_scope.dart';
+import 'package:cajun_local/shared/widgets/app_buttons.dart';
+import 'package:cajun_local/core/data/mock_data.dart';
+import 'package:cajun_local/core/data/services/ask_local_service.dart';
+import 'package:cajun_local/core/preferences/user_parish_preferences.dart';
+import 'package:cajun_local/core/revenuecat/present_subscription_paywall.dart';
+import 'package:cajun_local/core/theme/theme.dart';
+import 'package:cajun_local/features/listing/presentation/screens/listing_detail_screen.dart';
 
 /// Message in the Ask Local conversation (user or AI). AI messages may include listing IDs to show as cards.
 class _Message {
-  const _Message({
-    required this.isUser,
-    required this.text,
-    this.listingIds = const [],
-  });
+  const _Message({required this.isUser, required this.text, this.listingIds = const []});
   final bool isUser;
   final String text;
   final List<String> listingIds;
@@ -32,9 +28,7 @@ const int _kAskLocalBufferTailChars = 2500;
   final match = _listingsPattern.firstMatch(text);
   if (match == null) return (text, const []);
   final idsStr = match.group(1)?.trim() ?? '';
-  final ids = idsStr.isEmpty
-      ? <String>[]
-      : idsStr.split(',').map((e) => e.trim()).where((e) => e.isNotEmpty).toList();
+  final ids = idsStr.isEmpty ? <String>[] : idsStr.split(',').map((e) => e.trim()).where((e) => e.isNotEmpty).toList();
   final displayText = text.replaceAll(_listingsPattern, '').replaceAll(RegExp(r'\n\s*$'), '').trim();
   return (displayText, ids);
 }
@@ -47,9 +41,7 @@ void showAskLocalSheet(BuildContext context, {required String accessToken}) {
     isScrollControlled: true,
     useSafeArea: true,
     backgroundColor: AppTheme.specWhite,
-    shape: const RoundedRectangleBorder(
-      borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-    ),
+    shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
     builder: (ctx) => _AskLocalSheet(accessToken: accessToken),
   );
 }
@@ -69,6 +61,7 @@ class _AskLocalSheetState extends State<_AskLocalSheet> {
   final _scrollController = ScrollController();
   bool _loading = false;
   String? _error;
+
   /// True when last failure was subscription_required (show Cajun+ upsell).
   bool _errorSubscriptionRequired = false;
   final _service = AskLocalService();
@@ -79,6 +72,7 @@ class _AskLocalSheetState extends State<_AskLocalSheet> {
   List<MockParish> _formParishes = [];
   final _formExtraController = TextEditingController();
   bool _formParishesLoaded = false;
+
   /// Preferred parish IDs used for the last/current conversation (for follow-up sends).
   List<String>? _lastPreferredParishIds;
 
@@ -131,14 +125,9 @@ class _AskLocalSheetState extends State<_AskLocalSheet> {
     if (type.isEmpty) return;
     final areas = _formParishIds.isEmpty
         ? 'my preferred areas'
-        : _formParishes
-            .where((p) => _formParishIds.contains(p.id))
-            .map((p) => p.name)
-            .join(', ');
+        : _formParishes.where((p) => _formParishIds.contains(p.id)).map((p) => p.name).join(', ');
     final extra = _formExtraController.text.trim();
-    final question = extra.isEmpty
-        ? "I'm looking for $type in $areas."
-        : "I'm looking for $type in $areas. $extra";
+    final question = extra.isEmpty ? "I'm looking for $type in $areas." : "I'm looking for $type in $areas. $extra";
     final ids = _formParishIds.isEmpty ? null : _formParishIds.toList();
     _lastPreferredParishIds = ids;
     if (_formParishIds.isNotEmpty) {
@@ -161,11 +150,7 @@ class _AskLocalSheetState extends State<_AskLocalSheet> {
     _scrollToEnd();
 
     final parishIds = preferredParishIds ?? _lastPreferredParishIds;
-    final result = await _service.ask(
-      question: q,
-      accessToken: widget.accessToken,
-      preferredParishIds: parishIds,
-    );
+    final result = await _service.ask(question: q, accessToken: widget.accessToken, preferredParishIds: parishIds);
 
     if (!mounted) return;
 
@@ -247,10 +232,7 @@ class _AskLocalSheetState extends State<_AskLocalSheet> {
                     children: [
                       Text(
                         'Ask Local',
-                        style: theme.textTheme.titleLarge?.copyWith(
-                          fontWeight: FontWeight.w700,
-                          color: nav,
-                        ),
+                        style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700, color: nav),
                       ),
                       Text(
                         'Tell us what you\'re looking for—we\'ll search your preferred areas.',
@@ -286,10 +268,7 @@ class _AskLocalSheetState extends State<_AskLocalSheet> {
                           Icon(Icons.info_outline_rounded, color: AppTheme.specRed, size: 20),
                           const SizedBox(width: 8),
                           Expanded(
-                            child: Text(
-                              _error!,
-                              style: theme.textTheme.bodySmall?.copyWith(color: AppTheme.specRed),
-                            ),
+                            child: Text(_error!, style: theme.textTheme.bodySmall?.copyWith(color: AppTheme.specRed)),
                           ),
                         ],
                       ),
@@ -321,11 +300,7 @@ class _AskLocalSheetState extends State<_AskLocalSheet> {
                       final msg = _messages[index];
                       return Padding(
                         padding: const EdgeInsets.only(bottom: 12),
-                        child: _MessageBubble(
-                          message: msg,
-                          theme: theme,
-                          nav: nav,
-                        ),
+                        child: _MessageBubble(message: msg, theme: theme, nav: nav),
                       );
                     },
                   ),
@@ -356,9 +331,7 @@ class _AskLocalSheetState extends State<_AskLocalSheet> {
                   ),
                   const SizedBox(width: 8),
                   IconButton.filled(
-                    onPressed: _loading
-                        ? null
-                        : () => _send(_inputController.text),
+                    onPressed: _loading ? null : () => _send(_inputController.text),
                     icon: _loading
                         ? SizedBox(
                             width: 22,
@@ -402,9 +375,7 @@ class _AskLocalSheetState extends State<_AskLocalSheet> {
                 onSelected: (v) => setState(() => _formType = v ? t.$1 : ''),
                 backgroundColor: AppTheme.specOffWhite,
                 selectedColor: AppTheme.specGold.withValues(alpha: 0.3),
-                side: BorderSide(
-                  color: selected ? AppTheme.specGold : nav.withValues(alpha: 0.3),
-                ),
+                side: BorderSide(color: selected ? AppTheme.specGold : nav.withValues(alpha: 0.3)),
               );
             }).toList(),
           ),
@@ -414,10 +385,7 @@ class _AskLocalSheetState extends State<_AskLocalSheet> {
             style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600, color: nav),
           ),
           const SizedBox(height: 4),
-          Text(
-            'We\'ll only show listings in these parishes.',
-            style: theme.textTheme.bodySmall?.copyWith(color: sub),
-          ),
+          Text('We\'ll only show listings in these parishes.', style: theme.textTheme.bodySmall?.copyWith(color: sub)),
           const SizedBox(height: 8),
           if (!_formParishesLoaded)
             const Padding(
@@ -442,9 +410,7 @@ class _AskLocalSheetState extends State<_AskLocalSheet> {
                   }),
                   backgroundColor: AppTheme.specOffWhite,
                   selectedColor: AppTheme.specGold.withValues(alpha: 0.3),
-                  side: BorderSide(
-                    color: selected ? AppTheme.specGold : nav.withValues(alpha: 0.3),
-                  ),
+                  side: BorderSide(color: selected ? AppTheme.specGold : nav.withValues(alpha: 0.3)),
                 );
               }).toList(),
             ),
@@ -470,15 +436,9 @@ class _AskLocalSheetState extends State<_AskLocalSheet> {
           ),
           const SizedBox(height: 24),
           AppSecondaryButton(
-            onPressed: _formType.isEmpty || _loading
-                ? null
-                : () => _sendFromForm(),
+            onPressed: _formType.isEmpty || _loading ? null : () => _sendFromForm(),
             icon: _loading
-                ? const SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
+                ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
                 : const Icon(Icons.search_rounded),
             label: const Text('Find for me'),
           ),
@@ -489,11 +449,7 @@ class _AskLocalSheetState extends State<_AskLocalSheet> {
 }
 
 class _MessageBubble extends StatelessWidget {
-  const _MessageBubble({
-    required this.message,
-    required this.theme,
-    required this.nav,
-  });
+  const _MessageBubble({required this.message, required this.theme, required this.nav});
 
   final _Message message;
   final ThemeData theme;
@@ -519,9 +475,7 @@ class _MessageBubble extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                 decoration: BoxDecoration(
-                  color: message.isUser
-                      ? AppTheme.specNavy.withValues(alpha: 0.12)
-                      : AppTheme.specOffWhite,
+                  color: message.isUser ? AppTheme.specNavy.withValues(alpha: 0.12) : AppTheme.specOffWhite,
                   borderRadius: BorderRadius.only(
                     topLeft: const Radius.circular(16),
                     topRight: const Radius.circular(16),
@@ -531,10 +485,7 @@ class _MessageBubble extends StatelessWidget {
                 ),
                 child: Text(
                   message.text.isEmpty ? '…' : message.text,
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    color: nav,
-                    height: 1.4,
-                  ),
+                  style: theme.textTheme.bodyMedium?.copyWith(color: nav, height: 1.4),
                 ),
               ),
               if (!message.isUser && message.listingIds.isNotEmpty) ...[
@@ -595,7 +546,9 @@ class _CompactListingCard extends StatelessWidget {
               elevation: 0,
               color: AppTheme.specOffWhite,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-              child: const Center(child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))),
+              child: const Center(
+                child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2)),
+              ),
             ),
           );
         }
@@ -606,11 +559,9 @@ class _CompactListingCard extends StatelessWidget {
             child: InkWell(
               onTap: () {
                 Navigator.of(context).pop();
-                Navigator.of(context).push(
-                  MaterialPageRoute<void>(
-                    builder: (_) => ListingDetailScreen(listingId: listing.id),
-                  ),
-                );
+                Navigator.of(
+                  context,
+                ).push(MaterialPageRoute<void>(builder: (_) => ListingDetailScreen(listingId: listing.id)));
               },
               borderRadius: BorderRadius.circular(12),
               child: Container(
@@ -620,11 +571,7 @@ class _CompactListingCard extends StatelessWidget {
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(color: nav.withValues(alpha: 0.15)),
                   boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.06),
-                      blurRadius: 8,
-                      offset: const Offset(0, 2),
-                    ),
+                    BoxShadow(color: Colors.black.withValues(alpha: 0.06), blurRadius: 8, offset: const Offset(0, 2)),
                   ],
                 ),
                 child: Column(
@@ -633,19 +580,14 @@ class _CompactListingCard extends StatelessWidget {
                   children: [
                     Text(
                       listing.name,
-                      style: theme.textTheme.titleSmall?.copyWith(
-                        fontWeight: FontWeight.w700,
-                        color: nav,
-                      ),
+                      style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700, color: nav),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
                     const SizedBox(height: 4),
                     Text(
                       listing.tagline,
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: theme.colorScheme.onSurfaceVariant,
-                      ),
+                      style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                     ),

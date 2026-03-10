@@ -1,18 +1,14 @@
 import 'package:flutter/material.dart';
-import 'package:my_app/shared/widgets/app_buttons.dart';
-import 'package:my_app/core/data/models/business_hours.dart';
-import 'package:my_app/core/data/repositories/business_hours_repository.dart';
-import 'package:my_app/core/theme/theme.dart';
-import 'package:my_app/core/utils/hours_format.dart';
+import 'package:cajun_local/shared/widgets/app_buttons.dart';
+import 'package:cajun_local/core/data/models/business_hours.dart';
+import 'package:cajun_local/core/data/repositories/business_hours_repository.dart';
+import 'package:cajun_local/core/theme/theme.dart';
+import 'package:cajun_local/core/utils/hours_format.dart';
 
 /// Editable weekly hours. Loads from/saves to BusinessHoursRepository.
 /// Use in listing edit (More tab) and admin business overview.
 class BusinessHoursEditor extends StatefulWidget {
-  const BusinessHoursEditor({
-    super.key,
-    required this.businessId,
-    this.onSaved,
-  });
+  const BusinessHoursEditor({super.key, required this.businessId, this.onSaved});
 
   final String businessId;
   final VoidCallback? onSaved;
@@ -21,15 +17,7 @@ class BusinessHoursEditor extends StatefulWidget {
   State<BusinessHoursEditor> createState() => _BusinessHoursEditorState();
 }
 
-const List<String> _days = [
-  'monday',
-  'tuesday',
-  'wednesday',
-  'thursday',
-  'friday',
-  'saturday',
-  'sunday',
-];
+const List<String> _days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
 
 String _dayLabel(String day) {
   final cap = day[0].toUpperCase() + day.substring(1);
@@ -74,10 +62,7 @@ class _TimeChip extends StatelessWidget {
             border: Border.all(color: AppTheme.specNavy.withValues(alpha: 0.25)),
             borderRadius: BorderRadius.circular(8),
           ),
-          child: Text(
-            label,
-            style: theme.textTheme.bodyMedium?.copyWith(color: AppTheme.specNavy),
-          ),
+          child: Text(label, style: theme.textTheme.bodyMedium?.copyWith(color: AppTheme.specNavy)),
         ),
       ),
     );
@@ -91,6 +76,7 @@ class _BusinessHoursEditorState extends State<BusinessHoursEditor> {
   final Map<String, TextEditingController> _openControllers = {};
   final Map<String, TextEditingController> _closeControllers = {};
   final Map<String, bool> _closed = {};
+
   /// Open 24 hours (store 00:00–23:59).
   final Map<String, bool> _open24h = {};
 
@@ -211,10 +197,7 @@ class _BusinessHoursEditorState extends State<BusinessHoursEditor> {
                   width: 88,
                   child: Text(
                     _dayLabel(d),
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      color: AppTheme.specNavy,
-                      fontWeight: FontWeight.w500,
-                    ),
+                    style: theme.textTheme.bodyMedium?.copyWith(color: AppTheme.specNavy, fontWeight: FontWeight.w500),
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
@@ -233,9 +216,7 @@ class _BusinessHoursEditorState extends State<BusinessHoursEditor> {
                           }),
                           fillColor: WidgetStateProperty.resolveWith(
                             (Set<WidgetState> states) =>
-                                states.contains(WidgetState.selected)
-                                    ? AppTheme.specNavy
-                                    : null,
+                                states.contains(WidgetState.selected) ? AppTheme.specNavy : null,
                           ),
                         ),
                         const Text('Open', style: TextStyle(fontSize: 12, color: AppTheme.specNavy)),
@@ -263,7 +244,10 @@ class _BusinessHoursEditorState extends State<BusinessHoursEditor> {
                                 _closeControllers[d]!.text = '11:59 PM';
                               }
                             }),
-                            child: Text('Open 24 hrs', style: theme.textTheme.bodySmall?.copyWith(color: AppTheme.specNavy)),
+                            child: Text(
+                              'Open 24 hrs',
+                              style: theme.textTheme.bodySmall?.copyWith(color: AppTheme.specNavy),
+                            ),
                           ),
                           const SizedBox(width: 12),
                           if (!open24) ...[
@@ -272,7 +256,8 @@ class _BusinessHoursEditorState extends State<BusinessHoursEditor> {
                               onTap: () async {
                                 final t = await showTimePicker(
                                   context: context,
-                                  initialTime: _timeFromAmPm(_openControllers[d]!.text) ?? const TimeOfDay(hour: 9, minute: 0),
+                                  initialTime:
+                                      _timeFromAmPm(_openControllers[d]!.text) ?? const TimeOfDay(hour: 9, minute: 0),
                                 );
                                 if (t != null && mounted) {
                                   setState(() => _openControllers[d]!.text = _formatToAmPm(t));
@@ -288,7 +273,8 @@ class _BusinessHoursEditorState extends State<BusinessHoursEditor> {
                               onTap: () async {
                                 final t = await showTimePicker(
                                   context: context,
-                                  initialTime: _timeFromAmPm(_closeControllers[d]!.text) ?? const TimeOfDay(hour: 17, minute: 0),
+                                  initialTime:
+                                      _timeFromAmPm(_closeControllers[d]!.text) ?? const TimeOfDay(hour: 17, minute: 0),
                                 );
                                 if (t != null && mounted) {
                                   setState(() => _closeControllers[d]!.text = _formatToAmPm(t));
@@ -308,7 +294,13 @@ class _BusinessHoursEditorState extends State<BusinessHoursEditor> {
         const SizedBox(height: 8),
         AppSecondaryButton(
           onPressed: _saving ? null : _save,
-          child: _saving ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)) : const Text('Save hours'),
+          child: _saving
+              ? const SizedBox(
+                  height: 20,
+                  width: 20,
+                  child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                )
+              : const Text('Save hours'),
         ),
       ],
     );

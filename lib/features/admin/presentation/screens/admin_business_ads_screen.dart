@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:my_app/core/data/models/business_ad.dart';
-import 'package:my_app/core/data/repositories/business_ads_repository.dart';
-import 'package:my_app/core/theme/theme.dart';
-import 'package:my_app/features/admin/presentation/widgets/admin_shared.dart';
-import 'package:my_app/shared/widgets/app_buttons.dart';
+import 'package:cajun_local/core/data/models/business_ad.dart';
+import 'package:cajun_local/core/data/repositories/business_ads_repository.dart';
+import 'package:cajun_local/core/theme/theme.dart';
+import 'package:cajun_local/features/admin/presentation/widgets/admin_shared.dart';
+import 'package:cajun_local/shared/widgets/app_buttons.dart';
 
 /// Admin: list business ads, filter by status. Tap to open detail slide-out with full admin control.
 class AdminBusinessAdsScreen extends StatefulWidget {

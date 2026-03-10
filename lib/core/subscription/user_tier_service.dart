@@ -1,8 +1,8 @@
 import 'package:flutter/foundation.dart';
-import 'package:my_app/core/data/models/user_plan.dart';
-import 'package:my_app/core/data/repositories/user_plans_repository.dart';
-import 'package:my_app/core/data/repositories/user_subscriptions_repository.dart';
-import 'package:my_app/core/subscription/resolved_permissions.dart';
+import 'package:cajun_local/core/data/models/user_plan.dart';
+import 'package:cajun_local/core/data/repositories/user_plans_repository.dart';
+import 'package:cajun_local/core/data/repositories/user_subscriptions_repository.dart';
+import 'package:cajun_local/core/subscription/resolved_permissions.dart';
 
 /// Loads current user's subscription + plan, resolves permissions (tier defaults
 /// overridden by plan.features), and exposes them to the app.
