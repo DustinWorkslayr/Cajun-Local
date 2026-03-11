@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:cajun_local/core/auth/providers/auth_provider.dart';
+import 'package:cajun_local/features/auth/presentation/controllers/auth_controller.dart';
 import 'package:cajun_local/core/data/providers/app_data_providers.dart';
 import 'package:cajun_local/core/data/deal_type_icons.dart';
 import 'package:cajun_local/core/data/mock_data.dart';
-import 'package:cajun_local/core/data/models/user_deal.dart';
-import 'package:cajun_local/core/data/repositories/business_managers_repository.dart';
-import 'package:cajun_local/core/preferences/user_parish_preferences.dart';
+import 'package:cajun_local/features/deals/data/models/user_deal.dart';
+import 'package:cajun_local/features/businesses/data/repositories/business_managers_repository.dart';
+import 'package:cajun_local/features/profile/data/models/user_parish_preferences.dart';
 import 'package:cajun_local/core/theme/app_layout.dart';
 import 'package:cajun_local/core/theme/theme.dart';
 import 'package:cajun_local/features/deals/presentation/screens/my_deals_screen.dart';
@@ -16,7 +16,7 @@ import 'package:cajun_local/shared/widgets/animated_entrance.dart';
 import 'package:cajun_local/shared/widgets/deal_detail_popup.dart';
 import 'package:cajun_local/shared/widgets/app_buttons.dart';
 import 'package:cajun_local/core/revenuecat/present_subscription_paywall.dart';
-import 'package:cajun_local/core/data/repositories/profiles_repository.dart';
+import 'package:cajun_local/features/profile/data/repositories/profiles_repository.dart';
 
 /// Deal type filter options: value (null = all) and label.
 const List<({String? value, String label})> _dealTypeFilterOptions = [
@@ -214,7 +214,7 @@ class _DiscountsTabState extends ConsumerState<_DiscountsTab> {
   Future<void> _load() async {
     setState(() => _loading = true);
     final dataSource = ref.read(listingDataSourceProvider);
-    final uid = ref.read(authNotifierProvider).valueOrNull?.id;
+    final uid = ref.read(authControllerProvider).valueOrNull?.id;
     final repo = ref.read(userDealsRepositoryProvider);
 
     final categories = await dataSource.getCategories();
@@ -354,7 +354,7 @@ class _DiscountsTabState extends ConsumerState<_DiscountsTab> {
     final theme = Theme.of(context);
     final dataSource = ref.watch(listingDataSourceProvider);
     final userDealsRepo = ref.watch(userDealsRepositoryProvider);
-    final uid = ref.watch(authNotifierProvider).valueOrNull?.id;
+    final uid = ref.watch(authControllerProvider).valueOrNull?.id;
     final userTierService = ref.watch(userTierServiceProvider);
     final canClaimDeals = uid != null && (userTierService.value?.canClaimDeals ?? false);
     final canSeeExclusiveDeals = userTierService.value?.canSeeExclusiveDeals ?? false;

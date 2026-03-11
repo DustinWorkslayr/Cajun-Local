@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cajun_local/core/data/listing_data_source.dart';
-import 'package:cajun_local/core/data/repositories/favorites_repository.dart';
+import 'package:cajun_local/features/favorites/data/repositories/favorites_repository.dart';
 import 'package:cajun_local/core/revenuecat/revenuecat_service.dart';
 import 'package:cajun_local/core/subscription/user_tier_service.dart';
 

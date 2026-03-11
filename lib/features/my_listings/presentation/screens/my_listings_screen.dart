@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:cajun_local/core/auth/providers/auth_provider.dart';
+import 'package:cajun_local/features/auth/presentation/controllers/auth_controller.dart';
 import 'package:cajun_local/core/data/providers/app_data_providers.dart';
 import 'package:cajun_local/core/data/mock_data.dart';
 import 'package:cajun_local/core/stripe/stripe_checkout_service.dart';
@@ -103,7 +103,7 @@ class _MyListingsScreenState extends ConsumerState<MyListingsScreen> {
       if (await canLaunchUrl(uri)) {
         await launchUrl(uri, mode: LaunchMode.externalApplication);
         if (!mounted) return;
-        final uid = ref.read(authNotifierProvider).valueOrNull?.id;
+        final uid = ref.read(authControllerProvider).valueOrNull?.id;
         if (uid != null) {
           ref.read(userTierServiceProvider).refresh(uid);
         }

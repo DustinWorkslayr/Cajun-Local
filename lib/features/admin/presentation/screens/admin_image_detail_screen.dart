@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:cajun_local/core/auth/providers/auth_provider.dart';
-import 'package:cajun_local/core/data/models/business_image.dart';
-import 'package:cajun_local/core/data/repositories/audit_log_repository.dart';
-import 'package:cajun_local/core/data/repositories/business_images_repository.dart';
-import 'package:cajun_local/core/data/repositories/business_managers_repository.dart';
-import 'package:cajun_local/core/data/repositories/business_repository.dart';
-import 'package:cajun_local/core/data/repositories/profiles_repository.dart';
+import 'package:cajun_local/features/auth/presentation/controllers/auth_controller.dart';
+import 'package:cajun_local/features/businesses/data/models/business_image.dart';
+import 'package:cajun_local/features/admin/data/repositories/audit_log_repository.dart';
+import 'package:cajun_local/features/businesses/data/repositories/business_images_repository.dart';
+import 'package:cajun_local/features/businesses/data/repositories/business_managers_repository.dart';
+import 'package:cajun_local/features/businesses/data/repositories/business_repository.dart';
+import 'package:cajun_local/features/profile/data/repositories/profiles_repository.dart';
 
 class AdminImageDetailScreen extends ConsumerStatefulWidget {
   const AdminImageDetailScreen({super.key, required this.imageId});
@@ -53,7 +53,7 @@ class _AdminImageDetailScreenState extends ConsumerState<AdminImageDetailScreen>
 
   Future<void> _updateStatus(String status) async {
     final repo = BusinessImagesRepository();
-    final uid = ref.read(authNotifierProvider).valueOrNull?.id;
+    final uid = ref.read(authControllerProvider).valueOrNull?.id;
     await repo.updateStatus(widget.imageId, status, approvedBy: uid);
     AuditLogRepository().insert(
       action: status == 'approved' ? 'image_approved' : 'image_rejected',

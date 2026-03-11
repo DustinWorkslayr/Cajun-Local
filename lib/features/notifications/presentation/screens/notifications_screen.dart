@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:cajun_local/core/auth/providers/auth_provider.dart';
-import 'package:cajun_local/core/data/models/app_notification.dart';
-import 'package:cajun_local/core/data/repositories/notifications_repository.dart';
+import 'package:cajun_local/features/auth/presentation/controllers/auth_controller.dart';
+import 'package:cajun_local/features/notifications/data/models/app_notification.dart';
+import 'package:cajun_local/features/notifications/data/repositories/notifications_repository.dart';
 import 'package:cajun_local/core/theme/app_layout.dart';
 import 'package:cajun_local/core/theme/theme.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -56,7 +56,7 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
   }
 
   Future<void> _load() async {
-    final uid = ref.read(authNotifierProvider).valueOrNull?.id;
+    final uid = ref.read(authControllerProvider).valueOrNull?.id;
     if (uid == null) {
       if (mounted) setState(() => _loading = false);
       return;
@@ -73,7 +73,7 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
   }
 
   Future<void> _loadMore() async {
-    final uid = ref.read(authNotifierProvider).valueOrNull?.id;
+    final uid = ref.read(authControllerProvider).valueOrNull?.id;
     if (uid == null || _loadingMore || !_hasMore) return;
     setState(() => _loadingMore = true);
     final list = await NotificationsRepository().listForUser(
@@ -103,7 +103,7 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
   }
 
   Future<void> _markAllAsRead() async {
-    final uid = ref.read(authNotifierProvider).valueOrNull?.id;
+    final uid = ref.read(authControllerProvider).valueOrNull?.id;
     if (uid == null) return;
     await NotificationsRepository().markAllAsRead(uid);
     if (mounted) {
@@ -170,7 +170,7 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final padding = AppLayout.horizontalPadding(context);
-    final uid = ref.watch(authNotifierProvider).valueOrNull?.id;
+    final uid = ref.watch(authControllerProvider).valueOrNull?.id;
     final hasUnread = _list.any((e) => !e.isRead);
 
     return Scaffold(

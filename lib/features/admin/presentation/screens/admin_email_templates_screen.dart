@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:cajun_local/core/data/models/email_template.dart';
-import 'package:cajun_local/core/data/repositories/email_templates_repository.dart';
+import 'package:cajun_local/features/admin/data/models/email_template.dart';
+import 'package:cajun_local/features/admin/data/repositories/email_templates_repository.dart';
 import 'package:cajun_local/core/theme/theme.dart';
 import 'package:cajun_local/features/admin/presentation/widgets/admin_shared.dart';
 import 'package:cajun_local/shared/widgets/app_buttons.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:cajun_local/core/auth/providers/auth_provider.dart';
+import 'package:cajun_local/features/auth/presentation/controllers/auth_controller.dart';
 
 class AdminEmailTemplatesScreen extends StatefulWidget {
   const AdminEmailTemplatesScreen({super.key, this.embeddedInShell = false});
@@ -292,7 +292,7 @@ class _EmailTemplateSlideOutState extends ConsumerState<EmailTemplateSlideOut> {
       });
       return;
     }
-    final email = ref.read(authNotifierProvider).valueOrNull?.email;
+    final email = ref.read(authControllerProvider).valueOrNull?.email;
     if (email == null || email.isEmpty) {
       if (mounted) {
         ScaffoldMessenger.of(

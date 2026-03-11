@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:cajun_local/core/data/models/deal.dart';
-import 'package:cajun_local/core/data/repositories/deals_repository.dart';
+import 'package:cajun_local/features/deals/data/models/deal.dart';
+import 'package:cajun_local/features/deals/data/repositories/deals_repository.dart';
 import 'package:cajun_local/features/admin/presentation/screens/admin_add_deal_screen.dart';
 import 'package:cajun_local/features/admin/presentation/screens/admin_deal_detail_screen.dart';
 

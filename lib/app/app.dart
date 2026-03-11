@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cajun_local/app/main_shell.dart';
-import 'package:cajun_local/core/auth/providers/auth_provider.dart';
+import 'package:cajun_local/features/auth/presentation/controllers/auth_controller.dart';
 import 'package:cajun_local/core/data/app_data_scope.dart';
 import 'package:cajun_local/core/data/listing_data_source.dart';
-import 'package:cajun_local/core/data/repositories/favorites_repository.dart';
-import 'package:cajun_local/core/data/repositories/user_plans_repository.dart';
-import 'package:cajun_local/core/data/repositories/user_subscriptions_repository.dart';
-import 'package:cajun_local/core/favorites/favorites_scope.dart';
+import 'package:cajun_local/features/favorites/data/repositories/favorites_repository.dart';
+import 'package:cajun_local/features/profile/data/repositories/user_plans_repository.dart';
+import 'package:cajun_local/features/profile/data/repositories/user_subscriptions_repository.dart';
+import 'package:cajun_local/features/favorites/presentation/widgets/favorites_scope.dart';
 import 'package:cajun_local/core/revenuecat/revenuecat_service.dart';
 import 'package:cajun_local/core/subscription/user_tier_service.dart';
 import 'package:cajun_local/core/theme/theme.dart';
@@ -61,10 +61,10 @@ class _CajunLocalAppState extends ConsumerState<CajunLocalApp> {
 
   @override
   Widget build(BuildContext context) {
-    final authState = ref.watch(authNotifierProvider);
+    final authState = ref.watch(authControllerProvider);
 
     // Handle auth changes for dependent services
-    ref.listen(authNotifierProvider, (previous, next) {
+    ref.listen(authControllerProvider, (previous, next) {
       final oldUser = previous?.valueOrNull;
       final newUser = next.valueOrNull;
       if (oldUser?.id != newUser?.id) {

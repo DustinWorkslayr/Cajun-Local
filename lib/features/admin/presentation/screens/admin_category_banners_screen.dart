@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:cajun_local/core/auth/providers/auth_provider.dart';
-import 'package:cajun_local/core/data/models/business_category.dart';
-import 'package:cajun_local/core/data/models/category_banner.dart';
-import 'package:cajun_local/core/data/repositories/audit_log_repository.dart';
-import 'package:cajun_local/core/data/repositories/category_banners_repository.dart';
-import 'package:cajun_local/core/data/repositories/category_repository.dart';
+import 'package:cajun_local/features/auth/presentation/controllers/auth_controller.dart';
+import 'package:cajun_local/features/businesses/data/models/business_category.dart';
+import 'package:cajun_local/features/categories/data/models/category_banner.dart';
+import 'package:cajun_local/features/admin/data/repositories/audit_log_repository.dart';
+import 'package:cajun_local/features/categories/data/repositories/category_banners_repository.dart';
+import 'package:cajun_local/features/categories/data/repositories/category_repository.dart';
 import 'package:cajun_local/core/theme/app_layout.dart';
 import 'package:cajun_local/core/theme/theme.dart';
 import 'package:cajun_local/features/admin/presentation/screens/admin_add_category_banner_screen.dart';
@@ -268,7 +268,7 @@ class _BannerCardState extends ConsumerState<_BannerCard> {
     setState(() => _updating = true);
     try {
       final repo = CategoryBannersRepository();
-      final uid = ref.read(authNotifierProvider).valueOrNull?.id;
+      final uid = ref.read(authControllerProvider).valueOrNull?.id;
       await repo.updateStatus(widget.banner.id, status, approvedBy: uid);
       AuditLogRepository().insert(
         action: status == 'approved' ? 'banner_approved' : 'banner_rejected',
@@ -470,7 +470,7 @@ class _CategoryBannerPanelContentState extends ConsumerState<_CategoryBannerPane
 
   Future<void> _updateStatus(String status) async {
     final repo = CategoryBannersRepository();
-    final uid = ref.read(authNotifierProvider).valueOrNull?.id;
+    final uid = ref.read(authControllerProvider).valueOrNull?.id;
     await repo.updateStatus(widget.banner.id, status, approvedBy: uid);
     AuditLogRepository().insert(
       action: status == 'approved' ? 'banner_approved' : 'banner_rejected',

@@ -1,10 +1,10 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
-import 'package:cajun_local/core/data/models/business.dart';
-import 'package:cajun_local/core/data/models/business_event.dart';
-import 'package:cajun_local/core/data/repositories/business_events_repository.dart';
-import 'package:cajun_local/core/data/repositories/business_repository.dart';
-import 'package:cajun_local/core/data/repositories/event_rsvps_repository.dart';
+import 'package:cajun_local/features/businesses/data/models/business.dart';
+import 'package:cajun_local/features/events/data/models/business_event.dart';
+import 'package:cajun_local/features/events/data/repositories/business_events_repository.dart';
+import 'package:cajun_local/features/businesses/data/repositories/business_repository.dart';
+import 'package:cajun_local/features/events/data/repositories/event_rsvps_repository.dart';
 import 'package:cajun_local/core/theme/app_layout.dart';
 import 'package:cajun_local/core/theme/theme.dart';
 

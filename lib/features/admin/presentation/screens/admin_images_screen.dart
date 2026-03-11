@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:cajun_local/core/auth/providers/auth_provider.dart';
-import 'package:cajun_local/core/data/models/business_image.dart';
-import 'package:cajun_local/core/data/repositories/audit_log_repository.dart';
-import 'package:cajun_local/core/data/repositories/business_images_repository.dart';
-import 'package:cajun_local/core/data/repositories/business_repository.dart';
+import 'package:cajun_local/features/auth/presentation/controllers/auth_controller.dart';
+import 'package:cajun_local/features/businesses/data/models/business_image.dart';
+import 'package:cajun_local/features/admin/data/repositories/audit_log_repository.dart';
+import 'package:cajun_local/features/businesses/data/repositories/business_images_repository.dart';
+import 'package:cajun_local/features/businesses/data/repositories/business_repository.dart';
 import 'package:cajun_local/core/theme/app_layout.dart';
 import 'package:cajun_local/core/theme/theme.dart';
 import 'package:cajun_local/features/admin/presentation/screens/admin_add_image_screen.dart';
@@ -80,7 +80,7 @@ class _AdminImagesScreenState extends ConsumerState<AdminImagesScreen> {
 
   Future<void> _approveImages(List<String> ids) async {
     if (ids.isEmpty) return;
-    final uid = ref.read(authNotifierProvider).valueOrNull?.id;
+    final uid = ref.read(authControllerProvider).valueOrNull?.id;
     if (uid == null) return;
     setState(() => _approving = true);
     try {

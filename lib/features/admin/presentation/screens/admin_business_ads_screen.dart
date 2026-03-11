@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:cajun_local/core/data/models/business_ad.dart';
-import 'package:cajun_local/core/data/repositories/business_ads_repository.dart';
+import 'package:cajun_local/features/businesses/data/models/business_ad.dart';
+import 'package:cajun_local/features/businesses/data/repositories/business_ads_repository.dart';
 import 'package:cajun_local/core/theme/theme.dart';
 import 'package:cajun_local/features/admin/presentation/widgets/admin_shared.dart';
 import 'package:cajun_local/shared/widgets/app_buttons.dart';

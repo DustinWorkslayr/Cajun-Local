@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:cajun_local/core/data/models/punch_card_enrollment.dart';
-import 'package:cajun_local/core/data/repositories/user_punch_cards_repository.dart';
+import 'package:cajun_local/features/profile/data/models/punch_card_enrollment.dart';
+import 'package:cajun_local/features/profile/data/repositories/user_punch_cards_repository.dart';
 import 'package:cajun_local/core/theme/theme.dart';
 import 'package:cajun_local/shared/widgets/app_buttons.dart';
 

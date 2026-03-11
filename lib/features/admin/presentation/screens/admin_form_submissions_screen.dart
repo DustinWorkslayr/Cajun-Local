@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:cajun_local/core/data/contact_form_templates.dart';
-import 'package:cajun_local/core/data/models/form_submission.dart';
-import 'package:cajun_local/core/data/repositories/form_submissions_repository.dart';
+import 'package:cajun_local/features/admin/data/models/form_submission.dart';
+import 'package:cajun_local/features/admin/data/repositories/form_submissions_repository.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:cajun_local/core/auth/providers/auth_provider.dart';
+import 'package:cajun_local/features/auth/presentation/controllers/auth_controller.dart';
 import 'package:cajun_local/core/theme/theme.dart';
 import 'package:cajun_local/features/admin/presentation/widgets/admin_shared.dart';
 import 'package:cajun_local/shared/widgets/app_buttons.dart';
@@ -191,7 +191,7 @@ class _AdminFormSubmissionDetailSlideOutState extends ConsumerState<AdminFormSub
       _message = null;
     });
     try {
-      final uid = ref.read(authNotifierProvider).valueOrNull?.id;
+      final uid = ref.read(authControllerProvider).valueOrNull?.id;
       final note = _noteController.text.trim().isEmpty ? null : _noteController.text.trim();
       await FormSubmissionsRepository().update(_submission.id, adminNote: note, repliedBy: uid);
       if (mounted) {

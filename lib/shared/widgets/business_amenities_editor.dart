@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:cajun_local/core/data/models/amenity.dart';
-import 'package:cajun_local/core/data/repositories/amenities_repository.dart';
+import 'package:cajun_local/features/businesses/data/models/amenity.dart';
+import 'package:cajun_local/features/businesses/data/repositories/amenities_repository.dart';
 import 'package:cajun_local/core/subscription/business_tier_service.dart';
 import 'package:cajun_local/core/theme/theme.dart';
 

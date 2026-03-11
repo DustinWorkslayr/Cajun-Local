@@ -1,15 +1,15 @@
 import 'package:flutter/material.dart';
-import 'package:cajun_local/core/data/models/business.dart';
-import 'package:cajun_local/core/data/repositories/audit_log_repository.dart';
-import 'package:cajun_local/core/data/models/business_claim.dart';
-import 'package:cajun_local/core/data/models/profile.dart';
-import 'package:cajun_local/core/data/repositories/business_claims_repository.dart';
-import 'package:cajun_local/core/data/repositories/business_managers_repository.dart';
-import 'package:cajun_local/core/data/repositories/business_repository.dart';
-import 'package:cajun_local/core/data/repositories/profiles_repository.dart';
+import 'package:cajun_local/features/businesses/data/models/business.dart';
+import 'package:cajun_local/features/admin/data/repositories/audit_log_repository.dart';
+import 'package:cajun_local/features/businesses/data/models/business_claim.dart';
+import 'package:cajun_local/features/profile/data/models/profile.dart';
+import 'package:cajun_local/features/businesses/data/repositories/business_claims_repository.dart';
+import 'package:cajun_local/features/businesses/data/repositories/business_managers_repository.dart';
+import 'package:cajun_local/features/businesses/data/repositories/business_repository.dart';
+import 'package:cajun_local/features/profile/data/repositories/profiles_repository.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cajun_local/core/theme/app_layout.dart';
-import 'package:cajun_local/core/auth/providers/auth_provider.dart';
+import 'package:cajun_local/features/auth/presentation/controllers/auth_controller.dart';
 import 'package:cajun_local/core/theme/theme.dart';
 import 'package:cajun_local/features/admin/presentation/widgets/admin_shared.dart';
 import 'package:cajun_local/shared/widgets/app_buttons.dart';
@@ -281,7 +281,7 @@ class _ClaimPanelContentState extends ConsumerState<_ClaimPanelContent> {
     try {
       final repo = BusinessClaimsRepository();
       await repo.updateStatus(widget.claim.id, status);
-      final uid = ref.read(authNotifierProvider).valueOrNull?.id;
+      final uid = ref.read(authControllerProvider).valueOrNull?.id;
       try {
         await AuditLogRepository().insert(
           action: status == 'approved' ? 'claim_approved' : 'claim_rejected',

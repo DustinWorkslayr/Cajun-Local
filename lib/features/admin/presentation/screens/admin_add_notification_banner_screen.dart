@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:cajun_local/core/data/repositories/notification_banners_repository.dart';
+import 'package:cajun_local/features/notifications/data/repositories/notification_banners_repository.dart';
 import 'package:cajun_local/shared/widgets/app_buttons.dart';
 import 'package:cajun_local/core/theme/app_layout.dart';
 import 'package:cajun_local/core/theme/theme.dart';

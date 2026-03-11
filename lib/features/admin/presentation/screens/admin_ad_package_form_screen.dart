@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:cajun_local/core/data/models/ad_package.dart';
+import 'package:cajun_local/features/businesses/data/models/ad_package.dart';
 import 'package:cajun_local/core/data/repositories/ad_packages_repository.dart';
 import 'package:cajun_local/core/theme/app_layout.dart';
 import 'package:cajun_local/core/theme/theme.dart';

@@ -3,13 +3,13 @@ import 'dart:convert';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:cajun_local/core/auth/providers/auth_provider.dart';
+import 'package:cajun_local/features/auth/presentation/controllers/auth_controller.dart';
 import 'package:cajun_local/core/data/providers/app_data_providers.dart';
 import 'package:cajun_local/core/data/mock_data.dart';
-import 'package:cajun_local/core/data/models/business_category.dart';
-import 'package:cajun_local/core/data/models/subcategory.dart';
-import 'package:cajun_local/core/data/repositories/business_repository.dart';
-import 'package:cajun_local/core/data/repositories/category_repository.dart';
+import 'package:cajun_local/features/businesses/data/models/business_category.dart';
+import 'package:cajun_local/features/categories/data/models/subcategory.dart';
+import 'package:cajun_local/features/businesses/data/repositories/business_repository.dart';
+import 'package:cajun_local/features/categories/data/repositories/category_repository.dart';
 import 'package:cajun_local/core/theme/app_layout.dart';
 import 'package:cajun_local/core/theme/theme.dart';
 import 'package:cajun_local/shared/widgets/app_buttons.dart';
@@ -64,7 +64,7 @@ class _AdminAddBusinessScreenState extends ConsumerState<AdminAddBusinessScreen>
       _initialLoadDone = true;
       _loadCategories();
       _loadParishes();
-      ref.read(authNotifierProvider.notifier).isAdmin().then((v) {
+      ref.read(authControllerProvider.notifier).isAdmin().then((v) {
         if (mounted) setState(() => _isAdmin = v);
       });
     }
@@ -180,7 +180,7 @@ class _AdminAddBusinessScreenState extends ConsumerState<AdminAddBusinessScreen>
       });
       return;
     }
-    final uid = ref.read(authNotifierProvider).valueOrNull?.id;
+    final uid = ref.read(authControllerProvider).valueOrNull?.id;
     if (uid == null) {
       setState(() {
         _singleMessage = 'You must be signed in.';
@@ -646,7 +646,7 @@ class _BulkImportSectionState extends ConsumerState<_BulkImportSection> {
   }
 
   Future<void> _pickAndImport() async {
-    final uid = ref.read(authNotifierProvider).valueOrNull?.id;
+    final uid = ref.read(authControllerProvider).valueOrNull?.id;
     if (uid == null) {
       setState(() {
         _summary = 'You must be signed in.';

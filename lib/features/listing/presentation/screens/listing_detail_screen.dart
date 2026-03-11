@@ -3,25 +3,25 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:cajun_local/core/auth/providers/auth_provider.dart';
+import 'package:cajun_local/features/auth/presentation/controllers/auth_controller.dart';
 import 'package:cajun_local/core/data/providers/app_data_providers.dart';
 import 'package:cajun_local/core/data/listing_data_source.dart';
 import 'package:cajun_local/core/data/deal_type_icons.dart';
 import 'package:cajun_local/core/data/mock_data.dart';
-import 'package:cajun_local/core/data/models/user_deal.dart';
-import 'package:cajun_local/core/data/models/business.dart';
-import 'package:cajun_local/core/data/models/business_claim.dart';
-import 'package:cajun_local/core/data/models/business_image.dart';
-import 'package:cajun_local/core/data/repositories/business_claims_repository.dart';
-import 'package:cajun_local/core/data/repositories/business_managers_repository.dart';
-import 'package:cajun_local/core/data/repositories/favorites_repository.dart' hide favoritesRepositoryProvider;
-import 'package:cajun_local/core/data/repositories/business_repository.dart' hide businessRepositoryProvider;
-import 'package:cajun_local/core/data/repositories/reviews_repository.dart' hide reviewsRepositoryProvider;
-import 'package:cajun_local/core/data/repositories/event_rsvps_repository.dart' hide eventRsvpsRepositoryProvider;
-import 'package:cajun_local/core/data/models/review.dart';
-import 'package:cajun_local/core/data/repositories/business_images_repository.dart';
-import 'package:cajun_local/core/data/repositories/business_subscriptions_repository.dart';
-import 'package:cajun_local/core/favorites/favorites_scope.dart';
+import 'package:cajun_local/features/deals/data/models/user_deal.dart';
+import 'package:cajun_local/features/businesses/data/models/business.dart';
+import 'package:cajun_local/features/businesses/data/models/business_claim.dart';
+import 'package:cajun_local/features/businesses/data/models/business_image.dart';
+import 'package:cajun_local/features/businesses/data/repositories/business_claims_repository.dart';
+import 'package:cajun_local/features/businesses/data/repositories/business_managers_repository.dart';
+import 'package:cajun_local/features/favorites/data/repositories/favorites_repository.dart' hide favoritesRepositoryProvider;
+import 'package:cajun_local/features/businesses/data/repositories/business_repository.dart' hide businessRepositoryProvider;
+import 'package:cajun_local/features/reviews/data/repositories/reviews_repository.dart' hide reviewsRepositoryProvider;
+import 'package:cajun_local/features/events/data/repositories/event_rsvps_repository.dart' hide eventRsvpsRepositoryProvider;
+import 'package:cajun_local/features/reviews/data/models/review.dart';
+import 'package:cajun_local/features/businesses/data/repositories/business_images_repository.dart';
+import 'package:cajun_local/features/businesses/data/repositories/business_subscriptions_repository.dart';
+import 'package:cajun_local/features/favorites/presentation/widgets/favorites_scope.dart';
 import 'package:cajun_local/core/subscription/resolved_permissions.dart';
 import 'package:cajun_local/core/theme/app_layout.dart';
 import 'package:cajun_local/shared/widgets/app_buttons.dart';
@@ -139,7 +139,7 @@ class _ListingDetailBodyState extends ConsumerState<_ListingDetailBody> {
     super.didChangeDependencies();
     if (_future == null) {
       final dataSource = ref.read(listingDataSourceProvider);
-      final userId = ref.read(authNotifierProvider).valueOrNull?.id;
+      final userId = ref.read(authControllerProvider).valueOrNull?.id;
       final favoritesRepository = ref.read(favoritesRepositoryProvider);
       _future = _load(dataSource, userId, favoritesRepository);
     }
@@ -302,7 +302,7 @@ class _ListingDetailBodyState extends ConsumerState<_ListingDetailBody> {
                       onPressed: () {
                         setState(() {
                           final dataSource = ref.read(listingDataSourceProvider);
-                          final userId = ref.read(authNotifierProvider).valueOrNull?.id;
+                          final userId = ref.read(authControllerProvider).valueOrNull?.id;
                           final favoritesRepository = ref.read(favoritesRepositoryProvider);
                           _future = _load(dataSource, userId, favoritesRepository);
                         });
@@ -327,7 +327,7 @@ class _ListingDetailBodyState extends ConsumerState<_ListingDetailBody> {
             body: const Center(child: Text('Listing not found')),
           );
         }
-        final userId = ref.watch(authNotifierProvider).valueOrNull?.id;
+        final userId = ref.watch(authControllerProvider).valueOrNull?.id;
         return _ListingDetailContent(
           data: data,
           isSignedIn: userId != null,
@@ -1092,7 +1092,7 @@ class _FeaturedDealCardState extends ConsumerState<_FeaturedDealCard> {
                 usedAt: null,
                 onClaim: widget.isSignedIn
                     ? () async {
-                        final uid = ref.read(authNotifierProvider).valueOrNull?.id;
+                        final uid = ref.read(authControllerProvider).valueOrNull?.id;
                         if (uid == null) return;
                         final canClaim = ref.read(userTierServiceProvider).value?.canClaimDeals ?? false;
                         if (!canClaim) {
@@ -2402,7 +2402,7 @@ class _DealsBlockState extends ConsumerState<_DealsBlock> {
   }
 
   Future<void> _loadClaimed() async {
-    final auth = ref.read(authNotifierProvider).valueOrNull;
+    final auth = ref.read(authControllerProvider).valueOrNull;
     final uid = auth?.id;
     if (uid == null) {
       if (mounted) setState(() => _claimedLoaded = true);
@@ -2420,7 +2420,7 @@ class _DealsBlockState extends ConsumerState<_DealsBlock> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final userId = ref.watch(authNotifierProvider).valueOrNull?.id;
+    final userId = ref.watch(authControllerProvider).valueOrNull?.id;
     final userTierService = ref.watch(userTierServiceProvider);
     final canClaimDeals = userId != null && (userTierService.value?.canClaimDeals ?? false);
     final userDealsRepo = ref.read(userDealsRepositoryProvider);

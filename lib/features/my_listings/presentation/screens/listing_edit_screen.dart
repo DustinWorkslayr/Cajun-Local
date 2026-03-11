@@ -1,22 +1,22 @@
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:cajun_local/core/auth/providers/auth_provider.dart';
+import 'package:cajun_local/features/auth/presentation/controllers/auth_controller.dart';
 import 'package:cajun_local/core/data/providers/app_data_providers.dart';
 import 'package:cajun_local/core/data/contact_form_templates.dart';
-import 'package:cajun_local/core/data/models/business.dart';
-import 'package:cajun_local/core/data/models/business_image.dart';
+import 'package:cajun_local/features/businesses/data/models/business.dart';
+import 'package:cajun_local/features/businesses/data/models/business_image.dart';
 import 'package:cajun_local/core/data/mock_data.dart';
-import 'package:cajun_local/core/data/models/menu_item.dart';
-import 'package:cajun_local/core/data/models/menu_section.dart';
-import 'package:cajun_local/core/data/models/business_manager_entry.dart';
-import 'package:cajun_local/core/data/repositories/business_images_repository.dart';
-import 'package:cajun_local/core/data/repositories/business_managers_repository.dart';
-import 'package:cajun_local/core/data/repositories/business_repository.dart';
-import 'package:cajun_local/core/data/repositories/business_subscriptions_repository.dart';
-import 'package:cajun_local/core/data/repositories/deals_repository.dart';
-import 'package:cajun_local/core/data/repositories/menu_repository.dart';
-import 'package:cajun_local/core/data/repositories/punch_card_programs_repository.dart';
+import 'package:cajun_local/features/businesses/data/models/menu_item.dart';
+import 'package:cajun_local/features/businesses/data/models/menu_section.dart';
+import 'package:cajun_local/features/businesses/data/models/business_manager_entry.dart';
+import 'package:cajun_local/features/businesses/data/repositories/business_images_repository.dart';
+import 'package:cajun_local/features/businesses/data/repositories/business_managers_repository.dart';
+import 'package:cajun_local/features/businesses/data/repositories/business_repository.dart';
+import 'package:cajun_local/features/businesses/data/repositories/business_subscriptions_repository.dart';
+import 'package:cajun_local/features/deals/data/repositories/deals_repository.dart';
+import 'package:cajun_local/features/businesses/data/repositories/menu_repository.dart';
+import 'package:cajun_local/features/admin/data/repositories/punch_card_programs_repository.dart';
 import 'package:cajun_local/core/data/services/business_images_storage_service.dart';
 import 'package:cajun_local/core/data/services/storage_upload_constants.dart';
 import 'package:cajun_local/core/subscription/business_tier_service.dart';
@@ -1423,8 +1423,8 @@ class _LogoAndBannerSectionState extends ConsumerState<_LogoAndBannerSection> {
         extension: ext,
       );
       if (!mounted) return;
-      final uid = ref.read(authNotifierProvider).valueOrNull?.id;
-      final isAdmin = uid != null && await ref.read(authNotifierProvider.notifier).isAdmin();
+      final uid = ref.read(authControllerProvider).valueOrNull?.id;
+      final isAdmin = uid != null && await ref.read(authControllerProvider.notifier).isAdmin();
       await BusinessImagesRepository().insert(
         businessId: widget.listingId,
         url: url,
@@ -3180,7 +3180,7 @@ class _AccountAccessSectionState extends ConsumerState<_AccountAccessSection> {
     final theme = Theme.of(context);
     final nav = AppTheme.specNavy;
     final sub = nav.withValues(alpha: 0.8);
-    final currentUserId = ref.watch(authNotifierProvider).valueOrNull?.id;
+    final currentUserId = ref.watch(authControllerProvider).valueOrNull?.id;
 
     return _MoreSection(
       title: 'Account access',

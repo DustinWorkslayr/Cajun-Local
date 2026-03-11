@@ -1,19 +1,19 @@
-export 'package:cajun_local/core/data/repositories/favorites_repository.dart';
-export 'package:cajun_local/core/data/repositories/user_plans_repository.dart';
-export 'package:cajun_local/core/data/repositories/user_subscriptions_repository.dart';
-export 'package:cajun_local/core/data/repositories/business_repository.dart';
-export 'package:cajun_local/core/data/repositories/business_images_repository.dart';
-export 'package:cajun_local/core/data/repositories/business_subscriptions_repository.dart';
-export 'package:cajun_local/core/data/repositories/reviews_repository.dart';
-export 'package:cajun_local/core/data/repositories/business_claims_repository.dart';
-export 'package:cajun_local/core/data/repositories/user_deals_repository.dart';
-export 'package:cajun_local/core/data/repositories/user_punch_cards_repository.dart';
-export 'package:cajun_local/core/data/repositories/event_rsvps_repository.dart';
-export 'package:cajun_local/core/data/repositories/profiles_repository.dart';
+export 'package:cajun_local/features/favorites/data/repositories/favorites_repository.dart';
+export 'package:cajun_local/features/profile/data/repositories/user_plans_repository.dart';
+export 'package:cajun_local/features/profile/data/repositories/user_subscriptions_repository.dart';
+export 'package:cajun_local/features/businesses/data/repositories/business_repository.dart';
+export 'package:cajun_local/features/businesses/data/repositories/business_images_repository.dart';
+export 'package:cajun_local/features/businesses/data/repositories/business_subscriptions_repository.dart';
+export 'package:cajun_local/features/reviews/data/repositories/reviews_repository.dart';
+export 'package:cajun_local/features/businesses/data/repositories/business_claims_repository.dart';
+export 'package:cajun_local/features/deals/data/repositories/user_deals_repository.dart';
+export 'package:cajun_local/features/profile/data/repositories/user_punch_cards_repository.dart';
+export 'package:cajun_local/features/events/data/repositories/event_rsvps_repository.dart';
+export 'package:cajun_local/features/profile/data/repositories/profiles_repository.dart';
 
-import 'package:cajun_local/core/data/repositories/user_plans_repository.dart';
-import 'package:cajun_local/core/data/repositories/user_subscriptions_repository.dart';
-import 'package:cajun_local/core/data/repositories/business_subscriptions_repository.dart';
+import 'package:cajun_local/features/profile/data/repositories/user_plans_repository.dart';
+import 'package:cajun_local/features/profile/data/repositories/user_subscriptions_repository.dart';
+import 'package:cajun_local/features/businesses/data/repositories/business_subscriptions_repository.dart';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cajun_local/core/data/listing_data_source.dart';

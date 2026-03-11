@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:cajun_local/core/data/models/email_template.dart';
-import 'package:cajun_local/core/data/repositories/email_templates_repository.dart';
+import 'package:cajun_local/features/admin/data/models/email_template.dart';
+import 'package:cajun_local/features/admin/data/repositories/email_templates_repository.dart';
 import 'package:cajun_local/core/theme/app_layout.dart';
 import 'package:cajun_local/core/theme/theme.dart';
 import 'package:cajun_local/shared/widgets/app_buttons.dart';

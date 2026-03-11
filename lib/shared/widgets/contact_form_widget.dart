@@ -2,13 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cajun_local/shared/widgets/app_buttons.dart';
-import 'package:cajun_local/core/auth/providers/auth_provider.dart';
+import 'package:cajun_local/features/auth/presentation/controllers/auth_controller.dart';
 import 'package:cajun_local/core/data/contact_form_templates.dart';
-import 'package:cajun_local/core/data/models/business.dart';
-import 'package:cajun_local/core/data/repositories/business_repository.dart';
-import 'package:cajun_local/core/data/repositories/conversations_repository.dart';
-import 'package:cajun_local/core/data/repositories/form_submissions_repository.dart';
-import 'package:cajun_local/core/data/repositories/messages_repository.dart';
+import 'package:cajun_local/features/businesses/data/models/business.dart';
+import 'package:cajun_local/features/businesses/data/repositories/business_repository.dart';
+import 'package:cajun_local/features/messaging/data/repositories/conversations_repository.dart';
+import 'package:cajun_local/features/admin/data/repositories/form_submissions_repository.dart';
+import 'package:cajun_local/features/messaging/data/repositories/messages_repository.dart';
 import 'package:cajun_local/core/theme/theme.dart';
 
 /// Renders the business's contact form (template-based). Shown on listing detail.
@@ -87,7 +87,7 @@ class _ContactFormWidgetState extends ConsumerState<ContactFormWidget> {
     final templateKey = _business!.contactFormTemplate!;
     final def = ContactFormTemplates.getByKey(templateKey);
     if (def == null) return;
-    final uid = ref.read(authNotifierProvider).valueOrNull?.id;
+    final uid = ref.read(authControllerProvider).valueOrNull?.id;
     if (uid == null) {
       setState(() => _error = 'You must be signed in to submit.');
       return;

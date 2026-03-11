@@ -1,12 +1,12 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:cajun_local/core/auth/providers/auth_provider.dart';
+import 'package:cajun_local/features/auth/presentation/controllers/auth_controller.dart';
 import 'package:cajun_local/core/data/providers/app_data_providers.dart';
-import 'package:cajun_local/core/data/models/business_event.dart';
-import 'package:cajun_local/core/data/models/event_rsvp.dart';
-import 'package:cajun_local/core/data/repositories/business_events_repository.dart';
-import 'package:cajun_local/core/data/repositories/business_repository.dart';
+import 'package:cajun_local/features/events/data/models/business_event.dart';
+import 'package:cajun_local/features/events/data/models/event_rsvp.dart';
+import 'package:cajun_local/features/events/data/repositories/business_events_repository.dart';
+import 'package:cajun_local/features/businesses/data/repositories/business_repository.dart';
 import 'package:cajun_local/core/theme/app_layout.dart';
 import 'package:cajun_local/core/theme/theme.dart';
 import 'package:cajun_local/features/listing/presentation/screens/listing_detail_screen.dart';
@@ -61,7 +61,7 @@ class _LocalEventsScreenState extends ConsumerState<LocalEventsScreen> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    if (!_myRsvpsLoaded && ref.watch(authNotifierProvider).valueOrNull?.id != null) {
+    if (!_myRsvpsLoaded && ref.watch(authControllerProvider).valueOrNull?.id != null) {
       _loadMyRsvps();
     }
   }
@@ -104,7 +104,7 @@ class _LocalEventsScreenState extends ConsumerState<LocalEventsScreen> {
           SliverPadding(
             padding: EdgeInsets.fromLTRB(padding.left, 12, padding.right, padding.right),
             sliver: FutureBuilder<List<EventRsvp>>(
-              future: ref.watch(authNotifierProvider).valueOrNull?.id != null
+              future: ref.watch(authControllerProvider).valueOrNull?.id != null
                   ? ref.read(eventRsvpsRepositoryProvider).listMyRsvps()
                   : Future.value(<EventRsvp>[]),
               builder: (context, myRsvpsSnapshot) {
@@ -282,7 +282,7 @@ class _LocalEventsScreenState extends ConsumerState<LocalEventsScreen> {
                             businessName: businessName,
                             featured: isFirst,
                             myRsvpStatus: _myStatusByEventId[event.id],
-                            isSignedIn: ref.watch(authNotifierProvider).valueOrNull?.id != null,
+                            isSignedIn: ref.watch(authControllerProvider).valueOrNull?.id != null,
                             onRsvp: (status) => _setRsvp(event.id, status),
                             onTap: () {
                               Navigator.of(context).push(

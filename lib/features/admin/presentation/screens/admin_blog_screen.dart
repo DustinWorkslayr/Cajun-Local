@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:cajun_local/core/data/models/blog_post.dart';
-import 'package:cajun_local/core/data/models/parish.dart';
-import 'package:cajun_local/core/data/repositories/blog_posts_repository.dart';
-import 'package:cajun_local/core/data/repositories/parish_repository.dart';
+import 'package:cajun_local/features/news/data/models/blog_post.dart';
+import 'package:cajun_local/features/admin/data/models/parish.dart';
+import 'package:cajun_local/features/news/data/repositories/blog_posts_repository.dart';
+import 'package:cajun_local/features/admin/data/repositories/parish_repository.dart';
 import 'package:cajun_local/core/theme/theme.dart';
 import 'package:cajun_local/features/admin/presentation/screens/admin_add_blog_post_screen.dart';
 import 'package:cajun_local/features/admin/presentation/screens/admin_blog_detail_screen.dart';

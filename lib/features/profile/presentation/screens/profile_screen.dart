@@ -3,15 +3,15 @@ import 'dart:async';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:cajun_local/core/auth/providers/auth_provider.dart';
+import 'package:cajun_local/features/auth/presentation/controllers/auth_controller.dart';
 import 'package:cajun_local/core/data/services/app_storage_service.dart';
 import 'package:cajun_local/core/data/services/storage_upload_constants.dart';
 import 'package:cajun_local/core/data/app_data_scope.dart';
 import 'package:cajun_local/core/data/mock_data.dart';
-import 'package:cajun_local/core/data/repositories/business_managers_repository.dart';
-import 'package:cajun_local/core/data/repositories/form_submissions_repository.dart';
-import 'package:cajun_local/core/data/repositories/user_notification_preferences_repository.dart';
-import 'package:cajun_local/core/data/repositories/user_plans_repository.dart';
+import 'package:cajun_local/features/businesses/data/repositories/business_managers_repository.dart';
+import 'package:cajun_local/features/admin/data/repositories/form_submissions_repository.dart';
+import 'package:cajun_local/features/notifications/data/repositories/user_notification_preferences_repository.dart';
+import 'package:cajun_local/features/profile/data/repositories/user_plans_repository.dart';
 import 'package:cajun_local/core/stripe/stripe_checkout_service.dart';
 import 'package:cajun_local/core/stripe/stripe_config.dart';
 import 'package:cajun_local/core/theme/app_layout.dart';
@@ -73,9 +73,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       final useBackend = dataSource.useBackend;
 
       final userFuture = dataSource.getCurrentUser();
-      final uid = ref.read(authNotifierProvider).valueOrNull?.id;
+      final uid = ref.read(authControllerProvider).valueOrNull?.id;
       final isAdminFuture = (useBackend && uid != null)
-          ? ref.read(authNotifierProvider.notifier).isAdmin()
+          ? ref.read(authControllerProvider.notifier).isAdmin()
           : Future.value(false);
       final businessIdsFuture = (useBackend && uid != null)
           ? BusinessManagersRepository().listBusinessIdsForUser(uid)
@@ -178,7 +178,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       if (await canLaunchUrl(uri)) {
         await launchUrl(uri, mode: LaunchMode.externalApplication);
         if (!mounted) return;
-        final uid = ref.read(authNotifierProvider).valueOrNull?.id;
+        final uid = ref.read(authControllerProvider).valueOrNull?.id;
         if (uid != null) {
           scope.userTierService.refresh(uid);
         }
@@ -210,7 +210,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         await launchUrl(uri, mode: LaunchMode.externalApplication);
         if (!mounted) return;
         final scope = AppDataScope.of(context);
-        final uid = ref.read(authNotifierProvider).valueOrNull?.id;
+        final uid = ref.read(authControllerProvider).valueOrNull?.id;
         if (uid != null) {
           scope.userTierService.refresh(uid);
         }
@@ -426,7 +426,7 @@ class _ProfileContentState extends ConsumerState<_ProfileContent> with SingleTic
   void didChangeDependencies() {
     super.didChangeDependencies();
     if (!_notificationPrefsLoaded) {
-      final uid = ref.watch(authNotifierProvider).valueOrNull?.id;
+      final uid = ref.watch(authControllerProvider).valueOrNull?.id;
       if (uid != null) {
         _notificationPrefsLoaded = true;
         _loadNotificationPrefs(uid);
@@ -448,7 +448,7 @@ class _ProfileContentState extends ConsumerState<_ProfileContent> with SingleTic
   }
 
   Future<void> _saveNotificationPrefs() async {
-    final uid = ref.read(authNotifierProvider).valueOrNull?.id;
+    final uid = ref.read(authControllerProvider).valueOrNull?.id;
     if (uid == null) return;
     await _notificationPrefsRepo.save(
       uid,
@@ -498,10 +498,10 @@ class _ProfileContentState extends ConsumerState<_ProfileContent> with SingleTic
       _displayName = displayName;
       _email = email;
     });
-    final uid = ref.read(authNotifierProvider).valueOrNull?.id;
+    final uid = ref.read(authControllerProvider).valueOrNull?.id;
     if (uid != null && displayName.isNotEmpty) {
       try {
-        await ref.read(authNotifierProvider.notifier).updateProfile(displayName: displayName);
+        await ref.read(authControllerProvider.notifier).updateProfile(displayName: displayName);
         if (mounted) widget.onRefresh();
       } catch (e) {
         if (mounted) {
@@ -550,7 +550,7 @@ class _ProfileContentState extends ConsumerState<_ProfileContent> with SingleTic
   }
 
   Future<void> _signOut() async {
-    await ref.read(authNotifierProvider.notifier).signOut();
+    await ref.read(authControllerProvider.notifier).signOut();
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Signed out')));
     }
@@ -558,7 +558,7 @@ class _ProfileContentState extends ConsumerState<_ProfileContent> with SingleTic
 
   Future<void> _pickAndSetProfilePhoto() async {
     final scope = AppDataScope.of(context);
-    final uid = ref.read(authNotifierProvider).valueOrNull?.id;
+    final uid = ref.read(authControllerProvider).valueOrNull?.id;
     final useBackend = scope.dataSource.useBackend;
     if (!useBackend || uid == null) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Sign in to add a profile picture')));
@@ -577,7 +577,7 @@ class _ProfileContentState extends ConsumerState<_ProfileContent> with SingleTic
       final name = result.files.single.name;
       final ext = name.contains('.') ? name.split('.').last : 'jpg';
       final url = await AppStorageService().uploadAvatar(userId: uid, bytes: bytes, extension: ext);
-      await ref.read(authNotifierProvider.notifier).updateProfile(avatarUrl: url);
+      await ref.read(authControllerProvider.notifier).updateProfile(avatarUrl: url);
       widget.onRefresh();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Profile picture updated')));
@@ -596,7 +596,7 @@ class _ProfileContentState extends ConsumerState<_ProfileContent> with SingleTic
     final scope = AppDataScope.of(context);
     final dataSource = scope.dataSource;
     final useBackend = dataSource.useBackend;
-    final uid = ref.watch(authNotifierProvider).valueOrNull?.id;
+    final uid = ref.watch(authControllerProvider).valueOrNull?.id;
     final signedIn = useBackend && uid != null;
     final hasListings = widget.user.ownedListingIds.isNotEmpty || widget.isBusinessManager;
     final padding = AppLayout.horizontalPadding(context);
@@ -1321,7 +1321,7 @@ class _ProfileContentState extends ConsumerState<_ProfileContent> with SingleTic
           hasListings: hasListings,
           canScanPunch: widget.isBusinessManager,
           onSignOut: () async {
-            await ref.read(authNotifierProvider.notifier).signOut();
+            await ref.read(authControllerProvider.notifier).signOut();
             if (context.mounted) {
               ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Signed out')));
             }
@@ -1347,9 +1347,9 @@ class _ProfileContentState extends ConsumerState<_ProfileContent> with SingleTic
                 }
               : null,
           messagesBadge: hasListings ? inboxUnreadCount : null,
-          onMyConversations: !hasListings && ref.read(authNotifierProvider).valueOrNull?.id != null
+          onMyConversations: !hasListings && ref.read(authControllerProvider).valueOrNull?.id != null
               ? () {
-                  final uid = ref.read(authNotifierProvider).valueOrNull?.id;
+                  final uid = ref.read(authControllerProvider).valueOrNull?.id;
                   if (uid != null) {
                     Navigator.of(
                       context,
@@ -1380,7 +1380,7 @@ class _ProfileContentState extends ConsumerState<_ProfileContent> with SingleTic
           child: signedIn
               ? TextButton(
                   onPressed: () async {
-                    await ref.read(authNotifierProvider.notifier).signOut();
+                    await ref.read(authControllerProvider.notifier).signOut();
                     if (context.mounted) {
                       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Signed out')));
                     }

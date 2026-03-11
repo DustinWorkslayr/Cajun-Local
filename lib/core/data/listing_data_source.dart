@@ -1,26 +1,26 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:cajun_local/core/auth/providers/auth_provider.dart';
+import 'package:cajun_local/features/auth/presentation/controllers/auth_controller.dart';
 import 'package:cajun_local/core/data/mock_data.dart';
-import 'package:cajun_local/core/data/models/business.dart';
-import 'package:cajun_local/core/data/repositories/profiles_repository.dart';
-import 'package:cajun_local/core/data/models/business_hours.dart';
-import 'package:cajun_local/core/data/models/deal.dart';
-import 'package:cajun_local/core/data/models/punch_card_program.dart';
-import 'package:cajun_local/core/data/models/user_punch_card.dart';
-import 'package:cajun_local/core/data/repositories/business_hours_repository.dart';
-import 'package:cajun_local/core/data/repositories/business_links_repository.dart';
-import 'package:cajun_local/core/data/repositories/business_managers_repository.dart';
-import 'package:cajun_local/core/data/repositories/business_repository.dart';
-import 'package:cajun_local/core/data/repositories/category_repository.dart';
-import 'package:cajun_local/core/data/models/business_event.dart';
-import 'package:cajun_local/core/data/repositories/business_events_repository.dart';
-import 'package:cajun_local/core/data/repositories/deals_repository.dart';
-import 'package:cajun_local/core/data/repositories/menu_repository.dart';
-import 'package:cajun_local/core/data/repositories/amenities_repository.dart';
-import 'package:cajun_local/core/data/repositories/parish_repository.dart';
-import 'package:cajun_local/core/data/repositories/punch_card_programs_repository.dart';
-import 'package:cajun_local/core/data/repositories/user_punch_cards_repository.dart';
+import 'package:cajun_local/features/businesses/data/models/business.dart';
+import 'package:cajun_local/features/profile/data/repositories/profiles_repository.dart';
+import 'package:cajun_local/features/businesses/data/models/business_hours.dart';
+import 'package:cajun_local/features/deals/data/models/deal.dart';
+import 'package:cajun_local/features/admin/data/models/punch_card_program.dart';
+import 'package:cajun_local/features/profile/data/models/user_punch_card.dart';
+import 'package:cajun_local/features/businesses/data/repositories/business_hours_repository.dart';
+import 'package:cajun_local/features/businesses/data/repositories/business_links_repository.dart';
+import 'package:cajun_local/features/businesses/data/repositories/business_managers_repository.dart';
+import 'package:cajun_local/features/businesses/data/repositories/business_repository.dart';
+import 'package:cajun_local/features/categories/data/repositories/category_repository.dart';
+import 'package:cajun_local/features/events/data/models/business_event.dart';
+import 'package:cajun_local/features/events/data/repositories/business_events_repository.dart';
+import 'package:cajun_local/features/deals/data/repositories/deals_repository.dart';
+import 'package:cajun_local/features/businesses/data/repositories/menu_repository.dart';
+import 'package:cajun_local/features/businesses/data/repositories/amenities_repository.dart';
+import 'package:cajun_local/features/admin/data/repositories/parish_repository.dart';
+import 'package:cajun_local/features/admin/data/repositories/punch_card_programs_repository.dart';
+import 'package:cajun_local/features/profile/data/repositories/user_punch_cards_repository.dart';
 import 'package:cajun_local/core/utils/hours_format.dart';
 
 /// In-memory cache entry with TTL. Used by ListingDataSource for listing by id, categories, parishes.
@@ -88,7 +88,7 @@ class ListingDataSource {
   /// Current user (from profile when signed in). Throws when backend not configured.
   Future<MockUser> getCurrentUser() async {
     if (!useBackend) return Future.error(StateError(kNotConfiguredMessage));
-    final userId = ref?.read(authNotifierProvider).valueOrNull?.id;
+    final userId = ref?.read(authControllerProvider).valueOrNull?.id;
     if (userId == null)
       return Future.value(MockUser(displayName: '', email: null, avatarUrl: null, ownedListingIds: []));
     final profile = await ref?.read(profilesRepositoryProvider).getProfile(userId);
@@ -506,7 +506,7 @@ class ListingDataSource {
   Future<List<MockPunchCard>> getPunchCardsForListing(String listingId) async {
     if (!useBackend) return Future.error(StateError(kNotConfiguredMessage));
     final programs = await _punchCards.listActive(businessId: listingId);
-    final uid = ref?.read(authNotifierProvider).valueOrNull?.id;
+    final uid = ref?.read(authControllerProvider).valueOrNull?.id;
     if (uid == null) return programs.map((p) => _punchToMock(p)).toList();
     final enrollments = await _userPunchCards.listForCurrentUser();
     final byProgram = {for (var e in enrollments) e.programId: e};
@@ -544,7 +544,7 @@ class ListingDataSource {
   Future<List<MockPunchCard>> getActivePunchCards() async {
     if (!useBackend) return Future.error(StateError(kNotConfiguredMessage));
     final programs = await _punchCards.listActive();
-    final uid = ref?.read(authNotifierProvider).valueOrNull?.id;
+    final uid = ref?.read(authControllerProvider).valueOrNull?.id;
     if (uid == null) return programs.map((p) => _punchToMock(p)).toList();
     final enrollments = await _userPunchCards.listForCurrentUser();
     final byProgram = {for (var e in enrollments) e.programId: e};

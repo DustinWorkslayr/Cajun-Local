@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:cajun_local/core/auth/providers/auth_provider.dart';
+import 'package:cajun_local/features/auth/presentation/controllers/auth_controller.dart';
 import 'package:cajun_local/core/theme/theme.dart';
 import 'package:cajun_local/features/admin/presentation/screens/admin_sections.dart';
 
@@ -70,7 +70,7 @@ class _AdminShellState extends ConsumerState<AdminShell> with SingleTickerProvid
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    _adminCheck ??= ref.read(authNotifierProvider.notifier).isAdmin();
+    _adminCheck ??= ref.read(authControllerProvider.notifier).isAdmin();
   }
 
   @override

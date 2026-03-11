@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:cajun_local/core/data/category_icons.dart';
-import 'package:cajun_local/core/data/models/business_category.dart';
-import 'package:cajun_local/core/data/models/subcategory.dart';
-import 'package:cajun_local/core/data/repositories/category_repository.dart';
+import 'package:cajun_local/features/businesses/data/models/business_category.dart';
+import 'package:cajun_local/features/categories/data/models/subcategory.dart';
+import 'package:cajun_local/features/categories/data/repositories/category_repository.dart';
 import 'package:cajun_local/core/theme/theme.dart';
 import 'package:cajun_local/shared/widgets/app_buttons.dart';
 import 'package:uuid/uuid.dart';

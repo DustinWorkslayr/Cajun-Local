@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:cajun_local/core/auth/providers/auth_provider.dart';
+import 'package:cajun_local/features/auth/presentation/controllers/auth_controller.dart';
 import 'package:cajun_local/core/theme/theme.dart';
 import 'package:cajun_local/shared/widgets/app_buttons.dart';
 import 'package:cajun_local/shared/widgets/app_logo.dart';
@@ -47,7 +47,7 @@ class _SetNewPasswordScreenState extends ConsumerState<SetNewPasswordScreen> {
     }
 
     try {
-      await ref.read(authNotifierProvider.notifier).resetPassword(token, password);
+      await ref.read(authControllerProvider.notifier).resetPassword(token, password);
       if (mounted) {
         widget.onPasswordUpdated();
       }

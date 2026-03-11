@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cajun_local/shared/widgets/app_buttons.dart';
-import 'package:cajun_local/core/data/models/business_hours.dart';
-import 'package:cajun_local/core/data/repositories/business_hours_repository.dart';
+import 'package:cajun_local/features/businesses/data/models/business_hours.dart';
+import 'package:cajun_local/features/businesses/data/repositories/business_hours_repository.dart';
 import 'package:cajun_local/core/theme/theme.dart';
 import 'package:cajun_local/core/utils/hours_format.dart';
 

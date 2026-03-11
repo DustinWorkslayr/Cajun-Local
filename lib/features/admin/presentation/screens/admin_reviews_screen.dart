@@ -1,17 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:cajun_local/core/auth/providers/auth_provider.dart';
+import 'package:cajun_local/features/auth/presentation/controllers/auth_controller.dart';
 import 'package:cajun_local/shared/widgets/app_buttons.dart';
-import 'package:cajun_local/core/data/models/business.dart';
-import 'package:cajun_local/core/data/models/profile.dart';
-import 'package:cajun_local/core/data/models/review.dart';
-import 'package:cajun_local/core/data/repositories/business_repository.dart';
-import 'package:cajun_local/core/data/repositories/audit_log_repository.dart';
-import 'package:cajun_local/core/data/repositories/reviews_repository.dart';
+import 'package:cajun_local/features/businesses/data/models/business.dart';
+import 'package:cajun_local/features/profile/data/models/profile.dart';
+import 'package:cajun_local/features/reviews/data/models/review.dart';
+import 'package:cajun_local/features/businesses/data/repositories/business_repository.dart';
+import 'package:cajun_local/features/admin/data/repositories/audit_log_repository.dart';
+import 'package:cajun_local/features/reviews/data/repositories/reviews_repository.dart';
 import 'package:cajun_local/core/theme/app_layout.dart';
 import 'package:cajun_local/core/theme/theme.dart';
 import 'package:cajun_local/features/admin/presentation/widgets/admin_shared.dart';
-import 'package:cajun_local/core/data/repositories/profiles_repository.dart';
+import 'package:cajun_local/features/profile/data/repositories/profiles_repository.dart';
 
 /// Admin reviews: search, pagination, user-friendly cards (rating + preview, no UUIDs). Panel: approve/reject.
 class AdminReviewsScreen extends ConsumerStatefulWidget {
@@ -478,7 +478,7 @@ class _ReviewPanelContentState extends ConsumerState<_ReviewPanelContent> {
   Future<void> _updateStatus(String status) async {
     setState(() => _updating = true);
     final repo = ReviewsRepository();
-    final uid = ref.read(authNotifierProvider).valueOrNull?.id;
+    final uid = ref.read(authControllerProvider).valueOrNull?.id;
     await repo.updateStatus(widget.review.id, status, approvedBy: uid);
     AuditLogRepository().insert(
       action: status == 'approved' ? 'review_approved' : 'review_rejected',

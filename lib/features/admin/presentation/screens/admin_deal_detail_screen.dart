@@ -1,14 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:cajun_local/core/auth/providers/auth_provider.dart';
-import 'package:cajun_local/core/data/models/deal.dart';
-import 'package:cajun_local/core/data/repositories/business_managers_repository.dart';
-import 'package:cajun_local/core/data/repositories/business_repository.dart';
-import 'package:cajun_local/core/data/repositories/audit_log_repository.dart';
-import 'package:cajun_local/core/data/repositories/deals_repository.dart';
+import 'package:cajun_local/features/auth/presentation/controllers/auth_controller.dart';
+import 'package:cajun_local/features/deals/data/models/deal.dart';
+import 'package:cajun_local/features/businesses/data/repositories/business_managers_repository.dart';
+import 'package:cajun_local/features/businesses/data/repositories/business_repository.dart';
+import 'package:cajun_local/features/admin/data/repositories/audit_log_repository.dart';
+import 'package:cajun_local/features/deals/data/repositories/deals_repository.dart';
 import 'package:cajun_local/core/theme/theme.dart';
 import 'package:cajun_local/shared/widgets/app_buttons.dart';
-import 'package:cajun_local/core/data/repositories/profiles_repository.dart';
+import 'package:cajun_local/features/profile/data/repositories/profiles_repository.dart';
 
 /// Admin detail: show deal and Approve/Reject actions (full-screen route).
 class AdminDealDetailScreen extends ConsumerStatefulWidget {
@@ -45,7 +45,7 @@ class _AdminDealDetailScreenState extends ConsumerState<AdminDealDetailScreen> {
 
   Future<void> _updateStatus(String status) async {
     final repo = DealsRepository();
-    final uid = ref.read(authNotifierProvider).valueOrNull?.id;
+    final uid = ref.read(authControllerProvider).valueOrNull?.id;
     await repo.updateStatus(widget.dealId, status, approvedBy: uid);
     AuditLogRepository().insert(
       action: status == 'approved' ? 'deal_approved' : 'deal_rejected',
@@ -219,7 +219,7 @@ class _AdminDealDetailSlideOutState extends ConsumerState<AdminDealDetailSlideOu
 
   Future<void> _updateStatus(String status) async {
     setState(() => _saving = true);
-    final uid = ref.read(authNotifierProvider).valueOrNull?.id;
+    final uid = ref.read(authControllerProvider).valueOrNull?.id;
     try {
       await DealsRepository().updateStatus(widget.dealId, status, approvedBy: uid);
       AuditLogRepository().insert(

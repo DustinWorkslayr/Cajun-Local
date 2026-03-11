@@ -1,14 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:cajun_local/core/auth/providers/auth_provider.dart';
+import 'package:cajun_local/features/auth/presentation/controllers/auth_controller.dart';
 import 'package:cajun_local/core/data/app_data_scope.dart';
 import 'package:cajun_local/core/data/mock_data.dart';
-import 'package:cajun_local/core/data/repositories/business_managers_repository.dart';
-import 'package:cajun_local/core/data/repositories/business_repository.dart';
-import 'package:cajun_local/core/data/repositories/notifications_repository.dart';
-import 'package:cajun_local/core/data/repositories/punch_card_programs_repository.dart';
+import 'package:cajun_local/features/businesses/data/repositories/business_managers_repository.dart';
+import 'package:cajun_local/features/businesses/data/repositories/business_repository.dart';
+import 'package:cajun_local/features/notifications/data/repositories/notifications_repository.dart';
+import 'package:cajun_local/features/admin/data/repositories/punch_card_programs_repository.dart';
 import 'package:cajun_local/debug_agent_log.dart';
-import 'package:cajun_local/core/preferences/user_parish_preferences.dart';
+import 'package:cajun_local/features/profile/data/models/user_parish_preferences.dart';
 import 'package:cajun_local/core/theme/app_layout.dart';
 import 'package:cajun_local/core/theme/theme.dart';
 import 'package:cajun_local/features/admin/presentation/screens/admin_shell.dart';
@@ -78,7 +78,7 @@ class _MainShellState extends ConsumerState<MainShell> with SingleTickerProvider
 
   Future<void> _maybeShowParishOnboarding() async {
     if (!mounted) return;
-    final user = ref.read(authNotifierProvider).valueOrNull;
+    final user = ref.read(authControllerProvider).valueOrNull;
     if (user == null) return;
     final done = await UserParishPreferences.hasCompletedParishOnboarding();
     if (!mounted || done) return;
@@ -130,7 +130,7 @@ class _MainShellState extends ConsumerState<MainShell> with SingleTickerProvider
 
   Future<void> _signOut() async {
     _closeMenu();
-    await ref.read(authNotifierProvider.notifier).signOut();
+    await ref.read(authControllerProvider.notifier).signOut();
     if (mounted) {
       setState(() {
         _quickScanLoyaltyCards = null;
@@ -142,7 +142,7 @@ class _MainShellState extends ConsumerState<MainShell> with SingleTickerProvider
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    final uid = ref.watch(authNotifierProvider).valueOrNull?.id;
+    final uid = ref.watch(authControllerProvider).valueOrNull?.id;
     if (_quickScanLoyaltyCards == null && uid != null) {
       _loadQuickScanLoyaltyCards(uid);
     }
@@ -181,7 +181,7 @@ class _MainShellState extends ConsumerState<MainShell> with SingleTickerProvider
 
   void _openMessages() {
     _closeMenu();
-    final uid = ref.read(authNotifierProvider).valueOrNull?.id;
+    final uid = ref.read(authControllerProvider).valueOrNull?.id;
     if (uid == null) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Sign in to view your messages.')));
       return;
@@ -228,7 +228,7 @@ class _MainShellState extends ConsumerState<MainShell> with SingleTickerProvider
   static const List<String> _titles = ['Home', 'News', 'Explore', 'Favorites', 'Deals', 'Profile'];
 
   void _onAskLocalTap() {
-    final user = ref.read(authNotifierProvider).valueOrNull;
+    final user = ref.read(authControllerProvider).valueOrNull;
     final tierService = AppDataScope.of(context).userTierService;
     if (user == null) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Sign in to use Ask Local.')));
@@ -388,7 +388,7 @@ class _MainShellState extends ConsumerState<MainShell> with SingleTickerProvider
                   ),
                 );
                 if (!mounted) return;
-                final uid = ref.read(authNotifierProvider).valueOrNull?.id;
+                final uid = ref.read(authControllerProvider).valueOrNull?.id;
                 if (uid != null) {
                   setState(() => _notificationsUnreadFuture = NotificationsRepository().unreadCount(uid));
                 }
@@ -639,7 +639,7 @@ class _AppMenuDrawerState extends ConsumerState<_AppMenuDrawer> {
     super.didChangeDependencies();
     if (_isAdmin != null || _adminCheckStarted) return;
     _adminCheckStarted = true;
-    ref.read(authNotifierProvider.notifier).isAdmin().then((v) {
+    ref.read(authControllerProvider.notifier).isAdmin().then((v) {
       if (mounted) setState(() => _isAdmin = v);
     });
   }

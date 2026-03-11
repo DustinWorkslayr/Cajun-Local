@@ -3,7 +3,7 @@ import 'package:cajun_local/core/data/app_data_scope.dart';
 import 'package:cajun_local/shared/widgets/app_buttons.dart';
 import 'package:cajun_local/core/data/mock_data.dart';
 import 'package:cajun_local/core/data/services/ask_local_service.dart';
-import 'package:cajun_local/core/preferences/user_parish_preferences.dart';
+import 'package:cajun_local/features/profile/data/models/user_parish_preferences.dart';
 import 'package:cajun_local/core/revenuecat/present_subscription_paywall.dart';
 import 'package:cajun_local/core/theme/theme.dart';
 import 'package:cajun_local/features/listing/presentation/screens/listing_detail_screen.dart';

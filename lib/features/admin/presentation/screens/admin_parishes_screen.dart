@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:cajun_local/core/data/models/parish.dart';
-import 'package:cajun_local/core/data/repositories/parish_repository.dart';
+import 'package:cajun_local/features/admin/data/models/parish.dart';
+import 'package:cajun_local/features/admin/data/repositories/parish_repository.dart';
 import 'package:cajun_local/shared/widgets/app_buttons.dart';
 
 /// Admin: manage allowed parishes (used in business forms and directory filters).

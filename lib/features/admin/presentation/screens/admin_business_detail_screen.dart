@@ -2,43 +2,43 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:cajun_local/core/auth/providers/auth_provider.dart';
+import 'package:cajun_local/features/auth/presentation/controllers/auth_controller.dart';
 import 'package:cajun_local/core/data/services/storage_upload_constants.dart';
-import 'package:cajun_local/core/data/models/business.dart';
-import 'package:cajun_local/core/data/models/business_category.dart';
-import 'package:cajun_local/core/data/models/business_image.dart';
-import 'package:cajun_local/core/data/models/subcategory.dart';
-import 'package:cajun_local/core/data/repositories/category_repository.dart';
-import 'package:cajun_local/core/data/models/business_plan.dart';
-import 'package:cajun_local/core/data/repositories/business_plans_repository.dart';
-import 'package:cajun_local/core/data/repositories/business_subscriptions_repository.dart';
-import 'package:cajun_local/core/data/models/deal.dart';
-import 'package:cajun_local/core/data/models/menu_item.dart';
-import 'package:cajun_local/core/data/models/menu_section.dart';
-import 'package:cajun_local/core/data/repositories/business_images_repository.dart';
-import 'package:cajun_local/core/data/repositories/business_managers_repository.dart';
-import 'package:cajun_local/core/data/repositories/audit_log_repository.dart';
-import 'package:cajun_local/core/data/models/parish.dart';
-import 'package:cajun_local/core/data/repositories/business_repository.dart';
-import 'package:cajun_local/core/data/repositories/parish_repository.dart';
+import 'package:cajun_local/features/businesses/data/models/business.dart';
+import 'package:cajun_local/features/businesses/data/models/business_category.dart';
+import 'package:cajun_local/features/businesses/data/models/business_image.dart';
+import 'package:cajun_local/features/categories/data/models/subcategory.dart';
+import 'package:cajun_local/features/categories/data/repositories/category_repository.dart';
+import 'package:cajun_local/features/businesses/data/models/business_plan.dart';
+import 'package:cajun_local/features/businesses/data/repositories/business_plans_repository.dart';
+import 'package:cajun_local/features/businesses/data/repositories/business_subscriptions_repository.dart';
+import 'package:cajun_local/features/deals/data/models/deal.dart';
+import 'package:cajun_local/features/businesses/data/models/menu_item.dart';
+import 'package:cajun_local/features/businesses/data/models/menu_section.dart';
+import 'package:cajun_local/features/businesses/data/repositories/business_images_repository.dart';
+import 'package:cajun_local/features/businesses/data/repositories/business_managers_repository.dart';
+import 'package:cajun_local/features/admin/data/repositories/audit_log_repository.dart';
+import 'package:cajun_local/features/admin/data/models/parish.dart';
+import 'package:cajun_local/features/businesses/data/repositories/business_repository.dart';
+import 'package:cajun_local/features/admin/data/repositories/parish_repository.dart';
 import 'package:cajun_local/shared/widgets/app_buttons.dart';
 import 'package:cajun_local/shared/widgets/app_empty_state.dart';
 import 'package:cajun_local/shared/widgets/app_loader.dart';
 import 'package:cajun_local/shared/widgets/business_amenities_editor.dart';
 import 'package:cajun_local/shared/widgets/business_hours_editor.dart';
 import 'package:cajun_local/shared/widgets/business_links_editor.dart';
-import 'package:cajun_local/core/data/repositories/deals_repository.dart';
-import 'package:cajun_local/core/data/repositories/menu_repository.dart';
+import 'package:cajun_local/features/deals/data/repositories/deals_repository.dart';
+import 'package:cajun_local/features/businesses/data/repositories/menu_repository.dart';
 import 'package:cajun_local/core/data/services/business_images_storage_service.dart';
 import 'package:cajun_local/core/theme/app_layout.dart';
 import 'package:cajun_local/core/theme/theme.dart';
-import 'package:cajun_local/core/data/models/business_event.dart';
-import 'package:cajun_local/core/data/repositories/business_events_repository.dart';
+import 'package:cajun_local/features/events/data/models/business_event.dart';
+import 'package:cajun_local/features/events/data/repositories/business_events_repository.dart';
 import 'package:cajun_local/features/admin/presentation/screens/admin_add_deal_screen.dart';
 import 'package:cajun_local/features/admin/presentation/screens/admin_deal_detail_screen.dart';
 import 'package:cajun_local/features/my_listings/presentation/screens/create_business_item_screen.dart';
 import 'package:cajun_local/features/my_listings/presentation/screens/event_detail_screen.dart';
-import 'package:cajun_local/core/data/repositories/profiles_repository.dart';
+import 'package:cajun_local/features/profile/data/repositories/profiles_repository.dart';
 
 const double _cardRadius = 16;
 
@@ -76,7 +76,7 @@ class _AdminBusinessDetailScreenState extends ConsumerState<AdminBusinessDetailS
 
   Future<void> _updateStatus(String status) async {
     final repo = BusinessRepository();
-    final uid = ref.read(authNotifierProvider).valueOrNull?.id;
+    final uid = ref.read(authControllerProvider).valueOrNull?.id;
     await repo.updateStatus(widget.businessId, status, approvedBy: uid);
     AuditLogRepository().insert(
       action: status == 'approved' ? 'business_approved' : 'business_rejected',
@@ -1081,7 +1081,7 @@ class _ImagesTabState extends ConsumerState<_ImagesTab> {
     }
     if (!mounted) return;
     final ext = file.extension ?? 'jpg';
-    final uid = ref.read(authNotifierProvider).valueOrNull?.id;
+    final uid = ref.read(authControllerProvider).valueOrNull?.id;
     setState(() => _uploadingGallery = true);
     try {
       final url = await BusinessImagesStorageService().upload(
@@ -1136,7 +1136,7 @@ class _ImagesTabState extends ConsumerState<_ImagesTab> {
   }
 
   Future<void> _approve(BusinessImage img) async {
-    final uid = ref.read(authNotifierProvider).valueOrNull?.id;
+    final uid = ref.read(authControllerProvider).valueOrNull?.id;
     await BusinessImagesRepository().updateStatus(img.id, 'approved', approvedBy: uid);
     AuditLogRepository().insert(
       action: 'image_approved',

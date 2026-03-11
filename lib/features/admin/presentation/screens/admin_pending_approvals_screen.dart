@@ -1,15 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:cajun_local/core/auth/providers/auth_provider.dart';
-import 'package:cajun_local/core/data/models/business.dart';
-import 'package:cajun_local/core/data/models/business_event.dart';
-import 'package:cajun_local/core/data/models/business_image.dart';
-import 'package:cajun_local/core/data/models/deal.dart';
-import 'package:cajun_local/core/data/repositories/audit_log_repository.dart';
-import 'package:cajun_local/core/data/repositories/business_events_repository.dart';
-import 'package:cajun_local/core/data/repositories/business_images_repository.dart';
-import 'package:cajun_local/core/data/repositories/business_repository.dart';
-import 'package:cajun_local/core/data/repositories/deals_repository.dart';
+import 'package:cajun_local/features/auth/presentation/controllers/auth_controller.dart';
+import 'package:cajun_local/features/businesses/data/models/business.dart';
+import 'package:cajun_local/features/events/data/models/business_event.dart';
+import 'package:cajun_local/features/businesses/data/models/business_image.dart';
+import 'package:cajun_local/features/deals/data/models/deal.dart';
+import 'package:cajun_local/features/admin/data/repositories/audit_log_repository.dart';
+import 'package:cajun_local/features/events/data/repositories/business_events_repository.dart';
+import 'package:cajun_local/features/businesses/data/repositories/business_images_repository.dart';
+import 'package:cajun_local/features/businesses/data/repositories/business_repository.dart';
+import 'package:cajun_local/features/deals/data/repositories/deals_repository.dart';
 import 'package:cajun_local/core/theme/app_layout.dart';
 import 'package:cajun_local/core/theme/theme.dart';
 import 'package:cajun_local/features/admin/presentation/screens/admin_business_detail_screen.dart';
@@ -163,7 +163,7 @@ class _AdminPendingApprovalsScreenState extends ConsumerState<AdminPendingApprov
   Future<void> _bulkApproveAll() async {
     final list = _businesses ?? [];
     if (list.isEmpty) return;
-    final uid = ref.read(authNotifierProvider).valueOrNull?.id;
+    final uid = ref.read(authControllerProvider).valueOrNull?.id;
     if (uid == null) return;
     setState(() => _approving = true);
     final imagesRepo = BusinessImagesRepository();
@@ -214,7 +214,7 @@ class _AdminPendingApprovalsScreenState extends ConsumerState<AdminPendingApprov
         business: business,
         onClose: () => Navigator.of(ctx).pop(),
         onApproveAll: () async {
-          final uid = ref.read(authNotifierProvider).valueOrNull?.id;
+          final uid = ref.read(authControllerProvider).valueOrNull?.id;
           if (uid == null) return;
           final imagesRepo = BusinessImagesRepository();
           final dealsRepo = DealsRepository();
@@ -373,7 +373,7 @@ class _AdminPendingApprovalsScreenState extends ConsumerState<AdminPendingApprov
                     final state = this;
                     setState(() => _approving = true);
                     try {
-                      final uid = ref.read(authNotifierProvider).valueOrNull?.id;
+                      final uid = ref.read(authControllerProvider).valueOrNull?.id;
                       if (uid == null) return;
                       final imagesRepo = BusinessImagesRepository();
                       final dealsRepo = DealsRepository();
@@ -554,7 +554,7 @@ class _PendingSlideOutState extends ConsumerState<_PendingSlideOut> {
     );
     if (submitted == true && controller.text.trim().isNotEmpty) {
       if (!mounted) return;
-      final userId = ref.read(authNotifierProvider).valueOrNull?.id;
+      final userId = ref.read(authControllerProvider).valueOrNull?.id;
       await AuditLogRepository().insert(
         action: 'approval_request_info',
         userId: userId,
@@ -569,7 +569,7 @@ class _PendingSlideOutState extends ConsumerState<_PendingSlideOut> {
   }
 
   Future<void> _approveImage(String id) async {
-    final uid = ref.read(authNotifierProvider).valueOrNull?.id;
+    final uid = ref.read(authControllerProvider).valueOrNull?.id;
     if (uid == null) return;
     setState(() => _approving = true);
     try {
@@ -589,7 +589,7 @@ class _PendingSlideOutState extends ConsumerState<_PendingSlideOut> {
   }
 
   Future<void> _rejectImage(String id) async {
-    final uid = ref.read(authNotifierProvider).valueOrNull?.id;
+    final uid = ref.read(authControllerProvider).valueOrNull?.id;
     if (uid == null) return;
     setState(() => _approving = true);
     try {
@@ -609,7 +609,7 @@ class _PendingSlideOutState extends ConsumerState<_PendingSlideOut> {
   }
 
   Future<void> _approveDeal(String id) async {
-    final uid = ref.read(authNotifierProvider).valueOrNull?.id;
+    final uid = ref.read(authControllerProvider).valueOrNull?.id;
     if (uid == null) return;
     setState(() => _approving = true);
     try {
@@ -625,7 +625,7 @@ class _PendingSlideOutState extends ConsumerState<_PendingSlideOut> {
   }
 
   Future<void> _rejectDeal(String id) async {
-    final uid = ref.read(authNotifierProvider).valueOrNull?.id;
+    final uid = ref.read(authControllerProvider).valueOrNull?.id;
     if (uid == null) return;
     setState(() => _approving = true);
     try {
@@ -641,7 +641,7 @@ class _PendingSlideOutState extends ConsumerState<_PendingSlideOut> {
   }
 
   Future<void> _approveEvent(String id) async {
-    final uid = ref.read(authNotifierProvider).valueOrNull?.id;
+    final uid = ref.read(authControllerProvider).valueOrNull?.id;
     if (uid == null) return;
     setState(() => _approving = true);
     try {
@@ -657,7 +657,7 @@ class _PendingSlideOutState extends ConsumerState<_PendingSlideOut> {
   }
 
   Future<void> _rejectEvent(String id) async {
-    final uid = ref.read(authNotifierProvider).valueOrNull?.id;
+    final uid = ref.read(authControllerProvider).valueOrNull?.id;
     if (uid == null) return;
     setState(() => _approving = true);
     try {

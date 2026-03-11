@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:cajun_local/core/data/models/business_link.dart';
+import 'package:cajun_local/features/businesses/data/models/business_link.dart';
 import 'package:cajun_local/shared/widgets/app_buttons.dart';
-import 'package:cajun_local/core/data/repositories/business_links_repository.dart';
+import 'package:cajun_local/features/businesses/data/repositories/business_links_repository.dart';
 import 'package:cajun_local/core/theme/theme.dart';
 
 /// Editable social/website links. Loads from/saves to BusinessLinksRepository.

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:cajun_local/core/auth/providers/auth_provider.dart';
+import 'package:cajun_local/features/auth/presentation/controllers/auth_controller.dart';
 import 'package:cajun_local/core/preferences/sign_in_preferences.dart';
 import 'package:cajun_local/core/theme/theme.dart';
 import 'package:cajun_local/features/auth/presentation/screens/forgot_password_request_screen.dart';
@@ -75,7 +75,7 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
     try {
       if (_mode == AuthMode.signUp) {
         await ref
-            .read(authNotifierProvider.notifier)
+            .read(authControllerProvider.notifier)
             .signUp(email: email, password: password, displayName: displayName);
         // Confirmation email is sent by Supabase Auth using your project's custom SMTP.
         if (mounted) {
@@ -84,7 +84,7 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
           ).showSnackBar(const SnackBar(content: Text('Account created. You are now logged in.')));
         }
       } else {
-        await ref.read(authNotifierProvider.notifier).signIn(email: email, password: password);
+        await ref.read(authControllerProvider.notifier).signIn(email: email, password: password);
         if (mounted) {
           if (_rememberMe) {
             await SignInPreferences.setRememberMe(true);
@@ -96,7 +96,7 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
         }
       }
       // Check for errors
-      final state = ref.read(authNotifierProvider);
+      final state = ref.read(authControllerProvider);
       if (state.hasError) {
         throw state.error!;
       }
@@ -124,7 +124,7 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
       _loading = true;
     });
     try {
-      await ref.read(authNotifierProvider.notifier).signInWithGoogle();
+      await ref.read(authControllerProvider.notifier).signInWithGoogle();
       if (mounted) setState(() => _loading = false);
     } catch (e) {
       if (mounted) {

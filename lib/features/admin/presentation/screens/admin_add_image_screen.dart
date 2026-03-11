@@ -2,11 +2,11 @@ import 'package:file_picker/file_picker.dart';
 import 'package:cajun_local/core/data/services/storage_upload_constants.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:cajun_local/core/auth/providers/auth_provider.dart';
-import 'package:cajun_local/core/data/models/business.dart';
-import 'package:cajun_local/core/data/models/business_image.dart';
-import 'package:cajun_local/core/data/repositories/business_repository.dart';
-import 'package:cajun_local/core/data/repositories/business_images_repository.dart';
+import 'package:cajun_local/features/auth/presentation/controllers/auth_controller.dart';
+import 'package:cajun_local/features/businesses/data/models/business.dart';
+import 'package:cajun_local/features/businesses/data/models/business_image.dart';
+import 'package:cajun_local/features/businesses/data/repositories/business_repository.dart';
+import 'package:cajun_local/features/businesses/data/repositories/business_images_repository.dart';
 import 'package:cajun_local/core/data/services/business_images_storage_service.dart';
 import 'package:cajun_local/core/theme/app_layout.dart';
 import 'package:cajun_local/core/theme/theme.dart';
@@ -160,8 +160,8 @@ class _AdminAddImageScreenState extends ConsumerState<AdminAddImageScreen> {
     });
     final messenger = ScaffoldMessenger.of(context);
     try {
-      final uid = ref.read(authNotifierProvider).valueOrNull?.id;
-      final isAdmin = uid != null && await ref.read(authNotifierProvider.notifier).isAdmin();
+      final uid = ref.read(authControllerProvider).valueOrNull?.id;
+      final isAdmin = uid != null && await ref.read(authControllerProvider.notifier).isAdmin();
       await BusinessImagesRepository().insert(
         businessId: _selectedBusiness!.id,
         url: _uploadedUrl!,

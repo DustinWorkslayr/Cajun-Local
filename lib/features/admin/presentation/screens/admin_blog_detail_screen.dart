@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:cajun_local/core/auth/providers/auth_provider.dart';
-import 'package:cajun_local/core/data/models/blog_post.dart';
-import 'package:cajun_local/core/data/models/parish.dart';
-import 'package:cajun_local/core/data/repositories/audit_log_repository.dart';
-import 'package:cajun_local/core/data/repositories/blog_posts_repository.dart';
-import 'package:cajun_local/core/data/repositories/parish_repository.dart';
+import 'package:cajun_local/features/auth/presentation/controllers/auth_controller.dart';
+import 'package:cajun_local/features/news/data/models/blog_post.dart';
+import 'package:cajun_local/features/admin/data/models/parish.dart';
+import 'package:cajun_local/features/admin/data/repositories/audit_log_repository.dart';
+import 'package:cajun_local/features/news/data/repositories/blog_posts_repository.dart';
+import 'package:cajun_local/features/admin/data/repositories/parish_repository.dart';
 import 'package:cajun_local/features/admin/presentation/screens/admin_add_blog_post_screen.dart';
 
 class AdminBlogDetailScreen extends ConsumerStatefulWidget {
@@ -53,7 +53,7 @@ class _AdminBlogDetailScreenState extends ConsumerState<AdminBlogDetailScreen> {
 
   Future<void> _updateStatus(String status) async {
     final repo = BlogPostsRepository();
-    final uid = ref.read(authNotifierProvider).valueOrNull?.id;
+    final uid = ref.read(authControllerProvider).valueOrNull?.id;
     await repo.updateStatus(widget.postId, status, approvedBy: uid);
     AuditLogRepository().insert(
       action: status == 'approved' ? 'blog_approved' : 'blog_rejected',

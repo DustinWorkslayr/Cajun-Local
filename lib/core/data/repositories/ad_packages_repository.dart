@@ -1,6 +1,6 @@
 import 'package:cajun_local/core/api/api_client.dart';
-import 'package:cajun_local/core/api/business_ads_api.dart';
-import 'package:cajun_local/core/data/models/ad_package.dart';
+import 'package:cajun_local/features/businesses/data/api/business_ads_api.dart';
+import 'package:cajun_local/features/businesses/data/models/ad_package.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 part 'ad_packages_repository.g.dart';

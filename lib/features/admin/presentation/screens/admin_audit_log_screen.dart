@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:cajun_local/core/data/models/audit_log_entry.dart';
+import 'package:cajun_local/features/admin/data/models/audit_log_entry.dart';
 import 'package:cajun_local/shared/widgets/app_buttons.dart';
-import 'package:cajun_local/core/data/repositories/audit_log_repository.dart';
+import 'package:cajun_local/features/admin/data/repositories/audit_log_repository.dart';
 import 'package:cajun_local/core/theme/app_layout.dart';
 import 'package:cajun_local/core/theme/theme.dart';
 import 'package:cajun_local/features/admin/presentation/screens/admin_audit_log_detail_screen.dart';

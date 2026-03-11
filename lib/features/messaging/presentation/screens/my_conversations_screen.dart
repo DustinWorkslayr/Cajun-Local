@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:cajun_local/core/data/models/conversation.dart';
-import 'package:cajun_local/core/data/repositories/business_repository.dart';
-import 'package:cajun_local/core/data/repositories/conversations_repository.dart';
+import 'package:cajun_local/features/messaging/data/models/conversation.dart';
+import 'package:cajun_local/features/businesses/data/repositories/business_repository.dart';
+import 'package:cajun_local/features/messaging/data/repositories/conversations_repository.dart';
 import 'package:cajun_local/core/theme/app_layout.dart';
 import 'package:cajun_local/core/theme/theme.dart';
 import 'package:cajun_local/features/messaging/presentation/screens/conversation_thread_screen.dart';

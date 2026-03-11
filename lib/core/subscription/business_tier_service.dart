@@ -1,4 +1,4 @@
-import 'package:cajun_local/core/data/repositories/business_subscriptions_repository.dart';
+import 'package:cajun_local/features/businesses/data/repositories/business_subscriptions_repository.dart';
 
 /// Cajun Local business subscription tiers controlling deal creation and features.
 /// Resolved from business_plans.tier: free → Free, basic → Local+, premium/enterprise → Local Partner.

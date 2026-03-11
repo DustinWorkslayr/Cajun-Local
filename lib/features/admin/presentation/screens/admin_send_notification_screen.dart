@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:cajun_local/core/data/models/profile.dart';
-import 'package:cajun_local/core/data/repositories/notifications_repository.dart';
+import 'package:cajun_local/features/profile/data/models/profile.dart';
+import 'package:cajun_local/features/notifications/data/repositories/notifications_repository.dart';
 import 'package:cajun_local/core/theme/app_layout.dart';
 import 'package:cajun_local/core/theme/theme.dart';
 import 'package:cajun_local/shared/widgets/app_buttons.dart';
-import 'package:cajun_local/core/data/repositories/profiles_repository.dart';
+import 'package:cajun_local/features/profile/data/repositories/profiles_repository.dart';
 
 /// Admin: send a per-user notification. Select user, title, optional type.
 class AdminSendNotificationScreen extends ConsumerStatefulWidget {

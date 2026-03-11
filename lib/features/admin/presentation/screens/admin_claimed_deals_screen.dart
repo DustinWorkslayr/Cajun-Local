@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:cajun_local/core/data/models/deal.dart';
-import 'package:cajun_local/core/data/models/profile.dart';
-import 'package:cajun_local/core/data/models/user_deal.dart';
-import 'package:cajun_local/core/data/repositories/deals_repository.dart';
-import 'package:cajun_local/core/data/repositories/user_deals_repository.dart';
-import 'package:cajun_local/core/data/repositories/profiles_repository.dart';
+import 'package:cajun_local/features/deals/data/models/deal.dart';
+import 'package:cajun_local/features/profile/data/models/profile.dart';
+import 'package:cajun_local/features/deals/data/models/user_deal.dart';
+import 'package:cajun_local/features/deals/data/repositories/deals_repository.dart';
+import 'package:cajun_local/features/deals/data/repositories/user_deals_repository.dart';
+import 'package:cajun_local/features/profile/data/repositories/profiles_repository.dart';
 
 /// Admin: list all claimed deals (user_deals) and "Mark as used" for redemption.
 class AdminClaimedDealsScreen extends ConsumerStatefulWidget {

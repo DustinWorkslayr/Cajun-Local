@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:cajun_local/core/auth/providers/auth_provider.dart';
-import 'package:cajun_local/core/data/models/conversation.dart';
-import 'package:cajun_local/core/data/models/message.dart';
-import 'package:cajun_local/core/data/repositories/business_repository.dart';
-import 'package:cajun_local/core/data/repositories/conversations_repository.dart';
-import 'package:cajun_local/core/data/repositories/messages_repository.dart';
-import 'package:cajun_local/core/data/repositories/profiles_repository.dart';
+import 'package:cajun_local/features/auth/presentation/controllers/auth_controller.dart';
+import 'package:cajun_local/features/messaging/data/models/conversation.dart';
+import 'package:cajun_local/features/messaging/data/models/message.dart';
+import 'package:cajun_local/features/businesses/data/repositories/business_repository.dart';
+import 'package:cajun_local/features/messaging/data/repositories/conversations_repository.dart';
+import 'package:cajun_local/features/messaging/data/repositories/messages_repository.dart';
+import 'package:cajun_local/features/profile/data/repositories/profiles_repository.dart';
 import 'package:cajun_local/core/theme/app_layout.dart';
 import 'package:cajun_local/core/theme/theme.dart';
 import 'package:cajun_local/shared/widgets/app_buttons.dart';
@@ -116,7 +116,7 @@ class _ConversationThreadScreenState extends ConsumerState<ConversationThreadScr
     final body = _messageController.text.trim();
     if (body.isEmpty || _conversation == null) return;
     if (!widget.isBusinessManager && !_userCanSend) return;
-    final uid = ref.read(authNotifierProvider).valueOrNull?.id;
+    final uid = ref.read(authControllerProvider).valueOrNull?.id;
     if (uid == null) return;
     setState(() => _sending = true);
     try {

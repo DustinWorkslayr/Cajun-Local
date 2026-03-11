@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:cajun_local/core/auth/providers/auth_provider.dart';
+import 'package:cajun_local/features/auth/presentation/controllers/auth_controller.dart';
 import 'package:cajun_local/core/theme/app_layout.dart';
 import 'package:cajun_local/core/theme/theme.dart';
 import 'package:cajun_local/shared/widgets/app_buttons.dart';
@@ -18,7 +18,7 @@ class PendingApprovalScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final padding = AppLayout.horizontalPadding(context);
-    final uid = ref.watch(authNotifierProvider).valueOrNull?.id;
+    final uid = ref.watch(authControllerProvider).valueOrNull?.id;
 
     return Scaffold(
       backgroundColor: AppTheme.specOffWhite,

@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:cajun_local/core/data/models/business_plan.dart';
-import 'package:cajun_local/core/data/models/user_plan.dart';
-import 'package:cajun_local/core/data/repositories/business_plans_repository.dart';
-import 'package:cajun_local/core/data/repositories/user_plans_repository.dart';
+import 'package:cajun_local/features/businesses/data/models/business_plan.dart';
+import 'package:cajun_local/features/profile/data/models/user_plan.dart';
+import 'package:cajun_local/features/businesses/data/repositories/business_plans_repository.dart';
+import 'package:cajun_local/features/profile/data/repositories/user_plans_repository.dart';
 import 'package:cajun_local/core/theme/theme.dart';
 import 'package:cajun_local/features/admin/presentation/screens/admin_business_plan_form_screen.dart';
 import 'package:cajun_local/features/admin/presentation/screens/admin_user_plan_form_screen.dart';

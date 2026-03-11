@@ -1,14 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:cajun_local/core/auth/providers/auth_provider.dart';
+import 'package:cajun_local/features/auth/presentation/controllers/auth_controller.dart';
 import 'package:cajun_local/core/data/contact_form_templates.dart';
-import 'package:cajun_local/core/data/models/form_submission.dart';
-import 'package:cajun_local/core/data/models/profile.dart';
-import 'package:cajun_local/core/data/repositories/business_managers_repository.dart';
-import 'package:cajun_local/core/data/repositories/business_repository.dart';
-import 'package:cajun_local/core/data/repositories/conversations_repository.dart';
-import 'package:cajun_local/core/data/repositories/form_submissions_repository.dart';
-import 'package:cajun_local/core/data/repositories/profiles_repository.dart';
+import 'package:cajun_local/features/admin/data/models/form_submission.dart';
+import 'package:cajun_local/features/profile/data/models/profile.dart';
+import 'package:cajun_local/features/businesses/data/repositories/business_managers_repository.dart';
+import 'package:cajun_local/features/businesses/data/repositories/business_repository.dart';
+import 'package:cajun_local/features/messaging/data/repositories/conversations_repository.dart';
+import 'package:cajun_local/features/admin/data/repositories/form_submissions_repository.dart';
+import 'package:cajun_local/features/profile/data/repositories/profiles_repository.dart';
 import 'package:cajun_local/core/theme/theme.dart';
 import 'package:cajun_local/shared/widgets/app_buttons.dart';
 import 'package:cajun_local/features/messaging/presentation/screens/conversation_thread_screen.dart';
@@ -40,7 +40,7 @@ class _FormSubmissionsInboxScreenState extends ConsumerState<FormSubmissionsInbo
   }
 
   Future<void> _load() async {
-    final uid = ref.read(authNotifierProvider).valueOrNull?.id;
+    final uid = ref.read(authControllerProvider).valueOrNull?.id;
     if (uid == null) {
       setState(() {
         _loading = false;
