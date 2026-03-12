@@ -12,15 +12,8 @@ import 'package:cajun_local/features/deals/data/models/user_deal.dart';
 import 'package:cajun_local/features/businesses/data/models/business.dart';
 import 'package:cajun_local/features/businesses/data/models/business_claim.dart';
 import 'package:cajun_local/features/businesses/data/models/business_image.dart';
-import 'package:cajun_local/features/businesses/data/repositories/business_claims_repository.dart';
 import 'package:cajun_local/features/businesses/data/repositories/business_managers_repository.dart';
-import 'package:cajun_local/features/favorites/data/repositories/favorites_repository.dart' hide favoritesRepositoryProvider;
-import 'package:cajun_local/features/businesses/data/repositories/business_repository.dart' hide businessRepositoryProvider;
-import 'package:cajun_local/features/reviews/data/repositories/reviews_repository.dart' hide reviewsRepositoryProvider;
-import 'package:cajun_local/features/events/data/repositories/event_rsvps_repository.dart' hide eventRsvpsRepositoryProvider;
 import 'package:cajun_local/features/reviews/data/models/review.dart';
-import 'package:cajun_local/features/businesses/data/repositories/business_images_repository.dart';
-import 'package:cajun_local/features/businesses/data/repositories/business_subscriptions_repository.dart';
 import 'package:cajun_local/features/favorites/presentation/widgets/favorites_scope.dart';
 import 'package:cajun_local/core/subscription/resolved_permissions.dart';
 import 'package:cajun_local/core/theme/app_layout.dart';
@@ -33,6 +26,7 @@ import 'package:cajun_local/core/data/contact_form_templates.dart';
 import 'package:cajun_local/features/messaging/presentation/screens/conversation_thread_screen.dart';
 import 'package:cajun_local/shared/widgets/contact_form_widget.dart';
 import 'package:cajun_local/shared/widgets/deal_detail_popup.dart';
+import 'package:cajun_local/shared/widgets/app_bar_widget.dart';
 import 'package:cajun_local/shared/widgets/punch_qr_sheet.dart';
 
 /// Loaded data for listing detail (from data source or mock).
@@ -257,33 +251,21 @@ class _ListingDetailBodyState extends ConsumerState<_ListingDetailBody> {
         if (_future == null) {
           return Scaffold(
             backgroundColor: AppTheme.specOffWhite,
-            appBar: AppBar(
-              title: const Text('Listing'),
-              backgroundColor: AppTheme.specOffWhite,
-              foregroundColor: AppTheme.specNavy,
-            ),
+            appBar: const AppBarWidget(title: 'Listing', showBackButton: true),
             body: const Center(child: CircularProgressIndicator()),
           );
         }
         if (snapshot.connectionState == ConnectionState.waiting) {
           return Scaffold(
             backgroundColor: AppTheme.specOffWhite,
-            appBar: AppBar(
-              title: const Text('Listing'),
-              backgroundColor: AppTheme.specOffWhite,
-              foregroundColor: AppTheme.specNavy,
-            ),
+            appBar: const AppBarWidget(title: 'Listing', showBackButton: true),
             body: const Center(child: CircularProgressIndicator()),
           );
         }
         if (snapshot.hasError) {
           return Scaffold(
             backgroundColor: AppTheme.specOffWhite,
-            appBar: AppBar(
-              title: const Text('Listing'),
-              backgroundColor: AppTheme.specOffWhite,
-              foregroundColor: AppTheme.specNavy,
-            ),
+            appBar: const AppBarWidget(title: 'Listing', showBackButton: true),
             body: Center(
               child: Padding(
                 padding: const EdgeInsets.all(24),

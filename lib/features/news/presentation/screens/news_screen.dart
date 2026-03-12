@@ -1,16 +1,14 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cajun_local/features/news/data/models/blog_post.dart';
-import 'package:cajun_local/features/admin/data/models/parish.dart';
-import 'package:cajun_local/features/news/data/repositories/blog_posts_repository.dart';
-import 'package:cajun_local/features/admin/data/repositories/parish_repository.dart';
-import 'package:cajun_local/features/profile/data/models/user_parish_preferences.dart';
 import 'package:cajun_local/core/theme/app_layout.dart';
 import 'package:cajun_local/core/theme/theme.dart';
 import 'package:cajun_local/features/news/presentation/screens/news_post_detail_screen.dart';
+import 'package:cajun_local/features/news/presentation/providers/news_providers.dart';
 
 /// Public News (blog) screen — approved posts only. News-focused, blog-style layout.
-class NewsScreen extends StatelessWidget {
+class NewsScreen extends ConsumerWidget {
   const NewsScreen({super.key});
 
   static String _formatDate(DateTime? d) {
@@ -28,124 +26,167 @@ class NewsScreen extends StatelessWidget {
 
   static String _parishLabel(BlogPost post, Map<String, String> idToName) {
     if (post.isAllParishes) return 'All parishes';
+    if (post.parishIds == null) return '';
     return post.parishIds!.map((id) => idToName[id] ?? id).join(', ');
   }
 
   static const double _bannerAspectRatio = 2.1; // Wide banner
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final padding = AppLayout.horizontalPadding(context);
     final screenWidth = MediaQuery.sizeOf(context).width;
     final bannerHeight = (screenWidth - padding.left - padding.right) / _bannerAspectRatio;
 
+    final postsAsync = ref.watch(newsPostsProvider);
+    final parishesAsync = ref.watch(newsParishesProvider);
+
     return Scaffold(
       backgroundColor: AppTheme.specOffWhite,
-      body: CustomScrollView(
-        slivers: [
-          SliverToBoxAdapter(
-            child: SafeArea(
-              bottom: false,
-              child: Padding(
-                padding: EdgeInsets.fromLTRB(padding.left, 24, padding.right, 16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'News & Stories',
-                      style: theme.textTheme.headlineMedium?.copyWith(
-                        fontWeight: FontWeight.w800,
-                        color: AppTheme.specNavy,
-                        letterSpacing: -0.5,
+      body: RefreshIndicator(
+        onRefresh: () async {
+          ref.invalidate(newsPostsProvider);
+          ref.invalidate(newsParishesProvider);
+        },
+        color: AppTheme.specNavy,
+        child: CustomScrollView(
+          slivers: [
+            SliverToBoxAdapter(
+              child: SafeArea(
+                bottom: false,
+                child: Padding(
+                  padding: EdgeInsets.fromLTRB(padding.left, 24, padding.right, 16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'News & Stories',
+                        style: theme.textTheme.headlineMedium?.copyWith(
+                          fontWeight: FontWeight.w800,
+                          color: AppTheme.specNavy,
+                          letterSpacing: -0.5,
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      'Stories and updates from around Cajun country.',
-                      style: theme.textTheme.bodyLarge?.copyWith(
-                        color: AppTheme.specNavy.withValues(alpha: 0.72),
-                        height: 1.4,
+                      const SizedBox(height: 6),
+                      Text(
+                        'Stories and updates from around Cajun country.',
+                        style: theme.textTheme.bodyLarge?.copyWith(
+                          color: AppTheme.specNavy.withValues(alpha: 0.72),
+                          height: 1.4,
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
             ),
-          ),
-          SliverPadding(
-            padding: EdgeInsets.fromLTRB(padding.left, 16, padding.right, padding.right),
-            sliver: FutureBuilder<(List<BlogPost>, List<Parish>)>(
-              future: UserParishPreferences.getPreferredParishIds().then((ids) async {
-                final posts = await BlogPostsRepository().listApproved(forParishIds: ids.isEmpty ? null : ids);
-                final parishes = await ParishRepository().listParishes();
-                return (posts, parishes);
-              }),
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting && !snapshot.hasData) {
-                  return const SliverToBoxAdapter(
-                    child: Padding(
-                      padding: EdgeInsets.symmetric(vertical: 48),
-                      child: Center(child: CircularProgressIndicator(color: AppTheme.specNavy)),
-                    ),
-                  );
-                }
-                final posts = snapshot.data?.$1 ?? [];
-                final parishes = snapshot.data?.$2 ?? [];
-                final idToName = {for (final p in parishes) p.id: p.name};
-                if (posts.isEmpty) {
-                  return SliverToBoxAdapter(
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 48),
-                      child: Center(
-                        child: Column(
-                          children: [
-                            Icon(Icons.article_outlined, size: 56, color: AppTheme.specNavy.withValues(alpha: 0.4)),
-                            const SizedBox(height: 16),
-                            Text(
-                              'No news yet',
-                              style: theme.textTheme.titleMedium?.copyWith(
-                                color: AppTheme.specNavy.withValues(alpha: 0.8),
-                              ),
+            SliverPadding(
+              padding: EdgeInsets.fromLTRB(padding.left, 16, padding.right, padding.right),
+              sliver: postsAsync.when(
+                data: (posts) {
+                  return parishesAsync.when(
+                    data: (parishes) {
+                      final idToName = {for (final p in parishes) p.id: p.name};
+                      if (posts.isEmpty) {
+                        return _buildEmptyState(theme);
+                      }
+                      return SliverList(
+                        delegate: SliverChildBuilderDelegate((context, index) {
+                          final post = posts[index];
+                          final isFirst = index == 0;
+                          return Padding(
+                            padding: EdgeInsets.only(bottom: isFirst ? 28 : 24),
+                            child: _NewsCard(
+                              post: post,
+                              parishLabel: _parishLabel(post, idToName),
+                              featured: isFirst,
+                              bannerHeight: bannerHeight,
+                              onTap: () {
+                                Navigator.of(context).push(
+                                  MaterialPageRoute<void>(
+                                    builder: (_) => NewsPostDetailScreen(postId: post.id),
+                                  ),
+                                );
+                              },
                             ),
-                            const SizedBox(height: 4),
-                            Text(
-                              'Check back soon for updates.',
-                              style: theme.textTheme.bodyMedium?.copyWith(
-                                color: AppTheme.specNavy.withValues(alpha: 0.6),
-                              ),
-                            ),
-                          ],
-                        ),
+                          );
+                        }, childCount: posts.length),
+                      );
+                    },
+                    loading: () => const SliverToBoxAdapter(
+                      child: Padding(
+                        padding: EdgeInsets.symmetric(vertical: 48),
+                        child: Center(child: CircularProgressIndicator(color: AppTheme.specNavy)),
                       ),
                     ),
+                    error: (_, _) => _buildEmptyState(theme),
                   );
-                }
-                return SliverList(
-                  delegate: SliverChildBuilderDelegate((context, index) {
-                    final post = posts[index];
-                    final isFirst = index == 0;
-                    return Padding(
-                      padding: EdgeInsets.only(bottom: isFirst ? 28 : 24),
-                      child: _NewsCard(
-                        post: post,
-                        parishLabel: _parishLabel(post, idToName),
-                        featured: isFirst,
-                        bannerHeight: bannerHeight,
-                        onTap: () {
-                          Navigator.of(
-                            context,
-                          ).push(MaterialPageRoute<void>(builder: (_) => NewsPostDetailScreen(postId: post.id)));
-                        },
-                      ),
-                    );
-                  }, childCount: posts.length),
-                );
-              },
+                },
+                loading: () => const SliverToBoxAdapter(
+                  child: Padding(
+                    padding: EdgeInsets.symmetric(vertical: 48),
+                    child: Center(child: CircularProgressIndicator(color: AppTheme.specNavy)),
+                  ),
+                ),
+                error: (err, stack) => _buildErrorState(theme, ref),
+              ),
             ),
+            const SliverToBoxAdapter(child: SizedBox(height: 32)),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildEmptyState(ThemeData theme) {
+    return SliverToBoxAdapter(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 48),
+        child: Center(
+          child: Column(
+            children: [
+              Icon(Icons.article_outlined, size: 56, color: AppTheme.specNavy.withValues(alpha: 0.4)),
+              const SizedBox(height: 16),
+              Text(
+                'No news yet',
+                style: theme.textTheme.titleMedium?.copyWith(
+                  color: AppTheme.specNavy.withValues(alpha: 0.8),
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'Check back soon for updates.',
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: AppTheme.specNavy.withValues(alpha: 0.6),
+                ),
+              ),
+            ],
           ),
-          const SliverToBoxAdapter(child: SizedBox(height: 32)),
-        ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildErrorState(ThemeData theme, WidgetRef ref) {
+    return SliverToBoxAdapter(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 48),
+        child: Center(
+          child: Column(
+            children: [
+              Text('Failed to load news.', style: theme.textTheme.bodyLarge),
+              const SizedBox(height: 16),
+              FilledButton(
+                onPressed: () {
+                   ref.invalidate(newsPostsProvider);
+                   ref.invalidate(newsParishesProvider);
+                },
+                child: const Text('Retry'),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -206,7 +247,6 @@ class _NewsCard extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Banner image — always show same-height area
               SizedBox(
                 height: bannerHeight,
                 width: double.infinity,
@@ -222,7 +262,6 @@ class _NewsCard extends StatelessWidget {
                       )
                     else
                       _bannerPlaceholder(),
-                    // Subtle bottom gradient for text overlap on featured
                     if (featured)
                       Positioned(
                         left: 0,

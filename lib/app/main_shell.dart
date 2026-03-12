@@ -26,19 +26,12 @@ import 'package:cajun_local/features/news/presentation/screens/news_post_detail_
 import 'package:cajun_local/features/listing/presentation/screens/listing_detail_screen.dart';
 import 'package:cajun_local/features/choose_for_me/presentation/screens/choose_for_me_screen.dart';
 import 'package:cajun_local/shared/widgets/app_buttons.dart';
-import 'package:cajun_local/shared/widgets/app_logo.dart';
 import 'package:cajun_local/shared/widgets/ask_local_sheet.dart';
 import 'package:cajun_local/shared/widgets/explore_category_picker_dialog.dart';
 import 'package:cajun_local/shared/widgets/parish_onboarding_dialog.dart';
+import 'package:cajun_local/shared/widgets/app_bar_widget.dart';
+import 'package:cajun_local/shared/widgets/bottom_nav_widget.dart';
 import 'package:cajun_local/shared/widgets/quick_scan_sheet.dart';
-
-/// Logo height in AppBar for non-home tabs (Explore, Favorites, Deals, Profile). Smaller than home (112), larger than nav (26).
-const double _kAppBarLogoHeight = 88;
-
-/// AppBar toolbar height and leading width so the logo is not clipped.
-const double _kAppBarToolbarHeight = 96;
-const double _kAppBarLeadingWidth = 120;
-
 /// Root scaffold with bottom navigation (Explore, Home, Favorites, Deals, Profile).
 /// Home uses its own custom header; other tabs use AppBar. Bottom nav: 5 icons with Home in center. Ask Local in menu.
 class MainShell extends ConsumerStatefulWidget {
@@ -346,29 +339,10 @@ class _MainShellState extends ConsumerState<MainShell> with SingleTickerProvider
     final scaffold = Scaffold(
       key: _scaffoldKey,
       extendBodyBehindAppBar: false,
-      appBar: AppBar(
-        toolbarHeight: _kAppBarToolbarHeight,
-        leadingWidth: _kAppBarLeadingWidth,
-        leading: showListingsInProfile
-            ? IconButton(
-                icon: const Icon(Icons.arrow_back_rounded),
-                onPressed: () => setState(() => _profileShowListings = false),
-                tooltip: 'Back to Profile',
-              )
-            : Padding(
-                padding: const EdgeInsets.only(left: 8),
-                child: Center(child: AppLogo(height: _kAppBarLogoHeight)),
-              ),
-        title: Text(
-          showListingsInProfile ? 'My Listings' : _titles[_currentIndex],
-          style: TextStyle(
-            fontFamily: 'Brobane',
-            fontSize: 26,
-            fontWeight: FontWeight.normal,
-            color: AppTheme.specNavy,
-          ),
-        ),
-        centerTitle: true,
+      appBar: AppBarWidget(
+        title: showListingsInProfile ? 'My Listings' : _titles[_currentIndex],
+        showBackButton: showListingsInProfile,
+        onBack: () => setState(() => _profileShowListings = false),
         actions: [
           if (_quickScanLoyaltyCards != null && _quickScanLoyaltyCards!.isNotEmpty)
             IconButton(
@@ -377,7 +351,7 @@ class _MainShellState extends ConsumerState<MainShell> with SingleTickerProvider
               color: AppTheme.specNavy,
               tooltip: 'Quick scan punch card',
             ),
-          _NotificationsIcon(
+          NotificationsIconWidget(
             unreadFuture: _notificationsUnreadFuture,
             onOpen: () {
               WidgetsBinding.instance.addPostFrameCallback((_) async {
@@ -406,11 +380,6 @@ class _MainShellState extends ConsumerState<MainShell> with SingleTickerProvider
             tooltip: 'Menu',
           ),
         ],
-        scrolledUnderElevation: 12,
-        backgroundColor: AppTheme.specOffWhite,
-        foregroundColor: AppTheme.specNavy,
-        surfaceTintColor: Colors.transparent,
-        elevation: 0,
       ),
       endDrawer: Drawer(
         backgroundColor: AppTheme.specOffWhite,
@@ -470,7 +439,7 @@ class _MainShellState extends ConsumerState<MainShell> with SingleTickerProvider
             final isTablet = AppLayout.isTablet(context);
             const profileTabIndex = 4;
             final showFooter = !(isTablet && _currentIndex == profileTabIndex);
-            final bottomNav = _CustomBottomNav(
+            final bottomNav = BottomNavWidget(
               currentIndex: _currentIndex,
               onTap: (index) {
                 if (index == 2) {
@@ -520,58 +489,6 @@ class _MainShellState extends ConsumerState<MainShell> with SingleTickerProvider
   }
 }
 
-/// App bar notification bell with optional unread badge.
-class _NotificationsIcon extends StatelessWidget {
-  const _NotificationsIcon({this.unreadFuture, required this.onOpen});
-
-  final Future<int>? unreadFuture;
-  final VoidCallback onOpen;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    if (unreadFuture == null) {
-      return IconButton(
-        onPressed: onOpen,
-        icon: const Icon(Icons.notifications_outlined),
-        color: AppTheme.specNavy,
-        tooltip: 'Notifications',
-      );
-    }
-    return FutureBuilder<int>(
-      future: unreadFuture,
-      builder: (context, snapshot) {
-        final count = snapshot.data ?? 0;
-        return Stack(
-          clipBehavior: Clip.none,
-          children: [
-            IconButton(
-              onPressed: onOpen,
-              icon: const Icon(Icons.notifications_outlined),
-              color: AppTheme.specNavy,
-              tooltip: 'Notifications',
-            ),
-            if (count > 0)
-              Positioned(
-                top: 6,
-                right: 6,
-                child: Container(
-                  padding: const EdgeInsets.all(4),
-                  decoration: const BoxDecoration(color: AppTheme.specRed, shape: BoxShape.circle),
-                  constraints: const BoxConstraints(minWidth: 18, minHeight: 18),
-                  child: Text(
-                    count > 99 ? '99+' : '$count',
-                    style: theme.textTheme.labelSmall?.copyWith(color: AppTheme.specWhite, fontWeight: FontWeight.w700),
-                    textAlign: TextAlign.center,
-                  ),
-                ),
-              ),
-          ],
-        );
-      },
-    );
-  }
-}
 
 class _NavTile extends StatelessWidget {
   const _NavTile({required this.icon, required this.title, required this.selected, required this.onTap});
@@ -803,129 +720,6 @@ class _AppMenuDrawerState extends ConsumerState<_AppMenuDrawer> {
             ),
           ),
         ],
-      ),
-    );
-  }
-}
-
-/// Single bottom nav item with hover scale and gold-tinted press/hover feedback.
-class _BottomNavItem extends StatefulWidget {
-  const _BottomNavItem({required this.icon, required this.selected, required this.label, required this.onTap});
-
-  final IconData icon;
-  final bool selected;
-  final String label;
-  final VoidCallback onTap;
-
-  @override
-  State<_BottomNavItem> createState() => _BottomNavItemState();
-}
-
-class _BottomNavItemState extends State<_BottomNavItem> {
-  bool _hovered = false;
-
-  @override
-  Widget build(BuildContext context) {
-    return MouseRegion(
-      onEnter: (_) => setState(() => _hovered = true),
-      onExit: (_) => setState(() => _hovered = false),
-      cursor: SystemMouseCursors.click,
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: widget.onTap,
-          borderRadius: BorderRadius.circular(20),
-          hoverColor: AppTheme.specGold.withValues(alpha: 0.14),
-          focusColor: AppTheme.specGold.withValues(alpha: 0.2),
-          highlightColor: AppTheme.specGold.withValues(alpha: 0.22),
-          splashColor: AppTheme.specGold.withValues(alpha: 0.35),
-          child: Tooltip(
-            message: widget.label,
-            child: Center(
-              child: AnimatedScale(
-                scale: _hovered ? 1.12 : 1.0,
-                duration: const Duration(milliseconds: 160),
-                curve: Curves.easeOutCubic,
-                child: widget.selected
-                    ? Container(
-                        padding: const EdgeInsets.all(6),
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          boxShadow: [
-                            BoxShadow(color: AppTheme.specGold.withValues(alpha: 0.5), blurRadius: 12, spreadRadius: 0),
-                            BoxShadow(
-                              color: AppTheme.specGold.withValues(alpha: 0.35),
-                              blurRadius: 20,
-                              spreadRadius: -2,
-                            ),
-                          ],
-                        ),
-                        child: Icon(widget.icon, size: 26, color: AppTheme.specNavy),
-                      )
-                    : Icon(widget.icon, size: 26, color: AppTheme.specNavy.withValues(alpha: 0.6)),
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-/// Bottom nav: 5 icons only (no labels), rounded floating bar. Home, Explore, Favorites, Deals, Profile.
-class _CustomBottomNav extends StatelessWidget {
-  const _CustomBottomNav({
-    required this.currentIndex,
-    required this.onTap,
-    required this.screenCount,
-    required this.titles,
-  });
-
-  final int currentIndex;
-  final ValueChanged<int> onTap;
-  final int screenCount;
-  final List<String> titles;
-
-  static const List<IconData> _icons = [
-    Icons.home_rounded,
-    Icons.article_rounded,
-    Icons.explore_rounded,
-    Icons.favorite_rounded,
-    Icons.local_offer_rounded,
-    Icons.person_rounded,
-  ];
-
-  @override
-  Widget build(BuildContext context) {
-    final barCount = screenCount.clamp(1, _icons.length);
-    final bottomPadding = MediaQuery.paddingOf(context).bottom;
-
-    return Padding(
-      padding: EdgeInsets.fromLTRB(20, 8, 20, 12 + bottomPadding),
-      child: Container(
-        decoration: BoxDecoration(
-          color: AppTheme.specWhite,
-          borderRadius: BorderRadius.circular(28),
-          boxShadow: [
-            // Soft slide shadow (offset downward)
-            BoxShadow(color: Colors.black.withValues(alpha: 0.06), blurRadius: 8, offset: const Offset(0, 2)),
-            BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 16, offset: const Offset(0, 6)),
-          ],
-        ),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            children: List.generate(barCount, (index) {
-              final selected = index == currentIndex;
-              final label = index < titles.length ? titles[index] : '';
-              final iconData = index < _icons.length ? _icons[index] : Icons.circle_rounded;
-              return Expanded(
-                child: _BottomNavItem(icon: iconData, selected: selected, label: label, onTap: () => onTap(index)),
-              );
-            }),
-          ),
-        ),
       ),
     );
   }
