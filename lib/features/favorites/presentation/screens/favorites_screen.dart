@@ -1,15 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:cajun_local/core/data/providers/app_data_providers.dart';
-import 'package:cajun_local/core/data/listing_data_source.dart';
 import 'package:cajun_local/core/data/mock_data.dart';
-import 'package:cajun_local/features/favorites/presentation/widgets/favorites_scope.dart';
+import 'package:cajun_local/features/favorites/presentation/providers/favorites_providers.dart';
 import 'package:cajun_local/core/theme/app_layout.dart';
 import 'package:cajun_local/core/theme/theme.dart';
 import 'package:cajun_local/features/listing/presentation/screens/listing_detail_screen.dart';
 import 'package:cajun_local/shared/widgets/animated_entrance.dart';
 
-/// Favorites tab — saved listings grouped/filtered by category. Uses specOffWhite, specNavy, specGold.
+/// Favorites tab — saved listings grouped/filtered by category. 
 class FavoritesScreen extends ConsumerStatefulWidget {
   const FavoritesScreen({super.key});
 
@@ -21,54 +19,7 @@ class _FavoritesScreenState extends ConsumerState<FavoritesScreen> {
   /// Selected category id; null = "All".
   String? _selectedCategoryId;
 
-  /// Memoized future for the current set of favorite IDs. Only recreated when ids change.
-  Future<List<MockListing>>? _favoritesListFuture;
-
-  /// Last set of ids we loaded for; used to avoid creating a new Future on every rebuild.
-  Set<String>? _lastFavoriteIds;
-
-  static const int _favoritesBatchSize = 10;
-
-  /// Returns a Future for the list of listings for [ids]. Fetches in batches to avoid thundering herd. Reuses _favoritesListFuture when ids unchanged.
-  Future<List<MockListing>> _favoritesFutureFor(Set<String> ids) {
-    if (_favoritesListFuture != null &&
-        _lastFavoriteIds != null &&
-        _lastFavoriteIds!.length == ids.length &&
-        _lastFavoriteIds!.containsAll(ids)) {
-      return _favoritesListFuture!;
-    }
-    _lastFavoriteIds = Set<String>.from(ids);
-    final ds = ref.read(listingDataSourceProvider);
-    final idList = ids.toList();
-    _favoritesListFuture = _loadFavoritesInBatches(ds, idList);
-    return _favoritesListFuture!;
-  }
-
-  Future<List<MockListing>> _loadFavoritesInBatches(ListingDataSource ds, List<String> idList) async {
-    final result = <MockListing>[];
-    for (var i = 0; i < idList.length; i += _favoritesBatchSize) {
-      final chunk = idList.skip(i).take(_favoritesBatchSize).toList();
-      final list = await Future.wait(chunk.map((id) => ds.getListingById(id)));
-      for (final item in list) {
-        if (item != null) result.add(item);
-      }
-    }
-    return result;
-  }
-
-  /// Pull-to-refresh: invalidate cache and reload favorites list.
-  Future<void> _refreshFavorites(Set<String> ids) async {
-    _favoritesListFuture = null;
-    _lastFavoriteIds = null;
-    if (!mounted) return;
-    setState(() {
-      _favoritesListFuture = _favoritesFutureFor(ids);
-    });
-    await _favoritesListFuture;
-    if (mounted) setState(() {});
-  }
-
-  /// Group listings by categoryId. Keys in display order (first-seen order); value = list of listings.
+  /// Group listings by categoryId.
   static Map<String, List<MockListing>> _groupByCategory(List<MockListing> listings) {
     final map = <String, List<MockListing>>{};
     for (final l in listings) {
@@ -78,7 +29,7 @@ class _FavoritesScreenState extends ConsumerState<FavoritesScreen> {
     return map;
   }
 
-  /// Category display name (categoryName from first listing in group, or fallback).
+  /// Category display name.
   static String _categoryDisplayName(String categoryId, List<MockListing> list) {
     if (list.isNotEmpty && list.first.categoryName.isNotEmpty) {
       return list.first.categoryName;
@@ -90,14 +41,13 @@ class _FavoritesScreenState extends ConsumerState<FavoritesScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final favoriteIds = FavoritesScope.of(context);
+    final listingsAsync = ref.watch(favoriteListingsProvider);
 
     return Container(
       color: AppTheme.specOffWhite,
-      child: ValueListenableBuilder<Set<String>>(
-        valueListenable: favoriteIds,
-        builder: (context, ids, _) {
-          if (ids.isEmpty) {
+      child: listingsAsync.when(
+        data: (listings) {
+          if (listings.isEmpty) {
             return _buildEmptyState(
               context,
               theme,
@@ -107,141 +57,96 @@ class _FavoritesScreenState extends ConsumerState<FavoritesScreen> {
             );
           }
 
-          final future = _favoritesFutureFor(ids);
+          final grouped = _groupByCategory(listings);
+          final categoryIds = grouped.keys.toList();
+          final padding = AppLayout.horizontalPadding(context);
 
-          return FutureBuilder<List<MockListing>>(
-            future: future,
-            builder: (context, snapshot) {
-              final listings = snapshot.data ?? const [];
-              if (snapshot.connectionState == ConnectionState.waiting && listings.isEmpty) {
-                return const Center(child: CircularProgressIndicator(color: AppTheme.specNavy));
-              }
-              if (listings.isEmpty) {
-                return _buildEmptyState(
-                  context,
-                  theme,
-                  icon: Icons.favorite_border_rounded,
-                  title: 'No favorites yet',
-                  subtitle: 'Tap the heart on a listing to save it here.',
-                );
-              }
-
-              final grouped = _groupByCategory(listings);
-              final categoryIds = grouped.keys.toList();
-              final padding = AppLayout.horizontalPadding(context);
-
-              return RefreshIndicator(
-                onRefresh: () => _refreshFavorites(ids),
-                color: AppTheme.specNavy,
-                child: CustomScrollView(
-                  slivers: [
-                    // Category filter chips
-                    SliverToBoxAdapter(
-                      child: Padding(
-                        padding: EdgeInsets.fromLTRB(padding.left, 12, padding.right, 8),
-                        child: SingleChildScrollView(
-                          scrollDirection: Axis.horizontal,
+          return RefreshIndicator(
+            onRefresh: () async {
+              ref.invalidate(userFavoriteIdsProvider);
+              await ref.read(userFavoriteIdsProvider.future);
+            },
+            color: AppTheme.specNavy,
+            child: CustomScrollView(
+              slivers: [
+                // Category filter chips
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: EdgeInsets.fromLTRB(padding.left, 12, padding.right, 8),
+                    child: SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: Row(
+                        children: [
+                          Padding(
+                            padding: const EdgeInsets.only(right: 8),
+                            child: FilterChip(
+                              label: const Text('All'),
+                              selected: _selectedCategoryId == null,
+                              onSelected: (_) => setState(() => _selectedCategoryId = null),
+                              selectedColor: AppTheme.specGold.withValues(alpha: 0.35),
+                              checkmarkColor: AppTheme.specNavy,
+                            ),
+                          ),
+                          ...categoryIds.map((cid) {
+                            final name = _categoryDisplayName(cid, grouped[cid]!);
+                            return Padding(
+                              padding: const EdgeInsets.only(right: 8),
+                              child: FilterChip(
+                                label: Text(name),
+                                selected: _selectedCategoryId == cid,
+                                onSelected: (_) => setState(() => _selectedCategoryId = cid),
+                                selectedColor: AppTheme.specGold.withValues(alpha: 0.35),
+                                checkmarkColor: AppTheme.specNavy,
+                              ),
+                            );
+                          }),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+                
+                if (_selectedCategoryId == null) ...[
+                  ...categoryIds.expand((cid) {
+                    final list = grouped[cid]!;
+                    final name = _categoryDisplayName(cid, list);
+                    return [
+                      SliverToBoxAdapter(
+                        child: Padding(
+                          padding: EdgeInsets.fromLTRB(padding.left, 16, padding.right, 8),
                           child: Row(
                             children: [
-                              Padding(
-                                padding: const EdgeInsets.only(right: 8),
-                                child: FilterChip(
-                                  label: const Text('All'),
-                                  selected: _selectedCategoryId == null,
-                                  onSelected: (_) => setState(() => _selectedCategoryId = null),
-                                  selectedColor: AppTheme.specGold.withValues(alpha: 0.35),
-                                  checkmarkColor: AppTheme.specNavy,
+                              Container(
+                                width: 4,
+                                height: 20,
+                                decoration: BoxDecoration(
+                                  color: AppTheme.specGold,
+                                  borderRadius: BorderRadius.circular(2),
                                 ),
                               ),
-                              ...categoryIds.map((cid) {
-                                final name = _categoryDisplayName(cid, grouped[cid]!);
-                                return Padding(
-                                  padding: const EdgeInsets.only(right: 8),
-                                  child: FilterChip(
-                                    label: Text(name),
-                                    selected: _selectedCategoryId == cid,
-                                    onSelected: (_) => setState(() => _selectedCategoryId = cid),
-                                    selectedColor: AppTheme.specGold.withValues(alpha: 0.35),
-                                    checkmarkColor: AppTheme.specNavy,
-                                  ),
-                                );
-                              }),
+                              const SizedBox(width: 10),
+                              Text(
+                                name,
+                                style: theme.textTheme.titleMedium?.copyWith(
+                                  fontWeight: FontWeight.w700,
+                                  color: AppTheme.specNavy,
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Text(
+                                '${list.length}',
+                                style: theme.textTheme.bodySmall?.copyWith(
+                                  color: AppTheme.specNavy.withValues(alpha: 0.7),
+                                ),
+                              ),
                             ],
                           ),
                         ),
                       ),
-                    ),
-                    // Grouped list: when All, show sections; when one category, show only that list
-                    if (_selectedCategoryId == null) ...[
-                      ...categoryIds.expand((cid) {
-                        final list = grouped[cid]!;
-                        final name = _categoryDisplayName(cid, list);
-                        return [
-                          SliverToBoxAdapter(
-                            child: Padding(
-                              padding: EdgeInsets.fromLTRB(padding.left, 16, padding.right, 8),
-                              child: Row(
-                                children: [
-                                  Container(
-                                    width: 4,
-                                    height: 20,
-                                    decoration: BoxDecoration(
-                                      color: AppTheme.specGold,
-                                      borderRadius: BorderRadius.circular(2),
-                                    ),
-                                  ),
-                                  const SizedBox(width: 10),
-                                  Text(
-                                    name,
-                                    style: theme.textTheme.titleMedium?.copyWith(
-                                      fontWeight: FontWeight.w700,
-                                      color: AppTheme.specNavy,
-                                    ),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Text(
-                                    '${list.length}',
-                                    style: theme.textTheme.bodySmall?.copyWith(
-                                      color: AppTheme.specNavy.withValues(alpha: 0.7),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                          SliverPadding(
-                            padding: EdgeInsets.fromLTRB(padding.left, 0, padding.right, 8),
-                            sliver: SliverList(
-                              delegate: SliverChildBuilderDelegate((context, index) {
-                                final listing = list[index];
-                                return Padding(
-                                  padding: const EdgeInsets.only(bottom: 14),
-                                  child: AnimatedEntrance(
-                                    delay: Duration(milliseconds: 50 * (index + 1)),
-                                    child: _FavoriteCard(
-                                      listing: listing,
-                                      onTap: () {
-                                        Navigator.of(context).push(
-                                          MaterialPageRoute<void>(
-                                            builder: (_) => ListingDetailScreen(listingId: listing.id),
-                                          ),
-                                        );
-                                      },
-                                    ),
-                                  ),
-                                );
-                              }, childCount: list.length),
-                            ),
-                          ),
-                        ];
-                      }),
-                    ] else ...[
                       SliverPadding(
-                        padding: EdgeInsets.fromLTRB(padding.left, 8, padding.right, 28),
+                        padding: EdgeInsets.fromLTRB(padding.left, 0, padding.right, 8),
                         sliver: SliverList(
                           delegate: SliverChildBuilderDelegate((context, index) {
-                            final list = grouped[_selectedCategoryId] ?? [];
-                            if (index >= list.length) return const SizedBox.shrink();
                             final listing = list[index];
                             return Padding(
                               padding: const EdgeInsets.only(bottom: 14),
@@ -259,17 +164,57 @@ class _FavoritesScreenState extends ConsumerState<FavoritesScreen> {
                                 ),
                               ),
                             );
-                          }, childCount: grouped[_selectedCategoryId]?.length ?? 0),
+                          }, childCount: list.length),
                         ),
                       ),
-                    ],
-                    const SliverToBoxAdapter(child: SizedBox(height: 24)),
-                  ],
-                ),
-              );
-            },
+                    ];
+                  }),
+                ] else ...[
+                  SliverPadding(
+                    padding: EdgeInsets.fromLTRB(padding.left, 8, padding.right, 28),
+                    sliver: SliverList(
+                      delegate: SliverChildBuilderDelegate((context, index) {
+                        final list = grouped[_selectedCategoryId] ?? [];
+                        if (index >= list.length) return const SizedBox.shrink();
+                        final listing = list[index];
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 14),
+                          child: AnimatedEntrance(
+                            delay: Duration(milliseconds: 50 * (index + 1)),
+                            child: _FavoriteCard(
+                              listing: listing,
+                              onTap: () {
+                                Navigator.of(context).push(
+                                  MaterialPageRoute<void>(
+                                    builder: (_) => ListingDetailScreen(listingId: listing.id),
+                                  ),
+                                );
+                              },
+                            ),
+                          ),
+                        );
+                      }, childCount: grouped[_selectedCategoryId]?.length ?? 0),
+                    ),
+                  ),
+                ],
+                const SliverToBoxAdapter(child: SizedBox(height: 24)),
+              ],
+            ),
           );
         },
+        loading: () => const Center(child: CircularProgressIndicator(color: AppTheme.specNavy)),
+        error: (err, stack) => Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Text('Error loading favorites'),
+              ElevatedButton(
+                onPressed: () => ref.invalidate(userFavoriteIdsProvider),
+                child: const Text('Retry'),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

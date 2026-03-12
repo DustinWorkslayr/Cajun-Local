@@ -14,7 +14,7 @@ import 'package:cajun_local/features/businesses/data/models/business_claim.dart'
 import 'package:cajun_local/features/businesses/data/models/business_image.dart';
 import 'package:cajun_local/features/businesses/data/repositories/business_managers_repository.dart';
 import 'package:cajun_local/features/reviews/data/models/review.dart';
-import 'package:cajun_local/features/favorites/presentation/widgets/favorites_scope.dart';
+import 'package:cajun_local/features/favorites/presentation/providers/favorites_providers.dart';
 import 'package:cajun_local/core/subscription/resolved_permissions.dart';
 import 'package:cajun_local/core/theme/app_layout.dart';
 import 'package:cajun_local/shared/widgets/app_buttons.dart';
@@ -446,9 +446,8 @@ class _ListingDetailContent extends ConsumerWidget {
             ),
           ),
         ],
-        ValueListenableBuilder<Set<String>>(
-          valueListenable: FavoritesScope.of(context),
-          builder: (context, ids, _) {
+        ref.watch(userFavoriteIdsProvider).when(
+          data: (ids) {
             final isFav = ids.contains(listing.id);
             return Row(
               mainAxisSize: MainAxisSize.min,
@@ -469,32 +468,24 @@ class _ListingDetailContent extends ConsumerWidget {
                 _GlassButton(
                   icon: isFav ? Icons.favorite_rounded : Icons.favorite_border_rounded,
                   onTap: () async {
-                    final next = Set<String>.from(ids);
-                    if (next.contains(listing.id)) {
-                      next.remove(listing.id);
-                      if (ref.read(listingDataSourceProvider).useBackend) {
-                        await ref.read(favoritesRepositoryProvider).remove(listing.id);
-                      }
+                    if (isFav) {
+                      await ref.read(userFavoriteIdsProvider.notifier).remove(listing.id);
                     } else {
                       final perms = ref.read(userTierServiceProvider).value ?? ResolvedPermissions.free;
-                      if (ref.read(listingDataSourceProvider).useBackend &&
-                          perms.wouldExceedFavoritesLimit(ids.length)) {
+                      if (perms.wouldExceedFavoritesLimit(ids.length)) {
                         if (!context.mounted) return;
                         await presentSubscriptionPaywall(context);
                         return;
                       }
-                      next.add(listing.id);
-                      if (ref.read(listingDataSourceProvider).useBackend) {
-                        await ref.read(favoritesRepositoryProvider).add(listing.id);
-                      }
+                      await ref.read(userFavoriteIdsProvider.notifier).add(listing.id);
                     }
-                    if (!context.mounted) return;
-                    FavoritesScope.of(context).value = next;
                   },
                 ),
               ],
             );
           },
+          loading: () => const SizedBox.shrink(),
+          error: (_, _) => const SizedBox.shrink(),
         ),
         const SizedBox(width: 8),
         _GlassButton(icon: Icons.share_rounded, onTap: () {}),
@@ -887,39 +878,30 @@ class _ActionRow extends ConsumerWidget {
         ),
         const SizedBox(width: 12),
         Expanded(
-          child: ValueListenableBuilder<Set<String>>(
-            valueListenable: FavoritesScope.of(context),
-            builder: (context, ids, _) {
+          child: ref.watch(userFavoriteIdsProvider).when(
+            data: (ids) {
               final isFav = ids.contains(listing.id);
               return _ActionButton(
                 icon: isFav ? Icons.favorite_rounded : Icons.favorite_border_rounded,
                 label: 'Save',
                 onTap: () async {
-                  final next = Set<String>.from(ids);
-                  final dataSource = ref.read(listingDataSourceProvider);
-                  if (next.contains(listing.id)) {
-                    next.remove(listing.id);
-                    if (dataSource.useBackend) {
-                      await ref.read(favoritesRepositoryProvider).remove(listing.id);
-                    }
+                  if (isFav) {
+                    await ref.read(userFavoriteIdsProvider.notifier).remove(listing.id);
                   } else {
                     final perms = ref.read(userTierServiceProvider).value ?? ResolvedPermissions.free;
-                    if (dataSource.useBackend && perms.wouldExceedFavoritesLimit(ids.length)) {
+                    if (perms.wouldExceedFavoritesLimit(ids.length)) {
                       if (!context.mounted) return;
                       await presentSubscriptionPaywall(context);
                       return;
                     }
-                    next.add(listing.id);
-                    if (dataSource.useBackend) {
-                      await ref.read(favoritesRepositoryProvider).add(listing.id);
-                    }
+                    await ref.read(userFavoriteIdsProvider.notifier).add(listing.id);
                   }
-                  if (!context.mounted) return;
-                  FavoritesScope.of(context).value = next;
                   onReload();
                 },
               );
             },
+            loading: () => const SizedBox.shrink(),
+            error: (_, _) => const SizedBox.shrink(),
           ),
         ),
       ],

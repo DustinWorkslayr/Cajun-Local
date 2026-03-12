@@ -7,7 +7,6 @@ import 'package:cajun_local/core/data/listing_data_source.dart';
 import 'package:cajun_local/features/favorites/data/repositories/favorites_repository.dart';
 import 'package:cajun_local/features/profile/data/repositories/user_plans_repository.dart';
 import 'package:cajun_local/features/profile/data/repositories/user_subscriptions_repository.dart';
-import 'package:cajun_local/features/favorites/presentation/widgets/favorites_scope.dart';
 import 'package:cajun_local/core/revenuecat/revenuecat_service.dart';
 import 'package:cajun_local/core/subscription/user_tier_service.dart';
 import 'package:cajun_local/core/theme/theme.dart';
@@ -26,7 +25,6 @@ class CajunLocalApp extends ConsumerStatefulWidget {
 }
 
 class _CajunLocalAppState extends ConsumerState<CajunLocalApp> {
-  final ValueNotifier<Set<String>> _favoriteIds = ValueNotifier<Set<String>>({});
   final _dataSource = ListingDataSource();
   final _favoritesRepository = FavoritesRepository();
   final _subscriptionsRepository = UserSubscriptionsRepository();
@@ -44,18 +42,8 @@ class _CajunLocalAppState extends ConsumerState<CajunLocalApp> {
     super.initState();
   }
 
-  Future<void> _loadFavoritesWhenSignedIn([String? userId]) async {
-    if (userId == null) {
-      _favoriteIds.value = {};
-      return;
-    }
-    final ids = await _favoritesRepository.list();
-    _favoriteIds.value = ids.toSet();
-  }
-
   @override
   void dispose() {
-    _favoriteIds.dispose();
     super.dispose();
   }
 
@@ -68,7 +56,6 @@ class _CajunLocalAppState extends ConsumerState<CajunLocalApp> {
       final oldUser = previous?.valueOrNull;
       final newUser = next.valueOrNull;
       if (oldUser?.id != newUser?.id) {
-        _loadFavoritesWhenSignedIn(newUser?.id);
         _userTierService.refresh(newUser?.id);
         if (newUser != null) {
           widget.revenueCatService?.logIn(newUser.id);
@@ -81,39 +68,36 @@ class _CajunLocalAppState extends ConsumerState<CajunLocalApp> {
       favoritesRepository: _favoritesRepository,
       userTierService: _userTierService,
       revenueCatService: widget.revenueCatService,
-      child: FavoritesScope(
-        favoriteIds: _favoriteIds,
-        child: MaterialApp(
-          title: 'Cajun Local',
-          debugShowCheckedModeBanner: false,
-          theme: AppTheme.light,
-          darkTheme: AppTheme.dark,
-          themeMode: ThemeMode.system,
-          builder: (context, child) {
-            final size = MediaQuery.sizeOf(context);
-            return UnconstrainedBox(
-              child: SizedBox(width: size.width, height: size.height, child: child),
-            );
+      child: MaterialApp(
+        title: 'Cajun Local',
+        debugShowCheckedModeBanner: false,
+        theme: AppTheme.light,
+        darkTheme: AppTheme.dark,
+        themeMode: ThemeMode.system,
+        builder: (context, child) {
+          final size = MediaQuery.sizeOf(context);
+          return UnconstrainedBox(
+            child: SizedBox(width: size.width, height: size.height, child: child),
+          );
+        },
+        home: authState.when(
+          data: (user) {
+            if (user != null && _isRecoverySession) {
+              return SizedBox.expand(
+                child: SetNewPasswordScreen(
+                  onPasswordUpdated: () {
+                    setState(() => _isRecoverySession = false);
+                  },
+                ),
+              );
+            }
+            if (user != null) {
+              return const SizedBox.expand(child: MainShell());
+            }
+            return const SizedBox.expand(child: SignInScreen());
           },
-          home: authState.when(
-            data: (user) {
-              if (user != null && _isRecoverySession) {
-                return SizedBox.expand(
-                  child: SetNewPasswordScreen(
-                    onPasswordUpdated: () {
-                      setState(() => _isRecoverySession = false);
-                    },
-                  ),
-                );
-              }
-              if (user != null) {
-                return const SizedBox.expand(child: MainShell());
-              }
-              return const SizedBox.expand(child: SignInScreen());
-            },
-            loading: () => const Scaffold(body: Center(child: CircularProgressIndicator())),
-            error: (e, __) => Scaffold(body: Center(child: Text('Error: $e'))),
-          ),
+          loading: () => const Scaffold(body: Center(child: CircularProgressIndicator())),
+          error: (e, _) => Scaffold(body: Center(child: Text('Error: $e'))),
         ),
       ),
     );

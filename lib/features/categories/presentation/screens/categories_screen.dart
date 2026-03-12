@@ -14,9 +14,10 @@ import 'package:cajun_local/features/businesses/data/models/amenity.dart';
 import 'package:cajun_local/features/categories/data/models/category_banner.dart';
 import 'package:cajun_local/features/businesses/data/repositories/amenities_repository.dart';
 import 'package:cajun_local/features/businesses/data/repositories/business_ads_repository.dart';
-import 'package:cajun_local/features/businesses/data/repositories/business_subscriptions_repository.dart';
 import 'package:cajun_local/features/categories/data/repositories/category_banners_repository.dart';
-import 'package:cajun_local/features/favorites/presentation/widgets/favorites_scope.dart';
+import 'package:cajun_local/features/favorites/presentation/providers/favorites_providers.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:cajun_local/core/data/providers/app_data_providers.dart';
 import 'package:cajun_local/core/subscription/resolved_permissions.dart';
 import 'package:cajun_local/core/revenuecat/present_subscription_paywall.dart';
 import 'package:cajun_local/features/profile/data/models/user_parish_preferences.dart';
@@ -1797,16 +1798,16 @@ class _StandardListingCard extends StatelessWidget {
   }
 }
 
-class _FavoriteHeartButton extends StatefulWidget {
+class _FavoriteHeartButton extends ConsumerStatefulWidget {
   const _FavoriteHeartButton({required this.listingId});
 
   final String listingId;
 
   @override
-  State<_FavoriteHeartButton> createState() => _FavoriteHeartButtonState();
+  ConsumerState<_FavoriteHeartButton> createState() => _FavoriteHeartButtonState();
 }
 
-class _FavoriteHeartButtonState extends State<_FavoriteHeartButton> with SingleTickerProviderStateMixin {
+class _FavoriteHeartButtonState extends ConsumerState<_FavoriteHeartButton> with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _scale;
 
@@ -1825,9 +1826,8 @@ class _FavoriteHeartButtonState extends State<_FavoriteHeartButton> with SingleT
 
   @override
   Widget build(BuildContext context) {
-    return ValueListenableBuilder<Set<String>>(
-      valueListenable: FavoritesScope.of(context),
-      builder: (context, ids, _) {
+    return ref.watch(userFavoriteIdsProvider).when(
+      data: (ids) {
         final isFav = ids.contains(widget.listingId);
         return ScaleTransition(
           scale: _scale,
@@ -1836,23 +1836,17 @@ class _FavoriteHeartButtonState extends State<_FavoriteHeartButton> with SingleT
             child: InkWell(
               onTap: () async {
                 _controller.forward().then((_) => _controller.reverse());
-                final scope = AppDataScope.of(context);
-                if (!scope.dataSource.useBackend) return;
-                final next = Set<String>.from(ids);
-                if (next.contains(widget.listingId)) {
-                  next.remove(widget.listingId);
-                  await scope.favoritesRepository.remove(widget.listingId);
+                if (isFav) {
+                  await ref.read(userFavoriteIdsProvider.notifier).remove(widget.listingId);
                 } else {
-                  final perms = scope.userTierService.value ?? ResolvedPermissions.free;
+                  final perms = ref.read(userTierServiceProvider).value ?? ResolvedPermissions.free;
                   if (perms.wouldExceedFavoritesLimit(ids.length)) {
                     if (!context.mounted) return;
                     await presentSubscriptionPaywall(context);
                     return;
                   }
-                  next.add(widget.listingId);
-                  await scope.favoritesRepository.add(widget.listingId);
+                  await ref.read(userFavoriteIdsProvider.notifier).add(widget.listingId);
                 }
-                if (context.mounted) FavoritesScope.of(context).value = next;
               },
               borderRadius: BorderRadius.circular(20),
               child: Padding(
@@ -1867,6 +1861,8 @@ class _FavoriteHeartButtonState extends State<_FavoriteHeartButton> with SingleT
           ),
         );
       },
+      loading: () => const SizedBox.shrink(),
+      error: (_, _) => const SizedBox.shrink(),
     );
   }
 }
