@@ -1,6 +1,8 @@
+import 'package:flex_color_scheme/flex_color_scheme.dart';
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 
-/// Cajun Local app theme using Material 3.
+/// Cajun Local app theme using FlexColorScheme for a premium Material 3 look.
 /// Navy, red, gold — warm, community-driven, regionally proud.
 class AppTheme {
   AppTheme._();
@@ -12,201 +14,142 @@ class AppTheme {
   /// Max content width for centered sections on large screens.
   static const double sectionMaxWidth = 800;
 
-  // Brand palette (UI spec: navy primary, gold accent, red limited)
-  static const Color _cajunRed = Color(0xFFBF0A30);   // Cajun / primary
-  static const Color _localBlue = Color(0xFF002868);  // Navy / secondary
-  static const Color _accentGold = Color(0xFFF4C430); // Gold accent
-  static const Color _black = Color(0xFF1A1A1A);
-  static const Color _white = Color(0xFFFFFFFF);
-
-  /// Spec colors: navy primary, gold highlight, red accent (limited), off-white background.
+  // Spec colors (from UI design)
   static const Color specNavy = Color(0xFF0B2A55);
   static const Color specGold = Color(0xFFF4B400);
   static const Color specRed = Color(0xFFC62828);
   static const Color specOffWhite = Color(0xFFF8F6F2);
   static const Color specWhite = Color(0xFFFFFFFF);
 
-  static TextTheme _textTheme(Color onSurface, Color onSurfaceVariant) {
-    return TextTheme(
-      displayLarge: TextStyle(fontSize: 32, fontWeight: FontWeight.w800, letterSpacing: -0.8, color: onSurface, height: 1.15),
-      displayMedium: TextStyle(fontSize: 28, fontWeight: FontWeight.w700, letterSpacing: -0.5, color: onSurface, height: 1.2),
-      displaySmall: TextStyle(fontSize: 24, fontWeight: FontWeight.w700, color: onSurface, height: 1.25),
-      headlineLarge: TextStyle(fontSize: 22, fontWeight: FontWeight.w700, color: onSurface, height: 1.25),
-      headlineMedium: TextStyle(fontSize: 20, fontWeight: FontWeight.w600, color: onSurface, height: 1.3),
-      headlineSmall: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: onSurface, height: 1.3),
-      titleLarge: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: onSurface, height: 1.35),
-      titleMedium: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: onSurface, height: 1.4),
-      titleSmall: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: onSurface, height: 1.4),
-      bodyLarge: TextStyle(fontSize: 16, fontWeight: FontWeight.w400, color: onSurface, height: 1.5),
-      bodyMedium: TextStyle(fontSize: 14, fontWeight: FontWeight.w400, color: onSurface, height: 1.45),
-      bodySmall: TextStyle(fontSize: 12, fontWeight: FontWeight.w400, color: onSurfaceVariant, height: 1.4),
-      labelLarge: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: onSurface, height: 1.3),
-      labelMedium: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: onSurfaceVariant, height: 1.3),
-      labelSmall: TextStyle(fontSize: 11, fontWeight: FontWeight.w500, color: onSurfaceVariant, height: 1.3, letterSpacing: 0.5),
-    );
-  }
+  // Legacy brand color aliases (maintained for compatibility)
+  static const Color cajunRed = specRed;
+  static const Color localBlue = specNavy;
+  static const Color accentGold = specGold;
 
   static ThemeData get light {
-    const colorScheme = ColorScheme.light(
-      primary: _cajunRed,
-      onPrimary: _white,
-      primaryContainer: Color(0xFFFFDAD6),
-      onPrimaryContainer: Color(0xFF410008),
-      secondary: _localBlue,
-      onSecondary: _white,
-      secondaryContainer: Color(0xFFD6E3FF),
-      onSecondaryContainer: Color(0xFF001B3D),
-      tertiary: _accentGold,
-      onTertiary: _black,
-      tertiaryContainer: Color(0xFFFFE08C),
-      onTertiaryContainer: Color(0xFF261900),
-      surface: Color(0xFFFFFBFF),
-      onSurface: _black,
-      surfaceContainerHighest: Color(0xFFE6E1E5),
-      onSurfaceVariant: Color(0xFF524344),
-      outline: Color(0xFF857374),
-      error: Color(0xFFBA1A1A),
-      onError: _white,
-      outlineVariant: Color(0xFFD8C2C4),
-    );
-    return ThemeData(
+    return FlexThemeData.light(
+      colors: const FlexSchemeColor(
+        primary: specNavy,
+        primaryContainer: Color(0xFFD0E4FF),
+        secondary: specRed,
+        secondaryContainer: Color(0xFFFFDAD6),
+        tertiary: specGold,
+        tertiaryContainer: Color(0xFFFFE08C),
+        appBarColor: specWhite,
+        error: Color(0xFFBA1A1A),
+      ),
+      surfaceMode: FlexSurfaceMode.levelSurfacesLowScaffold,
+      blendLevel: 7,
+      subThemesData: const FlexSubThemesData(
+        blendOnLevel: 10,
+        blendOnColors: false,
+        useMaterial3Typography: true,
+        useM2StyleDividerInM3: true,
+        adaptiveRemoveElevationTint: FlexAdaptive.all(),
+        adaptiveElevationShadowsBack: FlexAdaptive.all(),
+        adaptiveAppBarScrollUnderOff: FlexAdaptive.all(),
+        defaultRadius: 12.0,
+        elevatedButtonSchemeColor: SchemeColor.onPrimaryContainer,
+        elevatedButtonSecondarySchemeColor: SchemeColor.primaryContainer,
+        outlinedButtonOutlineSchemeColor: SchemeColor.primary,
+        toggleButtonsBorderSchemeColor: SchemeColor.primary,
+        segmentedButtonSchemeColor: SchemeColor.primary,
+        segmentedButtonBorderSchemeColor: SchemeColor.primary,
+        inputDecoratorSchemeColor: SchemeColor.primary,
+        inputDecoratorBackgroundAlpha: 31,
+        inputDecoratorUnfocusedHasBorder: false,
+        inputDecoratorFocusedBorderWidth: 1.0,
+        inputDecoratorPrefixIconSchemeColor: SchemeColor.primary,
+        fabUseShape: true,
+        fabAlwaysCircular: true,
+        fabSchemeColor: SchemeColor.tertiary,
+        cardRadius: 16.0,
+        popupMenuRadius: 8.0,
+        popupMenuElevation: 3.0,
+        alignedDropdown: true,
+        useInputDecoratorThemeInDialogs: true,
+        appBarScrolledUnderElevation: 1.0,
+        drawerRadius: 16.0,
+        drawerIndicatorSchemeColor: SchemeColor.primary,
+        bottomNavigationBarElevation: 8.0,
+        bottomNavigationBarShowUnselectedLabels: true,
+        navigationBarElevation: 8.0,
+        navigationBarLabelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
+        navigationBarIndicatorSchemeColor: SchemeColor.primary,
+        navigationRailIndicatorSchemeColor: SchemeColor.primary,
+      ),
+      keyColors: const FlexKeyColors(
+        useSecondary: true,
+        useTertiary: true,
+        keepPrimary: true,
+      ),
+      visualDensity: FlexColorScheme.comfortablePlatformDensity,
       useMaterial3: true,
-      colorScheme: colorScheme,
-      textTheme: _textTheme(colorScheme.onSurface, colorScheme.onSurfaceVariant),
-      fontFamily: 'Roboto',
-      appBarTheme: AppBarTheme(
-        centerTitle: true,
-        elevation: 0,
-        scrolledUnderElevation: 1,
-        backgroundColor: colorScheme.surface,
-        foregroundColor: colorScheme.onSurface,
-        surfaceTintColor: _cajunRed,
-        titleTextStyle: TextStyle(
-          fontSize: 20,
-          fontWeight: FontWeight.w600,
-          color: colorScheme.onSurface,
-        ),
-      ),
-      bottomNavigationBarTheme: BottomNavigationBarThemeData(
-        elevation: 8,
-        type: BottomNavigationBarType.fixed,
-        selectedItemColor: _cajunRed,
-        unselectedItemColor: colorScheme.onSurfaceVariant,
-        showUnselectedLabels: true,
-      ),
-      cardTheme: CardThemeData(
-        elevation: 0,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        clipBehavior: Clip.antiAlias,
-        surfaceTintColor: _cajunRed,
-      ),
-      filledButtonTheme: FilledButtonThemeData(
-        style: FilledButton.styleFrom(
-          backgroundColor: specGold,
-          foregroundColor: specNavy,
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-          minimumSize: const Size(88, 48),
-          elevation: 0,
-          shadowColor: Colors.transparent,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-        ),
-      ),
-      outlinedButtonTheme: OutlinedButtonThemeData(
-        style: OutlinedButton.styleFrom(
-          foregroundColor: specNavy,
-          side: BorderSide(color: specNavy.withValues(alpha: 0.6), width: 1.5),
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        ),
-      ),
-      textButtonTheme: TextButtonThemeData(
-        style: TextButton.styleFrom(
-          foregroundColor: specNavy,
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        ),
-      ),
-      inputDecorationTheme: InputDecorationTheme(
-        filled: true,
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-      ),
+      swapLegacyOnMaterial3: true,
+      fontFamily: GoogleFonts.outfit().fontFamily,
+      scaffoldBackground: specOffWhite,
     );
   }
 
   static ThemeData get dark {
-    const colorScheme = ColorScheme.dark(
-      primary: Color(0xFFFFB3AE),
-      onPrimary: Color(0xFF670018),
-      primaryContainer: Color(0xFF8F0025),
-      onPrimaryContainer: Color(0xFFFFDAD6),
-      secondary: Color(0xFFA8C7FF),
-      onSecondary: Color(0xFF122F5A),
-      secondaryContainer: Color(0xFF284572),
-      onSecondaryContainer: Color(0xFFD6E3FF),
-      tertiary: _accentGold,
-      onTertiary: _black,
-      tertiaryContainer: Color(0xFF5C4A00),
-      onTertiaryContainer: Color(0xFFFFE08C),
-      surface: _black,
-      onSurface: Color(0xFFE6E1E5),
-      surfaceContainerHighest: Color(0xFF2D2B2C),
-      onSurfaceVariant: Color(0xFFD8C2C4),
-      outline: Color(0xFFA08C8E),
-      error: Color(0xFFFFB4AB),
-      onError: Color(0xFF690005),
-      outlineVariant: Color(0xFF524344),
-    );
-    return ThemeData(
+    return FlexThemeData.dark(
+      colors: const FlexSchemeColor(
+        primary: Color(0xFFD0E4FF),
+        primaryContainer: specNavy,
+        secondary: Color(0xFFFFDAD6),
+        secondaryContainer: specRed,
+        tertiary: Color(0xFFFFE08C),
+        tertiaryContainer: specGold,
+        appBarColor: specNavy,
+        error: Color(0xFFFFB4AB),
+      ).defaultError.toDark(10, false),
+      surfaceMode: FlexSurfaceMode.levelSurfacesLowScaffold,
+      blendLevel: 13,
+      subThemesData: const FlexSubThemesData(
+        blendOnLevel: 20,
+        useMaterial3Typography: true,
+        useM2StyleDividerInM3: true,
+        adaptiveRemoveElevationTint: FlexAdaptive.all(),
+        adaptiveElevationShadowsBack: FlexAdaptive.all(),
+        adaptiveAppBarScrollUnderOff: FlexAdaptive.all(),
+        defaultRadius: 12.0,
+        elevatedButtonSchemeColor: SchemeColor.onPrimaryContainer,
+        elevatedButtonSecondarySchemeColor: SchemeColor.primaryContainer,
+        outlinedButtonOutlineSchemeColor: SchemeColor.primary,
+        toggleButtonsBorderSchemeColor: SchemeColor.primary,
+        segmentedButtonSchemeColor: SchemeColor.primary,
+        segmentedButtonBorderSchemeColor: SchemeColor.primary,
+        inputDecoratorSchemeColor: SchemeColor.primary,
+        inputDecoratorBackgroundAlpha: 31,
+        inputDecoratorUnfocusedHasBorder: false,
+        inputDecoratorFocusedBorderWidth: 1.0,
+        inputDecoratorPrefixIconSchemeColor: SchemeColor.primary,
+        fabUseShape: true,
+        fabAlwaysCircular: true,
+        fabSchemeColor: SchemeColor.tertiary,
+        cardRadius: 16.0,
+        popupMenuRadius: 8.0,
+        popupMenuElevation: 3.0,
+        alignedDropdown: true,
+        useInputDecoratorThemeInDialogs: true,
+        appBarScrolledUnderElevation: 1.0,
+        drawerRadius: 16.0,
+        drawerIndicatorSchemeColor: SchemeColor.primary,
+        bottomNavigationBarElevation: 8.0,
+        bottomNavigationBarShowUnselectedLabels: true,
+        navigationBarElevation: 8.0,
+        navigationBarLabelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
+        navigationBarIndicatorSchemeColor: SchemeColor.primary,
+        navigationRailIndicatorSchemeColor: SchemeColor.primary,
+      ),
+      keyColors: const FlexKeyColors(
+        useSecondary: true,
+        useTertiary: true,
+      ),
+      visualDensity: FlexColorScheme.comfortablePlatformDensity,
       useMaterial3: true,
-      colorScheme: colorScheme,
-      textTheme: _textTheme(colorScheme.onSurface, colorScheme.onSurfaceVariant),
-      fontFamily: 'Roboto',
-      appBarTheme: AppBarTheme(
-        centerTitle: true,
-        elevation: 0,
-        scrolledUnderElevation: 1,
-        backgroundColor: colorScheme.surface,
-        foregroundColor: colorScheme.onSurface,
-        surfaceTintColor: _accentGold,
-        titleTextStyle: TextStyle(
-          fontSize: 20,
-          fontWeight: FontWeight.w600,
-          color: colorScheme.onSurface,
-        ),
-      ),
-      bottomNavigationBarTheme: BottomNavigationBarThemeData(
-        elevation: 8,
-        type: BottomNavigationBarType.fixed,
-        selectedItemColor: _accentGold,
-        unselectedItemColor: colorScheme.onSurfaceVariant,
-        showUnselectedLabels: true,
-      ),
-      cardTheme: CardThemeData(
-        elevation: 0,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        clipBehavior: Clip.antiAlias,
-        surfaceTintColor: _accentGold,
-      ),
-      filledButtonTheme: FilledButtonThemeData(
-        style: FilledButton.styleFrom(
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-        ),
-      ),
-      inputDecorationTheme: InputDecorationTheme(
-        filled: true,
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-      ),
+      swapLegacyOnMaterial3: true,
+      fontFamily: GoogleFonts.outfit().fontFamily,
     );
   }
-
-  /// Brand colors for use in widgets (e.g. logo background).
-  static const Color cajunRed = _cajunRed;
-  static const Color localBlue = _localBlue;
-  static const Color accentGold = _accentGold;
 }
