@@ -1,6 +1,6 @@
 import 'dart:typed_data';
 import 'package:cajun_local/core/api/api_client.dart';
-import 'package:cajun_local/features/admin/data/api/uploads_api.dart';
+import 'package:cajun_local/core/api/uploads_api.dart';
 import 'package:cajun_local/core/data/services/storage_upload_constants.dart';
 
 /// Uploads images to the `business-images` bucket and returns public URLs.

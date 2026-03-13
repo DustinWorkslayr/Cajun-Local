@@ -7,7 +7,7 @@ import 'package:cajun_local/core/data/contact_form_templates.dart';
 import 'package:cajun_local/features/businesses/data/models/business.dart';
 import 'package:cajun_local/features/businesses/data/repositories/business_repository.dart';
 import 'package:cajun_local/features/messaging/data/repositories/conversations_repository.dart';
-import 'package:cajun_local/features/admin/data/repositories/form_submissions_repository.dart';
+import 'package:cajun_local/features/messaging/data/repositories/form_submissions_repository.dart';
 import 'package:cajun_local/features/messaging/data/repositories/messages_repository.dart';
 import 'package:cajun_local/core/theme/theme.dart';
 

@@ -6,7 +6,7 @@ import 'package:cajun_local/features/businesses/data/models/business.dart';
 import 'package:cajun_local/features/profile/data/repositories/profiles_repository.dart';
 import 'package:cajun_local/features/businesses/data/models/business_hours.dart';
 import 'package:cajun_local/features/deals/data/models/deal.dart';
-import 'package:cajun_local/features/admin/data/models/punch_card_program.dart';
+import 'package:cajun_local/features/deals/data/models/punch_card_program.dart';
 import 'package:cajun_local/features/profile/data/models/user_punch_card.dart';
 import 'package:cajun_local/features/businesses/data/repositories/business_hours_repository.dart';
 import 'package:cajun_local/features/businesses/data/repositories/business_links_repository.dart';
@@ -18,8 +18,8 @@ import 'package:cajun_local/features/events/data/repositories/business_events_re
 import 'package:cajun_local/features/deals/data/repositories/deals_repository.dart';
 import 'package:cajun_local/features/businesses/data/repositories/menu_repository.dart';
 import 'package:cajun_local/features/businesses/data/repositories/amenities_repository.dart';
-import 'package:cajun_local/features/admin/data/repositories/parish_repository.dart';
-import 'package:cajun_local/features/admin/data/repositories/punch_card_programs_repository.dart';
+import 'package:cajun_local/features/locations/data/repositories/parish_repository.dart';
+import 'package:cajun_local/features/deals/data/repositories/punch_card_programs_repository.dart';
 import 'package:cajun_local/features/profile/data/repositories/user_punch_cards_repository.dart';
 import 'package:cajun_local/core/utils/hours_format.dart';
 

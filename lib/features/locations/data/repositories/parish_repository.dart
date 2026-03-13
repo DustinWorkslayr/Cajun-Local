@@ -1,7 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:cajun_local/core/api/api_client.dart';
-import 'package:cajun_local/features/admin/data/api/parish_api.dart';
-import 'package:cajun_local/features/admin/data/models/parish.dart';
+import 'package:cajun_local/features/locations/data/api/parish_api.dart';
+import 'package:cajun_local/features/locations/data/models/parish.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 part 'parish_repository.g.dart';

@@ -1,6 +1,6 @@
 import 'package:dio/dio.dart';
 import 'package:cajun_local/core/api/api_client.dart';
-import 'package:cajun_local/features/admin/data/models/punch_card_program.dart';
+import 'package:cajun_local/features/deals/data/models/punch_card_program.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 part 'punch_card_programs_api.g.dart';

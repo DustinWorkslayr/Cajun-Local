@@ -16,7 +16,7 @@ import 'package:cajun_local/features/businesses/data/repositories/business_repos
 import 'package:cajun_local/features/businesses/data/repositories/business_subscriptions_repository.dart';
 import 'package:cajun_local/features/deals/data/repositories/deals_repository.dart';
 import 'package:cajun_local/features/businesses/data/repositories/menu_repository.dart';
-import 'package:cajun_local/features/admin/data/repositories/punch_card_programs_repository.dart';
+import 'package:cajun_local/features/deals/data/repositories/punch_card_programs_repository.dart';
 import 'package:cajun_local/core/data/services/business_images_storage_service.dart';
 import 'package:cajun_local/core/data/services/storage_upload_constants.dart';
 import 'package:cajun_local/core/subscription/business_tier_service.dart';

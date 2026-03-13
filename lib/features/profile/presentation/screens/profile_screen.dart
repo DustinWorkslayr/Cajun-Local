@@ -9,7 +9,7 @@ import 'package:cajun_local/core/data/services/storage_upload_constants.dart';
 import 'package:cajun_local/core/data/app_data_scope.dart';
 import 'package:cajun_local/core/data/mock_data.dart';
 import 'package:cajun_local/features/businesses/data/repositories/business_managers_repository.dart';
-import 'package:cajun_local/features/admin/data/repositories/form_submissions_repository.dart';
+import 'package:cajun_local/features/messaging/data/repositories/form_submissions_repository.dart';
 import 'package:cajun_local/features/notifications/data/repositories/user_notification_preferences_repository.dart';
 import 'package:cajun_local/features/profile/data/repositories/user_plans_repository.dart';
 import 'package:cajun_local/core/stripe/stripe_checkout_service.dart';
@@ -17,7 +17,6 @@ import 'package:cajun_local/core/stripe/stripe_config.dart';
 import 'package:cajun_local/core/theme/app_layout.dart';
 import 'package:cajun_local/core/subscription/resolved_permissions.dart';
 import 'package:cajun_local/core/theme/theme.dart';
-import 'package:cajun_local/features/admin/presentation/screens/admin_shell.dart';
 import 'package:cajun_local/features/auth/presentation/screens/sign_in_screen.dart';
 import 'package:cajun_local/features/deals/presentation/screens/my_deals_screen.dart';
 import 'package:cajun_local/features/deals/presentation/screens/my_punch_cards_screen.dart';
@@ -74,20 +73,17 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
 
       final userFuture = dataSource.getCurrentUser();
       final uid = ref.read(authControllerProvider).valueOrNull?.id;
-      final isAdminFuture = (useBackend && uid != null)
-          ? ref.read(authControllerProvider.notifier).isAdmin()
-          : Future.value(false);
       final businessIdsFuture = (useBackend && uid != null)
           ? BusinessManagersRepository().listBusinessIdsForUser(uid)
           : Future.value(<String>[]);
-      final results = await Future.wait<dynamic>([userFuture, isAdminFuture, businessIdsFuture]).timeout(
+      final results = await Future.wait<dynamic>([userFuture, businessIdsFuture]).timeout(
         const Duration(seconds: 15),
         onTimeout: () {
           throw TimeoutException('Profile load timed out');
         },
       );
-      if (!mounted) return _ProfilePageData(user: _anonymousUser, isAdmin: false, isBusinessManager: false);
-      final businessIds = results[2] as List<String>;
+      if (!mounted) return _ProfilePageData(user: _anonymousUser, isBusinessManager: false);
+      final businessIds = results[1] as List<String>;
       final isBusinessManager = businessIds.isNotEmpty;
       int inboxUnreadCount = 0;
       if (businessIds.isNotEmpty) {
@@ -95,26 +91,23 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       }
       return _ProfilePageData(
         user: results[0] as MockUser,
-        isAdmin: results[1] as bool,
         isBusinessManager: isBusinessManager,
         inboxUnreadCount: inboxUnreadCount,
       );
     } on TimeoutException catch (e) {
       debugPrint('Profile load timeout: $e');
-      if (!mounted) return _ProfilePageData(user: _anonymousUser, isAdmin: false, isBusinessManager: false);
+      if (!mounted) return _ProfilePageData(user: _anonymousUser, isBusinessManager: false);
       return _ProfilePageData(
         user: _anonymousUser,
-        isAdmin: false,
         isBusinessManager: false,
         loadError: 'Loading data failed.',
       );
     } catch (e, st) {
       debugPrint('Profile load error: $e');
       debugPrintStack(stackTrace: st);
-      if (!mounted) return _ProfilePageData(user: _anonymousUser, isAdmin: false, isBusinessManager: false);
+      if (!mounted) return _ProfilePageData(user: _anonymousUser, isBusinessManager: false);
       return _ProfilePageData(
         user: _anonymousUser,
-        isAdmin: false,
         isBusinessManager: false,
         loadError: 'Loading data failed.',
       );
@@ -251,7 +244,6 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         final data = snapshot.data!;
         return _ProfileContent(
           user: data.user,
-          isAdmin: data.isAdmin,
           isBusinessManager: data.isBusinessManager,
           inboxUnreadCount: data.inboxUnreadCount,
           loadError: data.loadError,
@@ -273,13 +265,11 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
 class _ProfilePageData {
   const _ProfilePageData({
     required this.user,
-    required this.isAdmin,
     this.isBusinessManager = false,
     this.inboxUnreadCount = 0,
     this.loadError,
   });
   final MockUser user;
-  final bool isAdmin;
   final bool isBusinessManager;
   final int inboxUnreadCount;
   final String? loadError;
@@ -334,7 +324,6 @@ class _ProfileLoadError extends StatelessWidget {
 class _ProfileContent extends ConsumerStatefulWidget {
   const _ProfileContent({
     required this.user,
-    required this.isAdmin,
     required this.onRefresh,
     this.isBusinessManager = false,
     this.inboxUnreadCount = 0,
@@ -347,7 +336,6 @@ class _ProfileContent extends ConsumerStatefulWidget {
   });
 
   final MockUser user;
-  final bool isAdmin;
   final bool isBusinessManager;
   final int inboxUnreadCount;
   final VoidCallback onRefresh;
@@ -367,7 +355,6 @@ const int _kProfileTab = 0;
 const int _kBillingTab = 1;
 const int _kPreferencesTab = 2;
 const int _kAccountTab = 3;
-const int _kAdminTab = 4;
 const int _kMyListingsTab = 5;
 
 class _ProfileContentState extends ConsumerState<_ProfileContent> with SingleTickerProviderStateMixin {
@@ -395,14 +382,12 @@ class _ProfileContentState extends ConsumerState<_ProfileContent> with SingleTic
       (label: 'Preferences', icon: Icons.tune_rounded),
       (label: 'Account', icon: Icons.settings_rounded),
     ];
-    if (widget.isAdmin) list.add((label: 'Admin', icon: Icons.admin_panel_settings_rounded));
     list.add((label: 'My Listings', icon: Icons.store_rounded));
     return list;
   }
 
   List<int> get _sectionKeys {
     final list = <int>[0, 1, 2, 3];
-    if (widget.isAdmin) list.add(4);
     list.add(5);
     return list;
   }
@@ -531,12 +516,7 @@ class _ProfileContentState extends ConsumerState<_ProfileContent> with SingleTic
 
   void _onDestinationSelected(int index) {
     final sectionKey = index < _sectionKeys.length ? _sectionKeys[index] : index;
-    // Admin: go straight to Admin shell (no intermediate card).
-    if (sectionKey == _kAdminTab) {
-      Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const AdminShell()));
-      return;
-    }
-    // My Listings: open directly (in-shell or pushed) — shows no-listings/create flow when empty.
+    // My Listings: open directly (in-shell or pushed).
     if (sectionKey == _kMyListingsTab) {
       if (widget.onMyListings != null) {
         widget.onMyListings!();
@@ -798,8 +778,6 @@ class _ProfileContentState extends ConsumerState<_ProfileContent> with SingleTic
         return _buildPreferencesTab(context, padding);
       case _kAccountTab:
         return _buildAccountTab(context, signedIn, hasListings, padding, widget.inboxUnreadCount);
-      case _kAdminTab:
-        return _buildAdminTab(context, padding);
       case _kMyListingsTab:
         return _buildMyListingsTab(context, padding);
       default:
@@ -807,50 +785,6 @@ class _ProfileContentState extends ConsumerState<_ProfileContent> with SingleTic
     }
   }
 
-  Widget _buildAdminTab(BuildContext context, EdgeInsets padding) {
-    final theme = Theme.of(context);
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Text(
-          'Admin',
-          style: theme.textTheme.titleSmall?.copyWith(color: AppTheme.specNavy, fontWeight: FontWeight.w600),
-        ),
-        const SizedBox(height: 12),
-        _SpecCard(
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Icon(Icons.admin_panel_settings_rounded, color: AppTheme.specGold, size: 28),
-                  const SizedBox(width: 12),
-                  Text(
-                    'Admin dashboard',
-                    style: theme.textTheme.titleMedium?.copyWith(color: AppTheme.specNavy, fontWeight: FontWeight.w600),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'Manage businesses, claims, plans, and app content.',
-                style: theme.textTheme.bodyMedium?.copyWith(color: AppTheme.specNavy.withValues(alpha: 0.85)),
-              ),
-              const SizedBox(height: 16),
-              AppSecondaryButton(
-                onPressed: () {
-                  Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const AdminShell()));
-                },
-                icon: const Icon(Icons.open_in_new_rounded, size: 20),
-                label: const Text('Open Admin'),
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
 
   Widget _buildMyListingsTab(BuildContext context, EdgeInsets padding) {
     final theme = Theme.of(context);

@@ -6,12 +6,11 @@ import 'package:cajun_local/core/data/mock_data.dart';
 import 'package:cajun_local/features/businesses/data/repositories/business_managers_repository.dart';
 import 'package:cajun_local/features/businesses/data/repositories/business_repository.dart';
 import 'package:cajun_local/features/notifications/data/repositories/notifications_repository.dart';
-import 'package:cajun_local/features/admin/data/repositories/punch_card_programs_repository.dart';
+import 'package:cajun_local/features/deals/data/repositories/punch_card_programs_repository.dart';
 import 'package:cajun_local/debug_agent_log.dart';
 import 'package:cajun_local/features/profile/data/models/user_parish_preferences.dart';
 import 'package:cajun_local/core/theme/app_layout.dart';
 import 'package:cajun_local/core/theme/theme.dart';
-import 'package:cajun_local/features/admin/presentation/screens/admin_shell.dart';
 import 'package:cajun_local/features/categories/presentation/screens/categories_screen.dart';
 import 'package:cajun_local/features/deals/presentation/screens/deals_screen.dart';
 import 'package:cajun_local/features/favorites/presentation/screens/favorites_screen.dart';
@@ -410,10 +409,6 @@ class _MainShellState extends ConsumerState<MainShell> with SingleTickerProvider
             );
           },
           onOpenMessages: _openMessages,
-          onOpenAdmin: () {
-            _closeMenu();
-            Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const AdminShell()));
-          },
           onSignOut: _signOut,
         ),
       ),
@@ -528,7 +523,6 @@ class _AppMenuDrawer extends ConsumerStatefulWidget {
     required this.onOpenLocalEvents,
     required this.onOpenNotifications,
     required this.onOpenMessages,
-    required this.onOpenAdmin,
     required this.onSignOut,
   });
 
@@ -540,7 +534,6 @@ class _AppMenuDrawer extends ConsumerStatefulWidget {
   final VoidCallback onOpenLocalEvents;
   final VoidCallback onOpenNotifications;
   final VoidCallback onOpenMessages;
-  final VoidCallback onOpenAdmin;
   final VoidCallback onSignOut;
 
   @override
@@ -548,17 +541,9 @@ class _AppMenuDrawer extends ConsumerStatefulWidget {
 }
 
 class _AppMenuDrawerState extends ConsumerState<_AppMenuDrawer> {
-  bool? _isAdmin;
-  bool _adminCheckStarted = false;
-
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    if (_isAdmin != null || _adminCheckStarted) return;
-    _adminCheckStarted = true;
-    ref.read(authControllerProvider.notifier).isAdmin().then((v) {
-      if (mounted) setState(() => _isAdmin = v);
-    });
   }
 
   @override
@@ -692,20 +677,7 @@ class _AppMenuDrawerState extends ConsumerState<_AppMenuDrawer> {
                     WidgetsBinding.instance.addPostFrameCallback((_) => widget.onOpenMessages());
                   },
                 ),
-                if (_isAdmin == true) ...[
-                  const Divider(height: 24),
-                  ListTile(
-                    leading: Icon(Icons.admin_panel_settings_rounded, color: AppTheme.specNavy),
-                    title: Text(
-                      'Admin',
-                      style: TextStyle(fontWeight: FontWeight.w600, color: AppTheme.specNavy),
-                    ),
-                    onTap: () {
-                      WidgetsBinding.instance.addPostFrameCallback((_) => widget.onOpenAdmin());
-                    },
-                  ),
-                ],
-                const Divider(height: 24),
+
                 ListTile(
                   leading: Icon(Icons.logout_rounded, color: AppTheme.specNavy),
                   title: Text(

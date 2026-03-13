@@ -454,7 +454,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       style: TextButton.styleFrom(foregroundColor: AppTheme.specGold),
                       child: Row(
                         children: [
-                          Text('See all', style: theme.textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w600)),
+                          Text(
+                            'See all',
+                            style: theme.textTheme.labelLarge?.copyWith(
+                              fontWeight: FontWeight.w600,
+                              color: AppTheme.specNavy,
+                            ),
+                          ),
                           const SizedBox(width: 2),
                           const Icon(Icons.arrow_forward_rounded, size: 16),
                         ],

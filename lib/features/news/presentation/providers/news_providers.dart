@@ -1,9 +1,9 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:cajun_local/features/news/data/models/blog_post.dart';
-import 'package:cajun_local/features/admin/data/models/parish.dart';
+import 'package:cajun_local/features/locations/data/models/parish.dart';
 import 'package:cajun_local/features/news/data/repositories/blog_posts_repository.dart';
-import 'package:cajun_local/features/admin/data/repositories/parish_repository.dart';
+import 'package:cajun_local/features/locations/data/repositories/parish_repository.dart';
 import 'package:cajun_local/features/profile/data/models/user_parish_preferences.dart';
 
 part 'news_providers.g.dart';
