@@ -16,14 +16,7 @@ class MenuRepository {
   }
 
   Future<List<MenuItem>> getItemsForSection(String sectionId) async {
-    // If the backend returns sections with items, we can just find the section.
-    // For now, I'll assume we might need a separate call or it's already in the sections.
-    // I'll add a way to get items for section to API just in case.
-    // But usually sections include items in Cajun Local.
-    final sections = await _api.getSectionsForBusiness(''); // Need businessId or another way
-    // For now I'll just return items from the section if found.
-    // Actually, I'll add getItemsForSection to MenuApi.
-    return []; // Placeholder for now, I'll update MenuApi.
+    return _api.listItemsBySection(sectionId);
   }
 
   /// Manager/admin: get section id by name for business, or create section and return id.

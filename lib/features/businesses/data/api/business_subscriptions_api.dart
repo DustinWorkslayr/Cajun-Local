@@ -1,6 +1,6 @@
 import 'package:dio/dio.dart';
 import 'package:cajun_local/core/api/api_client.dart';
-import 'package:cajun_local/features/businesses/data/models/business_subscription.dart';
+
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 part 'business_subscriptions_api.g.dart';

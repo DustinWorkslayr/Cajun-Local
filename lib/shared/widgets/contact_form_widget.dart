@@ -47,10 +47,7 @@ class _ContactFormWidgetState extends ConsumerState<ContactFormWidget> {
   }
 
   Future<void> _load() async {
-    if (false) {
-      if (mounted) setState(() => _loading = false);
-      return;
-    }
+
     final b = await BusinessRepository().getById(widget.businessId);
     if (!mounted) return;
     if (b != null && b.contactFormTemplate != null && ContactFormTemplates.getByKey(b.contactFormTemplate!) != null) {

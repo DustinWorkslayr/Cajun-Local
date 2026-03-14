@@ -89,3 +89,8 @@ class CategoryRepository {
 CategoryRepository categoryRepository(CategoryRepositoryRef ref) {
   return CategoryRepository(api: ref.watch(categoryApiProvider));
 }
+
+@riverpod
+Future<List<BusinessCategory>> allCategories(AllCategoriesRef ref) {
+  return ref.watch(categoryRepositoryProvider).listCategories();
+}

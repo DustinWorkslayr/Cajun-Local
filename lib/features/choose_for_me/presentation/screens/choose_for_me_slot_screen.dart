@@ -6,7 +6,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:cajun_local/core/data/providers/app_data_providers.dart';
-import 'package:cajun_local/core/data/mock_data.dart';
+import 'package:cajun_local/features/businesses/data/models/business.dart';
+import 'package:cajun_local/features/businesses/data/repositories/business_repository.dart';
+import 'package:cajun_local/features/categories/data/repositories/category_repository.dart';
 import 'package:cajun_local/core/theme/theme.dart';
 import 'package:cajun_local/shared/widgets/app_buttons.dart';
 import 'package:cajun_local/features/listing/presentation/screens/listing_detail_screen.dart';
@@ -68,7 +70,7 @@ class _ChooseForMeSlotScreenState extends ConsumerState<ChooseForMeSlotScreen> w
   static const int _slotItemsAfterWinner = 6;
   static const Duration _slotDuration = Duration(milliseconds: 4200);
 
-  MockListing? _winner;
+  Business? _winner;
   bool _loadFailed = false;
 
   /// 'empty' = 0 results after fallbacks; 'error' = request threw (timeout/connection).
@@ -76,7 +78,7 @@ class _ChooseForMeSlotScreenState extends ConsumerState<ChooseForMeSlotScreen> w
   bool _loading = true;
   bool _spinning = true;
   bool _showResult = false;
-  List<MockListing> _slotList = [];
+  List<Business> _slotList = [];
   int _winnerSlotIndex = 0;
 
   /// Seconds remaining before "Spin again" is enabled (null = no cooldown).
@@ -137,7 +139,7 @@ class _ChooseForMeSlotScreenState extends ConsumerState<ChooseForMeSlotScreen> w
         });
       }
     });
-    // Defer load so context/InheritedWidget (AppDataScope) is available after initState completes.
+    // Defer load so context is fully initialized.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) _loadAndSpin();
     });
@@ -154,37 +156,32 @@ class _ChooseForMeSlotScreenState extends ConsumerState<ChooseForMeSlotScreen> w
   static const Duration _loadTimeout = Duration(seconds: 25);
 
   /// Fetch listings for category + parish + subcategory. If parish filter yields none, retries without parish; if tags yield none, retries without subcategory.
-  Future<List<MockListing>> _fetchListingsForSlot() async {
-    final ds = ref.read(listingDataSourceProvider);
+  Future<List<Business>> _fetchListingsForSlot() async {
     if (kDebugMode) {
       debugPrint(
         '[ChooseForMe] fetch: categoryIds=${widget.categoryIds}, parishIds=${widget.parishIds}, subcategoryIds=${widget.subcategoryIds}',
       );
     }
-    ListingFilters filters = ListingFilters(
-      categoryIds: widget.categoryIds,
-      parishIds: widget.parishIds,
-      subcategoryIds: widget.subcategoryIds,
-    );
     try {
-      List<MockListing> listings = await ds
-          .filterListings(filters)
-          .timeout(_loadTimeout, onTimeout: () => throw TimeoutException('Load timed out'));
+      List<Business> listings = await BusinessRepository().listApproved(
+        categoryId: widget.categoryIds.isEmpty ? null : widget.categoryIds.first,
+        parishIds: widget.parishIds,
+      ).timeout(_loadTimeout, onTimeout: () => throw TimeoutException('Load timed out'));
       if (kDebugMode) debugPrint('[ChooseForMe] first fetch: ${listings.length} listings');
       if (listings.isNotEmpty) return listings;
       if (widget.parishIds.isNotEmpty) {
-        filters = ListingFilters(categoryIds: widget.categoryIds, parishIds: {}, subcategoryIds: widget.subcategoryIds);
-        listings = await ds
-            .filterListings(filters)
-            .timeout(_loadTimeout, onTimeout: () => throw TimeoutException('Load timed out'));
+        listings = await BusinessRepository().listApproved(
+          categoryId: widget.categoryIds.isEmpty ? null : widget.categoryIds.first,
+          parishIds: {},
+        ).timeout(_loadTimeout, onTimeout: () => throw TimeoutException('Load timed out'));
         if (kDebugMode) debugPrint('[ChooseForMe] after parish fallback: ${listings.length} listings');
         if (listings.isNotEmpty) return listings;
       }
       if (widget.subcategoryIds.isNotEmpty) {
-        filters = ListingFilters(categoryIds: widget.categoryIds, parishIds: widget.parishIds, subcategoryIds: {});
-        listings = await ds
-            .filterListings(filters)
-            .timeout(_loadTimeout, onTimeout: () => throw TimeoutException('Load timed out'));
+        listings = await BusinessRepository().listApproved(
+          categoryId: widget.categoryIds.isEmpty ? null : widget.categoryIds.first,
+          parishIds: widget.parishIds,
+        ).timeout(_loadTimeout, onTimeout: () => throw TimeoutException('Load timed out'));
         if (kDebugMode) debugPrint('[ChooseForMe] after subcategory fallback: ${listings.length} listings');
       }
       return listings;
@@ -200,7 +197,7 @@ class _ChooseForMeSlotScreenState extends ConsumerState<ChooseForMeSlotScreen> w
       _loading = true;
     });
     try {
-      List<MockListing> listings;
+      List<Business> listings;
       try {
         listings = await _fetchListingsForSlot();
       } catch (e, st) {
@@ -232,7 +229,7 @@ class _ChooseForMeSlotScreenState extends ConsumerState<ChooseForMeSlotScreen> w
       final others = listings.where((l) => l.id != winner.id).toList();
       final othersPool = others.isEmpty ? [winner] : others;
 
-      final slotList = <MockListing>[];
+      final slotList = <Business>[];
       for (int i = 0; i < _slotItemsBeforeWinner; i++) {
         slotList.add(othersPool[rng.nextInt(othersPool.length)]);
       }
@@ -486,7 +483,7 @@ class _ChooseForMeSlotContentState extends ConsumerState<ChooseForMeSlotContent>
   static const Duration _slotDuration = Duration(milliseconds: 4200);
   static const double _maxTiltRadians = 0.35;
 
-  MockListing? _winner;
+  Business? _winner;
   bool _loadFailed = false;
 
   /// 'empty' = 0 results after fallbacks; 'error' = request threw (timeout/connection).
@@ -494,7 +491,7 @@ class _ChooseForMeSlotContentState extends ConsumerState<ChooseForMeSlotContent>
   bool _loading = true;
   bool _spinning = true;
   bool _showResult = false;
-  List<MockListing> _slotList = [];
+  List<Business> _slotList = [];
   Map<String, String> _subcategoryNames = {};
   int _winnerSlotIndex = 0;
   double _scrollOffset = 0;
@@ -557,7 +554,7 @@ class _ChooseForMeSlotContentState extends ConsumerState<ChooseForMeSlotContent>
         });
       }
     });
-    // Defer load so context/InheritedWidget (AppDataScope) is available after initState completes.
+    // Defer load so context is fully initialized.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) _loadAndSpin();
     });
@@ -580,14 +577,13 @@ class _ChooseForMeSlotContentState extends ConsumerState<ChooseForMeSlotContent>
       _loading = true;
     });
     try {
-      final ds = ref.read(listingDataSourceProvider);
       if (kDebugMode) {
         debugPrint(
           '[ChooseForMe] dialog fetch: categoryIds=${widget.categoryIds}, parishIds=${widget.parishIds}, subcategoryIds=${widget.subcategoryIds}',
         );
       }
       try {
-        final categories = await ds.getCategories();
+        final categories = await ref.read(categoryRepositoryProvider).listCategories();
         if (!mounted) return;
         final subMap = <String, String>{};
         for (final c in categories) {
@@ -601,16 +597,12 @@ class _ChooseForMeSlotContentState extends ConsumerState<ChooseForMeSlotContent>
         setState(() => _subcategoryNames = {});
       }
       if (!mounted) return;
-      ListingFilters filters = ListingFilters(
-        categoryIds: widget.categoryIds,
-        parishIds: widget.parishIds,
-        subcategoryIds: widget.subcategoryIds,
-      );
-      List<MockListing> listings;
+      List<Business> listings;
       try {
-        listings = await ds
-            .filterListings(filters)
-            .timeout(_loadTimeout, onTimeout: () => throw TimeoutException('Load timed out'));
+        listings = await BusinessRepository().listApproved(
+          categoryId: widget.categoryIds.isEmpty ? null : widget.categoryIds.first,
+          parishIds: widget.parishIds,
+        ).timeout(_loadTimeout, onTimeout: () => throw TimeoutException('Load timed out'));
         if (kDebugMode) debugPrint('[ChooseForMe] dialog first fetch: ${listings.length} listings');
       } catch (e, st) {
         if (kDebugMode) {
@@ -628,14 +620,10 @@ class _ChooseForMeSlotContentState extends ConsumerState<ChooseForMeSlotContent>
       if (!mounted) return;
       if (listings.isEmpty && widget.parishIds.isNotEmpty) {
         try {
-          filters = ListingFilters(
-            categoryIds: widget.categoryIds,
+          listings = await BusinessRepository().listApproved(
+            categoryId: widget.categoryIds.isEmpty ? null : widget.categoryIds.first,
             parishIds: {},
-            subcategoryIds: widget.subcategoryIds,
-          );
-          listings = await ds
-              .filterListings(filters)
-              .timeout(_loadTimeout, onTimeout: () => throw TimeoutException('Load timed out'));
+          ).timeout(_loadTimeout, onTimeout: () => throw TimeoutException('Load timed out'));
           if (kDebugMode) debugPrint('[ChooseForMe] dialog after parish fallback: ${listings.length} listings');
         } catch (_) {
           listings = [];
@@ -644,10 +632,10 @@ class _ChooseForMeSlotContentState extends ConsumerState<ChooseForMeSlotContent>
       if (!mounted) return;
       if (listings.isEmpty && widget.subcategoryIds.isNotEmpty) {
         try {
-          filters = ListingFilters(categoryIds: widget.categoryIds, parishIds: widget.parishIds, subcategoryIds: {});
-          listings = await ds
-              .filterListings(filters)
-              .timeout(_loadTimeout, onTimeout: () => throw TimeoutException('Load timed out'));
+          listings = await BusinessRepository().listApproved(
+            categoryId: widget.categoryIds.isEmpty ? null : widget.categoryIds.first,
+            parishIds: widget.parishIds,
+          ).timeout(_loadTimeout, onTimeout: () => throw TimeoutException('Load timed out'));
           if (kDebugMode) debugPrint('[ChooseForMe] dialog after subcategory fallback: ${listings.length} listings');
         } catch (_) {
           listings = [];
@@ -669,7 +657,7 @@ class _ChooseForMeSlotContentState extends ConsumerState<ChooseForMeSlotContent>
       final others = listings.where((l) => l.id != winner.id).toList();
       final othersPool = others.isEmpty ? [winner] : others;
 
-      final slotList = <MockListing>[];
+      final slotList = <Business>[];
       for (int i = 0; i < _slotItemsBeforeWinner; i++) {
         slotList.add(othersPool[rng.nextInt(othersPool.length)]);
       }
@@ -1069,7 +1057,7 @@ class _WinnerHighlightState extends State<_WinnerHighlight> with SingleTickerPro
 class _ResultActions extends StatelessWidget {
   const _ResultActions({required this.winner, required this.onSpinAgain, this.onClose, this.cooldownSecondsRemaining});
 
-  final MockListing winner;
+  final Business winner;
   final VoidCallback onSpinAgain;
   final VoidCallback? onClose;
 

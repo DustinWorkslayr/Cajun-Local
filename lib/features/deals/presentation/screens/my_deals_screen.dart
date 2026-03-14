@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cajun_local/features/auth/presentation/controllers/auth_controller.dart';
-import 'package:cajun_local/core/data/providers/app_data_providers.dart';
-import 'package:cajun_local/core/data/mock_data.dart';
+import 'package:cajun_local/features/businesses/data/models/business.dart';
+import 'package:cajun_local/features/deals/data/models/deal.dart';
 import 'package:cajun_local/features/deals/data/models/user_deal.dart';
+import 'package:cajun_local/features/deals/data/repositories/deals_repository.dart';
+import 'package:cajun_local/features/deals/data/repositories/user_deals_repository.dart';
+import 'package:cajun_local/features/businesses/data/repositories/business_repository.dart';
 import 'package:cajun_local/core/theme/app_layout.dart';
 import 'package:cajun_local/core/theme/theme.dart';
 import 'package:cajun_local/features/listing/presentation/screens/listing_detail_screen.dart';
@@ -43,7 +46,7 @@ class MyDealsScreen extends ConsumerStatefulWidget {
 }
 
 class _MyDealsScreenState extends ConsumerState<MyDealsScreen> {
-  List<({UserDeal userDeal, MockDeal? deal, String? listingName})>? _items;
+  List<({UserDeal userDeal, Deal? deal, String? listingName})>? _items;
   bool _loading = true;
   String? _error;
 
@@ -58,7 +61,6 @@ class _MyDealsScreenState extends ConsumerState<MyDealsScreen> {
       _loading = true;
       _error = null;
     });
-    final dataSource = ref.read(listingDataSourceProvider);
     final uid = ref.read(authControllerProvider).valueOrNull?.id;
     if (uid == null) {
       if (mounted) {
@@ -80,10 +82,16 @@ class _MyDealsScreenState extends ConsumerState<MyDealsScreen> {
         }
         return;
       }
-      final deals = await Future.wait(userDeals.map((ud) => dataSource.getDealById(ud.dealId)));
-      final listingIds = deals.whereType<MockDeal>().map((d) => d.listingId).toSet();
-      final listings = await Future.wait(listingIds.map((id) => dataSource.getListingById(id)));
-      final nameById = {for (var i = 0; i < listingIds.length; i++) listingIds.elementAt(i): listings[i]?.name};
+      
+      final dealRepo = ref.read(dealsRepositoryProvider);
+      final bizRepo = BusinessRepository();
+      
+      final deals = await Future.wait(userDeals.map((ud) => dealRepo.getById(ud.dealId)));
+      final listingIds = deals.whereType<Deal>().map((d) => d.businessId).toSet();
+      final listings = await Future.wait(listingIds.map((id) => bizRepo.getById(id)));
+      final nameById = {
+        for (var biz in listings.whereType<Business>()) biz.id: biz.name
+      };
 
       if (mounted) {
         setState(() {
@@ -92,7 +100,7 @@ class _MyDealsScreenState extends ConsumerState<MyDealsScreen> {
               (
                 userDeal: userDeals[i],
                 deal: deals[i],
-                listingName: deals[i] != null ? nameById[deals[i]!.listingId] : null,
+                listingName: deals[i] != null ? nameById[deals[i]!.businessId] : null,
               ),
           ];
           _loading = false;
@@ -239,11 +247,11 @@ class _MyDealsScreenState extends ConsumerState<MyDealsScreen> {
                             isClaimed: true,
                             isUsed: isUsed,
                             usedAt: item.userDeal.usedAt,
-                            onGoToListing: deal.listingId.isNotEmpty
+                            onGoToListing: deal.businessId.isNotEmpty
                                 ? () {
                                     Navigator.of(context).push(
                                       MaterialPageRoute<void>(
-                                        builder: (_) => ListingDetailScreen(listingId: deal.listingId),
+                                        builder: (_) => ListingDetailScreen(listingId: deal.businessId),
                                       ),
                                     );
                                   }
@@ -284,7 +292,7 @@ class _MyDealsScreenState extends ConsumerState<MyDealsScreen> {
                                       border: Border.all(color: AppTheme.specGold.withValues(alpha: 0.5)),
                                     ),
                                     child: Text(
-                                      deal.discount ?? 'Deal',
+                                      deal.dealType,
                                       style: theme.textTheme.labelLarge?.copyWith(
                                         fontWeight: FontWeight.w800,
                                         color: AppTheme.specNavy,

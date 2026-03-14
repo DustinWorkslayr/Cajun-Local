@@ -1,3 +1,4 @@
+import 'package:cajun_local/features/businesses/data/models/business.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cajun_local/features/auth/presentation/controllers/auth_controller.dart';
@@ -15,51 +16,34 @@ import 'package:cajun_local/core/revenuecat/present_subscription_paywall.dart';
 import 'package:cajun_local/core/subscription/resolved_permissions.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import 'package:cajun_local/features/my_listings/presentation/controllers/my_listings_controller.dart';
+
 /// List of businesses owned by the current user. Brand theme (specOffWhite, specNavy, specGold).
 /// When [embeddedInShell] is true, only the list body is built (nav and app bar from MainShell).
-class MyListingsScreen extends ConsumerStatefulWidget {
+class MyListingsScreen extends ConsumerWidget {
   const MyListingsScreen({super.key, this.embeddedInShell = false, this.onBack});
 
   final bool embeddedInShell;
   final VoidCallback? onBack;
 
-  @override
-  ConsumerState<MyListingsScreen> createState() => _MyListingsScreenState();
-}
-
-class _MyListingsScreenState extends ConsumerState<MyListingsScreen> {
   static const double _cardRadius = 16;
 
-  Future<(MockUser, List<MockListing>)> _loadListings() {
-    final dataSource = ref.read(listingDataSourceProvider);
-    return dataSource.getCurrentUser().then(
-      (user) => Future.wait(
-        user.ownedListingIds.map((id) => dataSource.getListingById(id)),
-      ).then((list) => (user, list.whereType<MockListing>().toList())),
-    );
-  }
-
-  late Future<(MockUser, List<MockListing>)> _listingsFuture = _loadListings();
-
   /// Add/request a listing — only for Cajun+ (canSubmitBusiness). Otherwise we show upsell.
-  void _onAddBusiness() {
+  void _onAddBusiness(BuildContext context, WidgetRef ref) {
     Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const CreateListingScreen())).then((_) {
-      if (mounted) setState(() => _listingsFuture = _loadListings());
+      ref.read(myListingsControllerProvider.notifier).refresh();
     });
   }
 
   /// Start Stripe checkout for Cajun+ (user subscription). Used by upsell CTA.
-  Future<void> _startCajunPlusCheckout() async {
-    if (!mounted) return;
+  Future<void> _startCajunPlusCheckout(BuildContext context, WidgetRef ref) async {
     ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Opening checkout…')));
     try {
       final plans = await ref.read(userPlansRepositoryProvider).list();
-      if (!mounted) return;
       final tier = StripeConfig.defaultUserTier;
       final matching = plans.where((p) => p.tier.toLowerCase() == tier).toList();
       final plan = matching.isEmpty ? null : matching.first;
       if (plan == null) {
-        if (!mounted) return;
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(const SnackBar(content: Text('No subscription plan available. Please try again later.')));
@@ -73,14 +57,12 @@ class _MyListingsScreenState extends ConsumerState<MyListingsScreen> {
         priceId = useYearly ? fallback?.yearly : fallback?.monthly;
       }
       if (priceId == null || priceId.isEmpty) {
-        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Subscription not configured. Add Stripe Price IDs in Admin → Plans.')),
         );
         return;
       }
       if (priceId.contains('placeholder')) {
-        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text(
@@ -98,73 +80,65 @@ class _MyListingsScreenState extends ConsumerState<MyListingsScreen> {
         cancelUrl: StripeCheckoutService.cancelUrl(),
         metadata: {'type': 'user_subscription', 'reference_id': planId},
       );
-      if (!mounted) return;
       final uri = Uri.parse(url);
       if (await canLaunchUrl(uri)) {
         await launchUrl(uri, mode: LaunchMode.externalApplication);
-        if (!mounted) return;
         final uid = ref.read(authControllerProvider).valueOrNull?.id;
         if (uid != null) {
           ref.read(userTierServiceProvider).refresh(uid);
         }
       } else {
-        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Could not open browser. URL: $url')));
       }
     } on StripeCheckoutException catch (e) {
-      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Checkout: ${e.message}')));
     } catch (e, st) {
-      if (!mounted) return;
       debugPrint('Stripe checkout error: $e');
       debugPrintStack(stackTrace: st);
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Checkout failed: $e')));
     }
   }
 
-  void _showCajunPlusUpsell() {
-    presentSubscriptionPaywall(context, onRevenueCatUnavailable: _startCajunPlusCheckout);
+  void _showCajunPlusUpsell(BuildContext context, WidgetRef ref) {
+    presentSubscriptionPaywall(context, ref, onRevenueCatUnavailable: () => _startCajunPlusCheckout(context, ref));
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final padding = AppLayout.horizontalPadding(context);
     final userTierService = ref.watch(userTierServiceProvider);
+    final listingsAsync = ref.watch(myListingsControllerProvider);
 
     Widget content = ValueListenableBuilder<ResolvedPermissions?>(
       valueListenable: userTierService.permissions,
-      builder: (_, perms, _) {
+      builder: (_, perms, __) {
         final canAddListing = perms?.canSubmitBusiness ?? false;
 
-        return FutureBuilder<(MockUser, List<MockListing>)>(
-          future: _listingsFuture,
-          builder: (context, snapshot) {
-            if (snapshot.connectionState == ConnectionState.waiting || !snapshot.hasData) {
-              return Container(
-                color: AppTheme.specOffWhite,
-                child: Center(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      CircularProgressIndicator(color: AppTheme.specNavy),
-                      const SizedBox(height: 16),
-                      Text(
-                        'Loading your listings…',
-                        style: theme.textTheme.bodyMedium?.copyWith(color: AppTheme.specNavy.withValues(alpha: 0.7)),
-                      ),
-                    ],
+        return listingsAsync.when(
+          loading: () => Container(
+            color: AppTheme.specOffWhite,
+            child: Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  CircularProgressIndicator(color: AppTheme.specNavy),
+                  const SizedBox(height: 16),
+                  Text(
+                    'Loading your listings…',
+                    style: theme.textTheme.bodyMedium?.copyWith(color: AppTheme.specNavy.withValues(alpha: 0.7)),
                   ),
-                ),
-              );
-            }
-            final listings = snapshot.data?.$2 ?? const <MockListing>[];
-
+                ],
+              ),
+            ),
+          ),
+          error: (err, st) => Center(child: Text('Error: $err')),
+          data: (listings) {
             if (listings.isEmpty) {
               if (canAddListing) {
-                return _GetStartedView(padding: padding, onAddBusiness: _onAddBusiness);
+                return _GetStartedView(padding: padding, onAddBusiness: () => _onAddBusiness(context, ref));
               }
-              return _GetStartedUpsellView(padding: padding, onGetCajunPlus: _showCajunPlusUpsell);
+              return _GetStartedUpsellView(padding: padding, onGetCajunPlus: () => _showCajunPlusUpsell(context, ref));
             }
 
             return Container(
@@ -176,7 +150,7 @@ class _MyListingsScreenState extends ConsumerState<MyListingsScreen> {
                     child: SafeArea(
                       bottom: false,
                       child: Padding(
-                        padding: EdgeInsets.fromLTRB(padding.left, widget.embeddedInShell ? 12 : 24, padding.right, 20),
+                        padding: EdgeInsets.fromLTRB(padding.left, embeddedInShell ? 12 : 24, padding.right, 20),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
@@ -210,13 +184,13 @@ class _MyListingsScreenState extends ConsumerState<MyListingsScreen> {
                               Align(
                                 alignment: Alignment.centerLeft,
                                 child: AppSecondaryButton(
-                                  onPressed: _onAddBusiness,
+                                  onPressed: () => _onAddBusiness(context, ref),
                                   icon: const Icon(Icons.add_rounded, size: 20),
                                   label: const Text('Add new'),
                                 ),
                               )
                             else
-                              _CajunPlusUpsellCard(onTap: _showCajunPlusUpsell, compact: true),
+                              _CajunPlusUpsellCard(onTap: () => _showCajunPlusUpsell(context, ref), compact: true),
                           ],
                         ),
                       ),
@@ -255,7 +229,7 @@ class _MyListingsScreenState extends ConsumerState<MyListingsScreen> {
       },
     );
 
-    if (widget.embeddedInShell) {
+    if (embeddedInShell) {
       return content;
     }
 
@@ -279,7 +253,7 @@ class _MyListingsScreenState extends ConsumerState<MyListingsScreen> {
 class _ListingCard extends StatelessWidget {
   const _ListingCard({required this.listing, required this.cardRadius, required this.onTap});
 
-  final MockListing listing;
+  final Business listing;
   final double cardRadius;
   final VoidCallback onTap;
 
@@ -335,25 +309,26 @@ class _ListingCard extends StatelessWidget {
                         overflow: TextOverflow.ellipsis,
                       ),
                     ],
-                    if (listing.categoryName.isNotEmpty) ...[
-                      const SizedBox(height: 6),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: AppTheme.specNavy.withValues(alpha: 0.08),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Text(
-                          listing.categoryName,
-                          style: theme.textTheme.labelSmall?.copyWith(
-                            color: AppTheme.specNavy,
-                            fontWeight: FontWeight.w600,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
+                    // if (listing.categoryName.isNotEmpty) ...[
+                    const SizedBox(height: 6),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: AppTheme.specNavy.withValues(alpha: 0.08),
+                        borderRadius: BorderRadius.circular(8),
                       ),
-                    ],
+                      child: Text(
+                        // listing.categoryName,
+                        "Category name placeholder",
+                        style: theme.textTheme.labelSmall?.copyWith(
+                          color: AppTheme.specNavy,
+                          fontWeight: FontWeight.w600,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    // ],
                   ],
                 ),
               ),

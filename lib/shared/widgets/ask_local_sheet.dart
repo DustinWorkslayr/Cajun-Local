@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
-import 'package:cajun_local/core/data/app_data_scope.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cajun_local/shared/widgets/app_buttons.dart';
-import 'package:cajun_local/core/data/mock_data.dart';
 import 'package:cajun_local/core/data/services/ask_local_service.dart';
 import 'package:cajun_local/features/profile/data/models/user_parish_preferences.dart';
 import 'package:cajun_local/core/revenuecat/present_subscription_paywall.dart';
 import 'package:cajun_local/core/theme/theme.dart';
+import 'package:cajun_local/features/businesses/data/models/business.dart';
+import 'package:cajun_local/features/businesses/data/repositories/business_repository.dart';
+import 'package:cajun_local/features/locations/data/models/parish.dart';
+import 'package:cajun_local/features/locations/data/repositories/parish_repository.dart';
 import 'package:cajun_local/features/listing/presentation/screens/listing_detail_screen.dart';
 
 /// Message in the Ask Local conversation (user or AI). AI messages may include listing IDs to show as cards.
@@ -46,16 +49,16 @@ void showAskLocalSheet(BuildContext context, {required String accessToken}) {
   );
 }
 
-class _AskLocalSheet extends StatefulWidget {
+class _AskLocalSheet extends ConsumerStatefulWidget {
   const _AskLocalSheet({required this.accessToken});
 
   final String accessToken;
 
   @override
-  State<_AskLocalSheet> createState() => _AskLocalSheetState();
+  ConsumerState<_AskLocalSheet> createState() => _AskLocalSheetState();
 }
 
-class _AskLocalSheetState extends State<_AskLocalSheet> {
+class _AskLocalSheetState extends ConsumerState<_AskLocalSheet> {
   final _messages = <_Message>[];
   final _inputController = TextEditingController();
   final _scrollController = ScrollController();
@@ -69,7 +72,7 @@ class _AskLocalSheetState extends State<_AskLocalSheet> {
   // Form-style state (when no messages yet)
   String _formType = '';
   Set<String> _formParishIds = {};
-  List<MockParish> _formParishes = [];
+  List<Parish> _formParishes = [];
   final _formExtraController = TextEditingController();
   bool _formParishesLoaded = false;
 
@@ -92,9 +95,8 @@ class _AskLocalSheetState extends State<_AskLocalSheet> {
 
   Future<void> _loadPreferredParishes() async {
     try {
-      final ds = AppDataScope.of(context).dataSource;
       final ids = await UserParishPreferences.getPreferredParishIds();
-      final list = await ds.getParishes();
+      final list = await ParishRepository().listParishes();
       if (!mounted) return;
       setState(() {
         _formParishIds = Set.from(ids);
@@ -275,7 +277,7 @@ class _AskLocalSheetState extends State<_AskLocalSheet> {
                       if (_errorSubscriptionRequired) ...[
                         const SizedBox(height: 12),
                         FilledButton.icon(
-                          onPressed: () => presentSubscriptionPaywall(context),
+                          onPressed: () => presentSubscriptionPaywall(context, ref),
                           icon: const Icon(Icons.workspace_premium_rounded, size: 20),
                           label: const Text('Get Cajun+ Membership'),
                           style: FilledButton.styleFrom(
@@ -535,8 +537,8 @@ class _CompactListingCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final nav = AppTheme.specNavy;
-    return FutureBuilder<MockListing?>(
-      future: AppDataScope.of(context).dataSource.getListingById(listingId),
+    return FutureBuilder<Business?>(
+      future: BusinessRepository().getById(listingId),
       builder: (context, snapshot) {
         final listing = snapshot.data;
         if (listing == null) {
@@ -586,7 +588,7 @@ class _CompactListingCard extends StatelessWidget {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      listing.tagline,
+                      listing.tagline ?? '',
                       style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,

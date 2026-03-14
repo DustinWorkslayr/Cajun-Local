@@ -7,28 +7,28 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:shimmer/shimmer.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
-import 'package:cajun_local/core/data/app_data_scope.dart';
-import 'package:cajun_local/core/data/listing_data_source.dart';
+
 import 'package:cajun_local/core/data/mock_data.dart';
-import 'package:cajun_local/features/businesses/data/models/amenity.dart';
-import 'package:cajun_local/features/categories/data/models/category_banner.dart';
-import 'package:cajun_local/features/businesses/data/repositories/amenities_repository.dart';
-import 'package:cajun_local/features/businesses/data/repositories/business_ads_repository.dart';
-import 'package:cajun_local/features/categories/data/repositories/category_banners_repository.dart';
-import 'package:cajun_local/features/favorites/presentation/providers/favorites_providers.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cajun_local/core/data/providers/app_data_providers.dart';
-import 'package:cajun_local/core/subscription/resolved_permissions.dart';
 import 'package:cajun_local/core/revenuecat/present_subscription_paywall.dart';
-import 'package:cajun_local/features/profile/data/models/user_parish_preferences.dart';
+import 'package:cajun_local/core/subscription/business_tier_service.dart';
+import 'package:cajun_local/core/subscription/resolved_permissions.dart';
 import 'package:cajun_local/core/theme/app_layout.dart';
 import 'package:cajun_local/core/theme/theme.dart';
-import 'package:cajun_local/core/subscription/business_tier_service.dart';
+import 'package:cajun_local/features/businesses/data/models/amenity.dart';
+import 'package:cajun_local/features/businesses/data/repositories/amenities_repository.dart';
+import 'package:cajun_local/features/categories/data/models/category_banner.dart';
+import 'package:cajun_local/features/categories/presentation/controllers/categories_controller.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:cajun_local/features/favorites/presentation/providers/favorites_providers.dart';
+import 'package:cajun_local/features/businesses/data/models/business.dart';
+import 'package:cajun_local/features/businesses/data/models/business_category.dart';
+import 'package:cajun_local/features/locations/data/models/parish.dart';
 import 'package:cajun_local/features/listing/presentation/screens/listing_detail_screen.dart';
-import 'package:cajun_local/shared/widgets/app_buttons.dart';
 import 'package:cajun_local/shared/widgets/animated_entrance.dart';
+import 'package:cajun_local/shared/widgets/app_buttons.dart';
 
-class CategoriesScreen extends StatefulWidget {
+class CategoriesScreen extends ConsumerStatefulWidget {
   const CategoriesScreen({super.key, this.initialSearch, this.initialCategoryId});
 
   /// When opening from home search, pre-fill search query.
@@ -38,71 +38,48 @@ class CategoriesScreen extends StatefulWidget {
   final String? initialCategoryId;
 
   @override
-  State<CategoriesScreen> createState() => _CategoriesScreenState();
+  ConsumerState<CategoriesScreen> createState() => _CategoriesScreenState();
 }
 
-/// Page size for server-side "load more" on Explore.
-const int _kExplorePageSize = 50;
 
-class _CategoriesScreenState extends State<CategoriesScreen> with TickerProviderStateMixin {
-  late ListingFilters _filters;
-  Future<(int, List<MockCategory>, List<MockParish>)>? _filterPanelDataFuture;
+
+class _CategoriesScreenState extends ConsumerState<CategoriesScreen> with TickerProviderStateMixin {
   late TabController _listMapTabController;
   late TextEditingController _searchController;
   Timer? _searchDebounce;
 
-  /// Initial page load; then "load more" appends pages.
-  Future<void>? _initialLoadFuture;
-
-  /// Cached list from backend (pages appended on load more); filters applied in memory.
-  List<MockListing>? _fullListCache;
-  int _nextOffset = 0;
-  bool _hasMoreFromServer = true;
-  bool _loadingMore = false;
-  Map<String, String> _lastTierMap = const {};
-  Set<String> _lastSponsoredIds = const {};
-
-  /// Lazy-loaded when user first applies deal-only or amenity filter.
-  Set<String>? _dealListingIds;
-  Set<String>? _cachedAmenityBusinessIds;
-  Set<String> _cachedAmenityIds = const {};
-
-  /// Result of in-memory filter + partition/shuffle; shown without reload.
-  List<MockListing>? _lastFilteredList;
-
-  /// When true, we're fetching deal or amenity sets for the first time (show previous list).
-  bool _loadingAuxiliaryFilters = false;
-
   @override
   void initState() {
     super.initState();
-    _filters = ListingFilters(searchQuery: widget.initialSearch ?? '', categoryId: widget.initialCategoryId);
     _searchController = TextEditingController(text: widget.initialSearch ?? '');
     _listMapTabController = TabController(length: 2, vsync: this);
-    // Apply user's saved parish preferences when Explore loads (no refetch; filters applied in memory).
-    UserParishPreferences.getPreferredParishIds().then((ids) {
-      if (!mounted) return;
-      setState(() {
-        _filters = _filters.copyWith(parishIds: ids);
-        _applyFiltersFromCache();
-      });
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Run initialization async so we don't modify provider state while building.
+    Future.microtask(() {
+      ref.read(categoriesControllerProvider.notifier).initializeWith(
+        search: widget.initialSearch, 
+        categoryId: widget.initialCategoryId,
+      );
     });
   }
 
   @override
   void didUpdateWidget(CategoriesScreen oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (widget.initialCategoryId != oldWidget.initialCategoryId) {
-      setState(() {
-        _filters = _filters.copyWith(categoryId: widget.initialCategoryId);
-        _applyFiltersFromCache();
-      });
-    }
-    if (widget.initialSearch != oldWidget.initialSearch && widget.initialSearch != _searchController.text) {
-      _searchController.text = widget.initialSearch ?? '';
-      setState(() {
-        _filters = _filters.copyWith(searchQuery: widget.initialSearch ?? '');
-        _applyFiltersFromCache();
+    if (widget.initialCategoryId != oldWidget.initialCategoryId || 
+        widget.initialSearch != oldWidget.initialSearch) {
+      if (widget.initialSearch != oldWidget.initialSearch && widget.initialSearch != _searchController.text) {
+        _searchController.text = widget.initialSearch ?? '';
+      }
+      Future.microtask(() {
+        ref.read(categoriesControllerProvider.notifier).initializeWith(
+          search: widget.initialSearch, 
+          categoryId: widget.initialCategoryId,
+        );
       });
     }
   }
@@ -118,79 +95,40 @@ class _CategoriesScreenState extends State<CategoriesScreen> with TickerProvider
   void _onSearchChanged(String value) {
     final trimmed = value.trim();
     _searchDebounce?.cancel();
+    
     if (trimmed.isEmpty) {
-      setState(() {
-        _filters = _filters.copyWith(searchQuery: '');
-        _applyFiltersFromCache();
-      });
+      ref.read(categoriesControllerProvider.notifier).updateSearch('');
       return;
     }
+    
     _searchDebounce = Timer(const Duration(milliseconds: 300), () {
       if (!mounted) return;
-      final current = _searchController.text.trim();
-      setState(() {
-        _filters = _filters.copyWith(searchQuery: current);
-        _applyFiltersFromCache();
-      });
+      ref.read(categoriesControllerProvider.notifier).updateSearch(trimmed);
     });
   }
 
-  Future<List<CategoryBanner>>? _approvedBannersFuture;
+  void _openFilterSheet(CategoriesState controllerState) async {
+    final asyncPanelData = ref.read(filterPanelDataProvider);
+    if (!asyncPanelData.hasValue) return;
 
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    final ds = AppDataScope.of(context).dataSource;
-    if (_fullListCache != null && !_loadingAuxiliaryFilters && ds.useBackend) {
-      _maybeLoadAuxiliaryFilters(ds);
-    }
-    _filterPanelDataFuture ??= Future.wait([ds.getCategories(), ds.getParishes()]).then((results) {
-      final categories = results[0] as List<MockCategory>;
-      final parishes = results[1] as List<MockParish>;
-      final totalCount = categories.fold<int>(0, (s, c) => s + c.count);
-      return (totalCount, categories, parishes);
-    });
-    if (_initialLoadFuture == null && ds.useBackend) {
-      _initialLoadFuture = _performInitialLoad(ds);
-    }
-    _approvedBannersFuture ??= CategoryBannersRepository().listApproved();
-  }
+    final data = asyncPanelData.value!;
+    final totalCount = data.$1;
+    final categories = data.$2;
+    final parishes = data.$3;
 
-  bool _openNowOnly = false;
-
-  void _openFilterSheet() async {
-    final data = await _filterPanelDataFuture;
-    if (!mounted) return;
-    final categories = data?.$2 ?? [];
-    final parishes = data?.$3 ?? [];
-    final totalCount = data?.$1 ?? 0;
     await showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (ctx) => _ExploreFilterBottomSheet(
-        initialFilters: _filters,
-        initialOpenNowOnly: _openNowOnly,
+        initialFilters: controllerState.filters,
+        initialOpenNowOnly: controllerState.openNowOnly,
         categories: categories,
         parishes: parishes,
         totalCount: totalCount,
         onApply: (filters, openNowOnly) {
-          UserParishPreferences.setPreferredParishIds(filters.parishIds);
-          final ds = AppDataScope.of(context).dataSource;
-          final categoryChanged = filters.categoryId != _filters.categoryId;
-          setState(() {
-            _filters = filters;
-            _searchController.text = filters.searchQuery;
-            _openNowOnly = openNowOnly;
-            if (categoryChanged) {
-              _fullListCache = null;
-              _nextOffset = 0;
-              _hasMoreFromServer = true;
-              _initialLoadFuture = _performInitialLoad(ds);
-            } else {
-              _applyFiltersFromCache();
-            }
-          });
+           _searchController.text = filters.searchQuery;
+          ref.read(categoriesControllerProvider.notifier).applyFilters(filters, openNowOnly);
           Navigator.of(ctx).pop();
         },
         onClose: () => Navigator.of(ctx).pop(),
@@ -198,166 +136,11 @@ class _CategoriesScreenState extends State<CategoriesScreen> with TickerProvider
     );
   }
 
-  bool _isFiltered() {
-    return _filters.parishIds.isNotEmpty || _filters.categoryId != null || _filters.subcategoryIds.isNotEmpty;
-  }
-
-  /// Partition into sponsored, Local Partners, rest; shuffle each; order per user rules.
-  List<MockListing> _partitionAndShuffle(
-    List<MockListing> list,
-    Map<String, String> tierMap,
-    Set<String> sponsoredIds,
-  ) {
-    final isFiltered = _isFiltered();
-    final rnd = Random();
-    final sponsored = list.where((l) => sponsoredIds.contains(l.id)).toList()..shuffle(rnd);
-    final partners =
-        list
-            .where(
-              (l) =>
-                  !sponsoredIds.contains(l.id) &&
-                  BusinessTierService.fromPlanTier(tierMap[l.id]) == BusinessTier.localPartner,
-            )
-            .toList()
-          ..shuffle(rnd);
-    final rest =
-        list
-            .where(
-              (l) =>
-                  !sponsoredIds.contains(l.id) &&
-                  BusinessTierService.fromPlanTier(tierMap[l.id]) != BusinessTier.localPartner,
-            )
-            .toList()
-          ..shuffle(rnd);
-    if (isFiltered) {
-      return [...sponsored, ...partners, ...rest];
-    }
-    return [...partners, ...rest];
-  }
-
-  /// Load first page; tiers and sponsored IDs. "Load more" appends via [_loadMoreListings].
-  Future<void> _performInitialLoad(ListingDataSource dataSource) async {
-    if (!dataSource.useBackend) return;
-    final page = await dataSource.getListingsPage(limit: _kExplorePageSize, offset: 0, categoryId: _filters.categoryId);
-    if (!mounted) return;
-    final list = page.list;
-    if (list.isEmpty) {
-      setState(() {
-        _fullListCache = [];
-        _nextOffset = 0;
-        _hasMoreFromServer = false;
-        _lastTierMap = {};
-        _lastSponsoredIds = {};
-        _lastFilteredList = [];
-      });
-      return;
-    }
-    final ids = list.map((l) => l.id).toList();
-    final tierMap = dataSource.useBackend
-        ? await BusinessSubscriptionsRepository().getActivePlanTiersForBusinesses(ids)
-        : <String, String>{};
-    final sponsoredIds = dataSource.useBackend
-        ? await BusinessAdsRepository().getActiveSponsoredBusinessIdsForExplore()
-        : <String>{};
-    if (!mounted) return;
-    setState(() {
-      _fullListCache = list;
-      _nextOffset = list.length;
-      _hasMoreFromServer = page.hasMore;
-      _lastTierMap = tierMap;
-      _lastSponsoredIds = sponsoredIds;
-      _applyFiltersFromCache();
-    });
-  }
-
-  /// Append next page from server (Explore "load more").
-  Future<void> _loadMoreListings(ListingDataSource dataSource) async {
-    if (_loadingMore || !_hasMoreFromServer || _fullListCache == null) return;
-    setState(() => _loadingMore = true);
-    final page = await dataSource.getListingsPage(
-      limit: _kExplorePageSize,
-      offset: _nextOffset,
-      categoryId: _filters.categoryId,
-    );
-    if (!mounted) return;
-    final existingIds = _fullListCache!.map((l) => l.id).toSet();
-    final newList = page.list.where((l) => !existingIds.contains(l.id)).toList();
-    final ids = newList.map((l) => l.id).toList();
-    Map<String, String> newTiers = {};
-    if (ids.isNotEmpty && dataSource.useBackend) {
-      newTiers = await BusinessSubscriptionsRepository().getActivePlanTiersForBusinesses(ids);
-    }
-    if (!mounted) return;
-    setState(() {
-      _fullListCache = [..._fullListCache!, ...newList];
-      _nextOffset += page.list.length;
-      _hasMoreFromServer = page.hasMore;
-      _loadingMore = false;
-      if (newTiers.isNotEmpty) {
-        _lastTierMap = {..._lastTierMap, ...newTiers};
-      }
-      _applyFiltersFromCache();
-    });
-  }
-
-  /// Apply current filters to cached list in memory (no network). Instant.
-  void _applyFiltersFromCache() {
-    if (_fullListCache == null) return;
-    final amenitySet = _filters.amenityIds.isNotEmpty ? _cachedAmenityBusinessIds : null;
-    final dealSet = _filters.dealOnly ? _dealListingIds : null;
-    final filtered = ListingDataSource.filterListingsInMemory(
-      _fullListCache!,
-      _filters,
-      openNowOnly: _openNowOnly,
-      businessIdsWithAnyAmenity: amenitySet,
-      listingIdsWithDeals: dealSet,
-    );
-    _lastFilteredList = _partitionAndShuffle(filtered, _lastTierMap, _lastSponsoredIds);
-  }
-
-  /// Ensure deal listing IDs are loaded when user first applies deal-only filter.
-  Future<void> _ensureDealListingIds(ListingDataSource dataSource) async {
-    if (_dealListingIds != null || !dataSource.useBackend) return;
-    final deals = await dataSource.getActiveDeals();
-    if (!mounted) return;
-    setState(() {
-      _dealListingIds = deals.map((d) => d.listingId).toSet();
-      _loadingAuxiliaryFilters = false;
-      _applyFiltersFromCache();
-    });
-  }
-
-  /// Ensure amenity business IDs are loaded when user first applies amenity filter.
-  Future<void> _ensureAmenityBusinessIds(ListingDataSource dataSource) async {
-    if (_filters.amenityIds.isEmpty) return;
-    final key = _filters.amenityIds;
-    if (_setEquals(key, _cachedAmenityIds)) return;
-    final ids = await AmenitiesRepository().getBusinessIdsWithAnyAmenity(key);
-    if (!mounted) return;
-    setState(() {
-      _cachedAmenityIds = Set<String>.from(key);
-      _cachedAmenityBusinessIds = ids;
-      _loadingAuxiliaryFilters = false;
-      _applyFiltersFromCache();
-    });
-  }
-
-  static bool _setEquals<T>(Set<T> a, Set<T> b) => a.length == b.length && a.every((x) => b.contains(x));
-
-  void _maybeLoadAuxiliaryFilters(ListingDataSource dataSource) {
-    if (!dataSource.useBackend || _loadingAuxiliaryFilters || _fullListCache == null) return;
-    if (_filters.dealOnly && _dealListingIds == null) {
-      setState(() => _loadingAuxiliaryFilters = true);
-      _ensureDealListingIds(dataSource);
-    } else if (_filters.amenityIds.isNotEmpty && !_setEquals(_filters.amenityIds, _cachedAmenityIds)) {
-      setState(() => _loadingAuxiliaryFilters = true);
-      _ensureAmenityBusinessIds(dataSource);
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
-    final dataSource = AppDataScope.of(context).dataSource;
+    final asyncState = ref.watch(categoriesControllerProvider);
+    final bannersAsync = ref.watch(approvedCategoryBannersProvider);
+    final panelDataAsync = ref.watch(filterPanelDataProvider);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -368,114 +151,75 @@ class _CategoriesScreenState extends State<CategoriesScreen> with TickerProvider
             mainAxisSize: MainAxisSize.min,
             children: [
               _TopBar(
-                openNowOnly: _openNowOnly,
-                onOpenNowChanged: (v) => setState(() {
-                  _openNowOnly = v;
-                  _applyFiltersFromCache();
-                }),
-                onFilterTap: _openFilterSheet,
+                openNowOnly: asyncState.valueOrNull?.openNowOnly ?? false,
+                onOpenNowChanged: (v) {
+                  final s = asyncState.valueOrNull;
+                  if (s != null) {
+                    ref.read(categoriesControllerProvider.notifier).applyFilters(s.filters, v);
+                  }
+                },
+                onFilterTap: () {
+                  final s = asyncState.valueOrNull;
+                  if (s != null) _openFilterSheet(s);
+                },
                 listMapTabController: _listMapTabController,
               ),
               _ExploreSearchBar(controller: _searchController, onChanged: _onSearchChanged),
             ],
           ),
         ),
-        FutureBuilder<List<CategoryBanner>>(
-          future: _approvedBannersFuture,
-          builder: (context, bannerSnap) {
-            final banners = bannerSnap.data ?? [];
-            return FutureBuilder<(int, List<MockCategory>, List<MockParish>)>(
-              future: _filterPanelDataFuture,
-              builder: (context, catSnap) {
-                final categories = catSnap.data?.$2 ?? [];
-                final categoryNames = {for (final c in categories) c.id: c.name};
-                final subcategoryNames = {
-                  for (final c in categories)
-                    for (final s in c.subcategories) s.id: s.name,
-                };
-                return Expanded(
-                  child: _buildListAndMap(
-                    context,
-                    dataSource,
-                    banners: banners,
-                    categoryNames: categoryNames,
-                    subcategoryNames: subcategoryNames,
-                  ),
-                );
-              },
-            );
-          },
-        ),
+        
+        Expanded(
+          child: asyncState.when(
+            data: (state) {
+              final banners = bannersAsync.valueOrNull ?? [];
+              final panelData = panelDataAsync.valueOrNull;
+              
+              final categories = panelData?.$2 ?? [];
+              final categoryNames = {for (final c in categories) c.id: c.name};
+              final subcategoryNames = {
+                for (final c in categories)
+                  for (final s in c.subcategories) s.id: s.name,
+              };
+
+              if (state.fullListCache == null) {
+                return _ListLoadingSkeleton(padding: AppLayout.horizontalPadding(context));
+              }
+
+              return _buildListAndMapContent(
+                context,
+                state: state,
+                banners: banners,
+                categoryNames: categoryNames,
+                subcategoryNames: subcategoryNames,
+              );
+            },
+            loading: () => _ListLoadingSkeleton(padding: AppLayout.horizontalPadding(context)),
+            error: (err, stack) => Center(child: Text('Error loading directory: $err')),
+          ),
+        )
       ],
     );
   }
 
   Future<void> _onRefresh() async {
-    final dataSource = AppDataScope.of(context).dataSource;
-    setState(() {
-      _fullListCache = null;
-      _lastFilteredList = null;
-      _nextOffset = 0;
-      _hasMoreFromServer = true;
-      _dealListingIds = null;
-      _cachedAmenityBusinessIds = null;
-      _cachedAmenityIds = const {};
-      _initialLoadFuture = _performInitialLoad(dataSource);
-    });
-    await _initialLoadFuture;
-  }
-
-  Widget _buildListAndMap(
-    BuildContext context,
-    ListingDataSource dataSource, {
-    required List<CategoryBanner> banners,
-    required Map<String, String> categoryNames,
-    required Map<String, String> subcategoryNames,
-  }) {
-    if (_fullListCache == null) {
-      return FutureBuilder<void>(
-        future: _initialLoadFuture,
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting ||
-              snapshot.connectionState == ConnectionState.active) {
-            return _ListLoadingSkeleton(padding: AppLayout.horizontalPadding(context));
-          }
-          return _buildListAndMapContent(
-            context,
-            dataSource,
-            list: _lastFilteredList ?? const [],
-            banners: banners,
-            categoryNames: categoryNames,
-            subcategoryNames: subcategoryNames,
-          );
-        },
-      );
-    }
-    final list = _lastFilteredList ?? const [];
-    return _buildListAndMapContent(
-      context,
-      dataSource,
-      list: list,
-      banners: banners,
-      categoryNames: categoryNames,
-      subcategoryNames: subcategoryNames,
-    );
+     await ref.read(categoriesControllerProvider.notifier).refresh();
   }
 
   Widget _buildListAndMapContent(
-    BuildContext context,
-    ListingDataSource dataSource, {
-    required List<MockListing> list,
+    BuildContext context, {
+    required CategoriesState state,
     required List<CategoryBanner> banners,
     required Map<String, String> categoryNames,
     required Map<String, String> subcategoryNames,
   }) {
+    final list = state.filteredList ?? [];
     final displayList = list;
-    final hasMore = _hasMoreFromServer;
-    final isLoadingMore = _loadingAuxiliaryFilters || _loadingMore;
+    final hasMore = state.hasMoreFromServer;
+    final isLoadingMore = state.loadingAuxiliaryFilters || state.isLoadingMore;
     if (list.isEmpty) {
       final t = Theme.of(context);
-      final hasSearch = _filters.searchQuery.isNotEmpty;
+      final hasSearch = state.filters.searchQuery.isNotEmpty;
       return Center(
         child: AnimatedEntrance(
           child: Padding(
@@ -486,7 +230,7 @@ class _CategoriesScreenState extends State<CategoriesScreen> with TickerProvider
                 Icon(Icons.search_off_rounded, size: 48, color: t.colorScheme.onSurfaceVariant.withValues(alpha: 0.6)),
                 const SizedBox(height: 16),
                 Text(
-                  hasSearch ? 'No businesses match "${_filters.searchQuery}".' : 'No businesses match your filters.',
+                  hasSearch ? 'No businesses match "${state.filters.searchQuery}".' : 'No businesses match your filters.',
                   textAlign: TextAlign.center,
                   style: t.textTheme.bodyLarge?.copyWith(color: t.colorScheme.onSurfaceVariant),
                 ),
@@ -502,11 +246,8 @@ class _CategoriesScreenState extends State<CategoriesScreen> with TickerProvider
                   const SizedBox(height: 20),
                   TextButton.icon(
                     onPressed: () {
-                      _searchController.clear();
-                      setState(() {
-                        _filters = _filters.copyWith(searchQuery: '');
-                        _applyFiltersFromCache();
-                      });
+                        _searchController.clear();
+                        ref.read(categoriesControllerProvider.notifier).updateSearch('');
                     },
                     icon: const Icon(Icons.clear_rounded, size: 20),
                     label: const Text('Clear search'),
@@ -518,8 +259,8 @@ class _CategoriesScreenState extends State<CategoriesScreen> with TickerProvider
         ),
       );
     }
-    final countsFuture = dataSource.useBackend && displayList.isNotEmpty
-        ? AppDataScope.of(context).favoritesRepository.getCountsForBusinesses(displayList.map((l) => l.id).toList())
+    final countsFuture = displayList.isNotEmpty
+        ? ref.read(favoritesRepositoryProvider).getCountsForBusinesses(displayList.map((l) => l.id).toList())
         : Future<Map<String, int>>.value({});
     return FutureBuilder<Map<String, int>>(
       future: countsFuture,
@@ -530,8 +271,8 @@ class _CategoriesScreenState extends State<CategoriesScreen> with TickerProvider
           children: [
             _ListViewList(
               list: displayList,
-              tierMap: _lastTierMap,
-              sponsoredIds: _lastSponsoredIds,
+              tierMap: state.tierMap,
+              sponsoredIds: state.sponsoredIds,
               favoritesCounts: favoritesCounts,
               banners: banners,
               categoryNames: categoryNames,
@@ -539,7 +280,7 @@ class _CategoriesScreenState extends State<CategoriesScreen> with TickerProvider
               featuredCount: 5,
               hasMore: hasMore,
               isLoadingMore: isLoadingMore,
-              onLoadMore: hasMore ? () => _loadMoreListings(dataSource) : null,
+              onLoadMore: hasMore ? () => ref.read(categoriesControllerProvider.notifier).loadMore() : null,
               onRefresh: _onRefresh,
             ),
             _MapView(list: list, subcategoryNames: subcategoryNames),
@@ -950,8 +691,8 @@ class _ExploreFilterBottomSheet extends StatefulWidget {
 
   final ListingFilters initialFilters;
   final bool initialOpenNowOnly;
-  final List<MockCategory> categories;
-  final List<MockParish> parishes;
+  final List<BusinessCategory> categories;
+  final List<Parish> parishes;
   final int totalCount;
   final void Function(ListingFilters filters, bool openNowOnly) onApply;
   final VoidCallback onClose;
@@ -1265,7 +1006,7 @@ class _ExploreFilterBottomSheetState extends State<_ExploreFilterBottomSheet> {
             children: [
               _CategoryTile(
                 label: cat.name,
-                count: cat.count,
+                count: 0, // BusinessCategory doesn't have count yet
                 isExpanded: isExpanded,
                 isSelected: isSelected,
                 hasSubcategories: cat.subcategories.isNotEmpty,
@@ -1353,11 +1094,7 @@ class _CategoryTile extends StatelessWidget {
                   ),
                 ),
               ),
-              if (count > 0)
-                Text(
-                  count.toString(),
-                  style: theme.textTheme.bodySmall?.copyWith(color: AppTheme.specNavy.withValues(alpha: 0.7)),
-                ),
+              if (count > 0) ...[],
               if (hasSubcategories)
                 Icon(
                   isExpanded ? Icons.expand_less_rounded : Icons.expand_more_rounded,
@@ -1467,7 +1204,7 @@ class _ListViewList extends StatelessWidget {
     this.onRefresh,
   });
 
-  final List<MockListing> list;
+  final List<Business> list;
   final Map<String, String> tierMap;
   final Set<String> sponsoredIds;
   final Map<String, int> favoritesCounts;
@@ -1546,7 +1283,7 @@ class _ListViewList extends StatelessWidget {
     return Container(color: AppTheme.specOffWhite, child: body);
   }
 
-  List<Widget> _buildStandardListWithSponsored(List<MockListing> standard, EdgeInsets padding, ThemeData theme) {
+  List<Widget> _buildStandardListWithSponsored(List<Business> standard, EdgeInsets padding, ThemeData theme) {
     final children = <Widget>[];
     final rnd = banners.isNotEmpty ? Random(Object.hash(standard.length, standard.hashCode)) : null;
     for (var i = 0; i < standard.length; i++) {
@@ -1578,6 +1315,7 @@ class _ListViewList extends StatelessWidget {
             cardRadius: _cardRadius,
             isLocalPartner: isLocalPartner,
             isSponsored: isSponsored,
+            categoryNames: categoryNames,
             subcategoryNames: subcategoryNames,
           ),
         ),
@@ -1638,29 +1376,29 @@ class _StandardListingCard extends StatelessWidget {
     required this.cardRadius,
     this.isLocalPartner = false,
     this.isSponsored = false,
+    this.categoryNames = const {},
     this.subcategoryNames = const {},
   });
 
-  final MockListing listing;
+  final Business listing;
   final Map<String, String> tierMap;
   final Map<String, int> favoritesCounts;
   final double cardRadius;
   final bool isLocalPartner;
   final bool isSponsored;
+  final Map<String, String> categoryNames;
   final Map<String, String> subcategoryNames;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final rating = listing.rating;
+    final rating = null; // Business model doesn't have rating yet
     final ratingStr = rating != null ? '(${rating.toStringAsFixed(1)})' : '—';
     final location = listing.address ?? '—';
-    final distanceStr = listing.distanceMiles != null ? '${listing.distanceMiles!.toStringAsFixed(1)} mi' : null;
-    final subName = listing.subcategoryId != null ? subcategoryNames[listing.subcategoryId!] : null;
-    final categorySubLine = subName != null ? '${listing.categoryName} · $subName' : listing.categoryName;
-    final padding = isLocalPartner
-        ? const EdgeInsets.symmetric(horizontal: 14, vertical: 10)
-        : const EdgeInsets.symmetric(horizontal: 12, vertical: 10);
+    final distanceStr = null; // Business model doesn't have distanceMiles yet
+    final catName = categoryNames[listing.categoryId] ?? 'Business';
+    final subName = null; // Business model doesn't have subcategoryIds yet
+    final categorySubLine = subName != null ? '$catName · $subName' : catName;
     final logoSize = isLocalPartner ? 56.0 : 48.0;
     final cardColor = isLocalPartner ? AppTheme.specGold.withValues(alpha: 0.12) : AppTheme.specWhite;
     Border? border;
@@ -1678,7 +1416,7 @@ class _StandardListingCard extends StatelessWidget {
           ).push(MaterialPageRoute<void>(builder: (_) => ListingDetailScreen(listingId: listing.id))),
           borderRadius: BorderRadius.circular(cardRadius),
           child: Container(
-            padding: padding,
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
             decoration: BoxDecoration(
               color: cardColor,
               borderRadius: BorderRadius.circular(cardRadius),
@@ -1693,7 +1431,7 @@ class _StandardListingCard extends StatelessWidget {
             ),
             child: Row(
               children: [
-                _ListingLogo(logoUrl: listing.imagePlaceholder, size: logoSize, radius: 12),
+                _ListingLogo(logoUrl: listing.logoUrl, size: logoSize, radius: 12),
                 SizedBox(width: isLocalPartner ? 16 : 14),
                 Expanded(
                   child: Column(
@@ -1842,7 +1580,7 @@ class _FavoriteHeartButtonState extends ConsumerState<_FavoriteHeartButton> with
                   final perms = ref.read(userTierServiceProvider).value ?? ResolvedPermissions.free;
                   if (perms.wouldExceedFavoritesLimit(ids.length)) {
                     if (!context.mounted) return;
-                    await presentSubscriptionPaywall(context);
+                    await presentSubscriptionPaywall(context, ref);
                     return;
                   }
                   await ref.read(userFavoriteIdsProvider.notifier).add(widget.listingId);
@@ -1942,12 +1680,10 @@ class _SponsoredInlineCard extends StatelessWidget {
 /// Baton Rouge area - used as map center and base for synthetic marker positions.
 const _mapCenter = LatLng(30.4515, -91.1871);
 
-/// Map view with OSM tiles and a marker per business (synthetic lat/lng when not in data).
-/// Tapping a marker shows a tooltip card; tap "View" to open the listing or tap the map to dismiss.
 class _MapView extends StatefulWidget {
   const _MapView({required this.list, this.subcategoryNames = const {}});
 
-  final List<MockListing> list;
+  final List<Business> list;
   final Map<String, String> subcategoryNames;
 
   @override
@@ -2002,7 +1738,6 @@ class _MapViewState extends State<_MapView> {
                         width: 44,
                         height: 44,
                         fit: BoxFit.contain,
-                        // No colorFilter: keep SVG's built-in logo colors (gold, red, white, navy).
                       ),
                     ),
                   ),
@@ -2017,10 +1752,9 @@ class _MapViewState extends State<_MapView> {
             maxChildSize: 0.58,
             builder: (context, scrollController) {
               final listing = list[_selectedIndex!];
-              final rating = listing.rating;
-              final ratingStr = rating?.toStringAsFixed(1);
-              final subName = widget.subcategoryNames[listing.subcategoryId ?? ''];
-              final categorySubLine = subName != null ? '${listing.categoryName} · $subName' : listing.categoryName;
+              final rating = null; // Business model doesn't have rating yet
+              final ratingStr = rating != null ? '(${rating.toStringAsFixed(1)})' : null;
+              final categorySubLine = 'Business';
               return Container(
                 decoration: BoxDecoration(
                   color: AppTheme.specWhite,
@@ -2060,10 +1794,10 @@ class _MapViewState extends State<_MapView> {
                                 maxLines: 2,
                                 overflow: TextOverflow.ellipsis,
                               ),
-                              if (listing.tagline.isNotEmpty) ...[
+                              if (listing.tagline != null && listing.tagline!.isNotEmpty) ...[
                                 const SizedBox(height: 4),
                                 Text(
-                                  listing.tagline,
+                                  listing.tagline!,
                                   style: theme.textTheme.bodySmall?.copyWith(
                                     color: AppTheme.specNavy.withValues(alpha: 0.7),
                                   ),
@@ -2094,7 +1828,7 @@ class _MapViewState extends State<_MapView> {
                                   Row(
                                     mainAxisSize: MainAxisSize.min,
                                     children: List.generate(5, (i) {
-                                      final filled = rating != null && i < rating.floor().clamp(0, 5);
+                                      final filled = rating != null && i < (rating as double).floor().clamp(0, 5);
                                       return Icon(
                                         filled ? Icons.star_rounded : Icons.star_outline_rounded,
                                         size: 20,

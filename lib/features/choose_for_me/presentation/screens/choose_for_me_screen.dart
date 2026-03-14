@@ -2,8 +2,11 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:cajun_local/core/data/providers/app_data_providers.dart';
-import 'package:cajun_local/core/data/mock_data.dart';
+import 'package:cajun_local/features/locations/data/models/parish.dart';
+import 'package:cajun_local/features/businesses/data/models/business_category.dart';
+import 'package:cajun_local/features/categories/data/models/subcategory.dart';
+import 'package:cajun_local/features/locations/data/repositories/parish_repository.dart';
+import 'package:cajun_local/features/categories/data/repositories/category_repository.dart';
 import 'package:cajun_local/features/profile/data/models/user_parish_preferences.dart';
 import 'package:cajun_local/core/theme/theme.dart';
 import 'package:cajun_local/shared/widgets/app_buttons.dart';
@@ -24,20 +27,20 @@ class ChooseForMeScreen extends ConsumerStatefulWidget {
 
 class _ChooseForMeScreenState extends ConsumerState<ChooseForMeScreen> with TickerProviderStateMixin {
   Set<String> _parishIds = {};
-  List<MockParish> _parishes = [];
+  List<Parish> _parishes = [];
 
   /// Single category selection (one category only).
   String? _selectedCategoryId;
   Set<String> _subcategoryIds = {};
   bool _parishesLoaded = false;
 
-  /// True once getCategories() has completed (success or failure).
+  /// True once listCategories() has completed (success or failure).
   bool _categoriesLoaded = false;
 
   /// All categories (any bucket) for dynamic category select.
-  List<MockCategory> _allCategories = [];
+  List<BusinessCategory> _allCategories = [];
 
-  /// Set when getCategories() throws (e.g. network, RLS); user can retry.
+  /// Set when listCategories() throws (e.g. network, RLS); user can retry.
   bool _categoriesLoadFailed = false;
 
   late AnimationController _entranceController;
@@ -67,9 +70,8 @@ class _ChooseForMeScreenState extends ConsumerState<ChooseForMeScreen> with Tick
 
   Future<void> _loadPreferredParishes() async {
     try {
-      final ds = ref.read(listingDataSourceProvider);
       final ids = await UserParishPreferences.getPreferredParishIds();
-      final list = await ds.getParishes();
+      final list = await ref.read(parishRepositoryProvider).listParishes();
       if (!mounted) return;
       setState(() {
         _parishIds = Set.from(ids);
@@ -96,8 +98,7 @@ class _ChooseForMeScreenState extends ConsumerState<ChooseForMeScreen> with Tick
       _categoriesLoaded = false;
     });
     try {
-      final ds = ref.read(listingDataSourceProvider);
-      final categories = await ds.getCategories();
+      final categories = await ref.read(categoryRepositoryProvider).listCategories();
       if (!mounted) return;
       setState(() {
         _allCategories = categories;
@@ -119,7 +120,7 @@ class _ChooseForMeScreenState extends ConsumerState<ChooseForMeScreen> with Tick
   }
 
   /// Subcategories (tags) from the selected category only.
-  List<MockSubcategory> get _selectedSubcategories {
+  List<Subcategory> get _selectedSubcategories {
     if (_selectedCategoryId == null) return [];
     for (final c in _allCategories) {
       if (c.id == _selectedCategoryId) return c.subcategories;

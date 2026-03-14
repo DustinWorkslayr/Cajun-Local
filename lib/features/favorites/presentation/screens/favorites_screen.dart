@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:cajun_local/core/data/mock_data.dart';
+import 'package:cajun_local/features/businesses/data/models/business.dart';
+import 'package:cajun_local/features/businesses/data/models/business_category.dart';
+import 'package:cajun_local/features/categories/data/repositories/category_repository.dart';
 import 'package:cajun_local/features/favorites/presentation/providers/favorites_providers.dart';
 import 'package:cajun_local/core/theme/app_layout.dart';
 import 'package:cajun_local/core/theme/theme.dart';
@@ -19,9 +21,9 @@ class _FavoritesScreenState extends ConsumerState<FavoritesScreen> {
   /// Selected category id; null = "All".
   String? _selectedCategoryId;
 
-  /// Group listings by categoryId.
-  static Map<String, List<MockListing>> _groupByCategory(List<MockListing> listings) {
-    final map = <String, List<MockListing>>{};
+   /// Group listings by categoryId.
+  static Map<String, List<Business>> _groupByCategory(List<Business> listings) {
+    final map = <String, List<Business>>{};
     for (final l in listings) {
       final key = l.categoryId.isNotEmpty ? l.categoryId : 'other';
       map.putIfAbsent(key, () => []).add(l);
@@ -30,12 +32,11 @@ class _FavoritesScreenState extends ConsumerState<FavoritesScreen> {
   }
 
   /// Category display name.
-  static String _categoryDisplayName(String categoryId, List<MockListing> list) {
-    if (list.isNotEmpty && list.first.categoryName.isNotEmpty) {
-      return list.first.categoryName;
-    }
+  static String _categoryDisplayName(String categoryId, List<BusinessCategory> categories) {
     if (categoryId == 'other') return 'Other';
-    return categoryId;
+    final cat = categories.where((c) => c.id == categoryId).firstOrNull;
+    if (cat != null) return cat.name;
+    return categoryId[0].toUpperCase() + categoryId.substring(1).replaceAll('_', ' ');
   }
 
   @override
@@ -88,7 +89,8 @@ class _FavoritesScreenState extends ConsumerState<FavoritesScreen> {
                             ),
                           ),
                           ...categoryIds.map((cid) {
-                            final name = _categoryDisplayName(cid, grouped[cid]!);
+                            final categories = ref.watch(allCategoriesProvider).valueOrNull ?? [];
+                            final name = _categoryDisplayName(cid, categories);
                             return Padding(
                               padding: const EdgeInsets.only(right: 8),
                               child: FilterChip(
@@ -109,7 +111,8 @@ class _FavoritesScreenState extends ConsumerState<FavoritesScreen> {
                 if (_selectedCategoryId == null) ...[
                   ...categoryIds.expand((cid) {
                     final list = grouped[cid]!;
-                    final name = _categoryDisplayName(cid, list);
+                    final categories = ref.watch(allCategoriesProvider).valueOrNull ?? [];
+                    final name = _categoryDisplayName(cid, categories);
                     return [
                       SliverToBoxAdapter(
                         child: Padding(
@@ -261,7 +264,7 @@ class _FavoritesScreenState extends ConsumerState<FavoritesScreen> {
 class _FavoriteCard extends StatelessWidget {
   const _FavoriteCard({required this.listing, required this.onTap});
 
-  final MockListing listing;
+  final Business listing;
   final VoidCallback onTap;
 
   static const double _cardRadius = 14;
@@ -309,10 +312,10 @@ class _FavoriteCard extends StatelessWidget {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
-                    if (listing.tagline.isNotEmpty) ...[
+                    if (listing.tagline != null && listing.tagline!.isNotEmpty) ...[
                       const SizedBox(height: 4),
                       Text(
-                        listing.tagline,
+                        listing.tagline!,
                         style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,

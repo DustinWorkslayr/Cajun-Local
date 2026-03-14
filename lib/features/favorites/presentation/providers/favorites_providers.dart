@@ -1,8 +1,9 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
-import 'package:cajun_local/core/data/listing_data_source.dart';
-import 'package:cajun_local/core/data/mock_data.dart';
-import 'package:cajun_local/core/data/providers/app_data_providers.dart';
+
+import 'package:cajun_local/features/businesses/data/models/business.dart';
+import 'package:cajun_local/features/businesses/data/repositories/business_repository.dart';
+import 'package:cajun_local/features/favorites/data/repositories/favorites_repository.dart';
 import 'package:cajun_local/features/auth/presentation/controllers/auth_controller.dart';
 
 part 'favorites_providers.g.dart';
@@ -46,16 +47,14 @@ class UserFavoriteIds extends _$UserFavoriteIds {
 }
 
 @riverpod
-Future<List<MockListing>> favoriteListings(Ref ref) async {
+Future<List<Business>> favoriteListings(Ref ref) async {
   final idsAsync = ref.watch(userFavoriteIdsProvider);
   final ids = idsAsync.valueOrNull ?? {};
   
   if (ids.isEmpty) return [];
   
-  final ds = ref.watch(listingDataSourceProvider);
+  final repo = BusinessRepository();
   
-  // Fetch in batches if there are many, or just Future.wait for smaller sets.
-  // For favorites, usually it's not hundreds.
-  final results = await Future.wait(ids.map((id) => ds.getListingById(id)));
-  return results.whereType<MockListing>().toList();
+  final results = await Future.wait(ids.map((id) => repo.getById(id)));
+  return results.whereType<Business>().toList();
 }

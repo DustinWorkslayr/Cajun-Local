@@ -6,12 +6,12 @@ part of 'favorites_providers.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$favoriteListingsHash() => r'209946d37c057128717db446527101e9b90a8e1c';
+String _$favoriteListingsHash() => r'e49b09a1e412cfcf16851b1cb3d2abb4d4c750b3';
 
 /// See also [favoriteListings].
 @ProviderFor(favoriteListings)
 final favoriteListingsProvider =
-    AutoDisposeFutureProvider<List<MockListing>>.internal(
+    AutoDisposeFutureProvider<List<Business>>.internal(
       favoriteListings,
       name: r'favoriteListingsProvider',
       debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
@@ -23,7 +23,7 @@ final favoriteListingsProvider =
 
 @Deprecated('Will be removed in 3.0. Use Ref instead')
 // ignore: unused_element
-typedef FavoriteListingsRef = AutoDisposeFutureProviderRef<List<MockListing>>;
+typedef FavoriteListingsRef = AutoDisposeFutureProviderRef<List<Business>>;
 String _$userFavoriteIdsHash() => r'd83cbedd98f3e6886c116fcaa8def7b7528bd71f';
 
 /// See also [UserFavoriteIds].

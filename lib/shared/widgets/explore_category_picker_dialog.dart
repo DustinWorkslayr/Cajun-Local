@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cajun_local/core/data/category_icons.dart';
-import 'package:cajun_local/core/data/mock_data.dart';
+import 'package:cajun_local/features/businesses/data/models/business_category.dart';
 import 'package:cajun_local/core/theme/theme.dart';
 
 /// Sentinel for "Explore all" so we can tell it apart from dialog dismissed (null).
@@ -10,7 +10,7 @@ const String kExploreAllSentinel = '';
 /// Returns [kExploreAllSentinel] for "Explore all", category id for a category, or null if dismissed.
 Future<String?> showExploreCategoryPickerDialog({
   required BuildContext context,
-  required List<MockCategory> categories,
+  required List<BusinessCategory> categories,
 }) async {
   return showDialog<String?>(
     context: context,
@@ -22,7 +22,7 @@ Future<String?> showExploreCategoryPickerDialog({
 class _ExploreCategoryPickerDialog extends StatelessWidget {
   const _ExploreCategoryPickerDialog({required this.categories});
 
-  final List<MockCategory> categories;
+   final List<BusinessCategory> categories;
 
   @override
   Widget build(BuildContext context) {
@@ -144,7 +144,7 @@ class _ExploreAllCard extends StatelessWidget {
 class _CategoryCard extends StatelessWidget {
   const _CategoryCard({required this.category, required this.onTap});
 
-  final MockCategory category;
+  final BusinessCategory category;
   final VoidCallback onTap;
 
   @override
@@ -167,7 +167,7 @@ class _CategoryCard extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(getCategoryIconData(category.iconName), size: 24, color: AppTheme.specNavy),
+               Icon(getCategoryIconData(category.icon), size: 24, color: AppTheme.specNavy),
               const SizedBox(height: 4),
               Text(
                 category.name,

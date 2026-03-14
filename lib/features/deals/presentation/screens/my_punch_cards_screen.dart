@@ -1,13 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cajun_local/features/auth/presentation/controllers/auth_controller.dart';
-import 'package:cajun_local/core/data/providers/app_data_providers.dart';
-import 'package:cajun_local/core/data/mock_data.dart';
 import 'package:cajun_local/core/theme/app_layout.dart';
 import 'package:cajun_local/core/theme/theme.dart';
 import 'package:cajun_local/features/listing/presentation/screens/listing_detail_screen.dart';
 import 'package:cajun_local/shared/widgets/app_buttons.dart';
 import 'package:cajun_local/shared/widgets/punch_qr_sheet.dart';
+import 'package:cajun_local/features/deals/data/models/user_punch_card.dart';
+import 'package:cajun_local/features/deals/data/models/punch_card_program.dart';
+import 'package:cajun_local/features/deals/data/repositories/user_punch_cards_repository.dart';
+import 'package:cajun_local/features/deals/data/repositories/punch_card_programs_repository.dart';
+import 'package:cajun_local/features/businesses/data/repositories/business_repository.dart';
+import 'package:cajun_local/features/businesses/data/models/business.dart';
 
 /// Screen showing the current user's punch card enrollments (punches and redemption).
 class MyPunchCardsScreen extends ConsumerWidget {
@@ -16,7 +20,6 @@ class MyPunchCardsScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
-    final dataSource = ref.watch(listingDataSourceProvider);
     final padding = AppLayout.horizontalPadding(context);
     final userId = ref.watch(authControllerProvider).valueOrNull?.id;
 
@@ -47,14 +50,14 @@ class MyPunchCardsScreen extends ConsumerWidget {
         backgroundColor: AppTheme.specOffWhite,
         foregroundColor: AppTheme.specNavy,
       ),
-      body: FutureBuilder<List<MockPunchCard>>(
-        future: dataSource.getMyPunchCards(),
+      body: FutureBuilder<List<UserPunchCard>>(
+        future: ref.read(userPunchCardsRepositoryProvider).listForUser(userId),
         builder: (context, snapshot) {
-          final cards = snapshot.data ?? [];
-          if (snapshot.connectionState == ConnectionState.waiting && cards.isEmpty) {
+          final enrollments = snapshot.data ?? [];
+          if (snapshot.connectionState == ConnectionState.waiting && enrollments.isEmpty) {
             return const Center(child: CircularProgressIndicator());
           }
-          if (cards.isEmpty) {
+          if (enrollments.isEmpty) {
             return Center(
               child: Padding(
                 padding: const EdgeInsets.all(24),
@@ -84,27 +87,38 @@ class MyPunchCardsScreen extends ConsumerWidget {
           }
           return ListView.builder(
             padding: EdgeInsets.fromLTRB(padding.left, 16, padding.right, 28),
-            itemCount: cards.length,
+            itemCount: enrollments.length,
             itemBuilder: (context, index) {
-              final card = cards[index];
-              return FutureBuilder<MockListing?>(
-                future: dataSource.getListingById(card.listingId),
-                builder: (context, listSnap) {
-                  final listing = listSnap.data;
-                  return Padding(
-                    padding: const EdgeInsets.only(bottom: 14),
-                    child: _MyPunchCardTile(
-                      card: card,
-                      listingName: listing?.name,
-                      onTap: () {
-                        Navigator.of(
-                          context,
-                        ).push(MaterialPageRoute<void>(builder: (_) => ListingDetailScreen(listingId: card.listingId)));
-                      },
-                      onShowQr: card.userPunchCardId != null && !card.isRedeemed
-                          ? () => showPunchQrSheet(context, programId: card.id, cardTitle: card.title)
-                          : null,
-                    ),
+              final enrollment = enrollments[index];
+              return FutureBuilder<List<PunchCardProgram>>(
+                future: ref.read(punchCardProgramsRepositoryProvider).listActive(),
+                builder: (context, programsSnap) {
+                  final program = (programsSnap.data ?? []).where((p) => p.id == enrollment.programId).firstOrNull;
+                  if (program == null) return const SizedBox.shrink();
+                  
+                  return FutureBuilder<Business?>(
+                    future: BusinessRepository().getById(program.businessId),
+                    builder: (context, bizSnap) {
+                      final business = bizSnap.data;
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 14),
+                        child: _MyPunchCardTile(
+                          enrollment: enrollment,
+                          program: program,
+                          listingName: business?.name,
+                          onTap: () {
+                            Navigator.of(context).push(
+                              MaterialPageRoute<void>(
+                                builder: (_) => ListingDetailScreen(listingId: program.businessId),
+                              ),
+                            );
+                          },
+                          onShowQr: !enrollment.isRedeemed
+                              ? () => showPunchQrSheet(context, programId: program.id, cardTitle: program.title ?? 'Loyalty Program')
+                              : null,
+                        ),
+                      );
+                    }
                   );
                 },
               );
@@ -117,9 +131,16 @@ class MyPunchCardsScreen extends ConsumerWidget {
 }
 
 class _MyPunchCardTile extends StatelessWidget {
-  const _MyPunchCardTile({required this.card, required this.onTap, this.listingName, this.onShowQr});
+  const _MyPunchCardTile({
+    required this.enrollment,
+    required this.program,
+    required this.onTap,
+    this.listingName,
+    this.onShowQr,
+  });
 
-  final MockPunchCard card;
+  final UserPunchCard enrollment;
+  final PunchCardProgram program;
   final VoidCallback onTap;
   final String? listingName;
   final VoidCallback? onShowQr;
@@ -151,14 +172,14 @@ class _MyPunchCardTile extends StatelessWidget {
                 children: [
                   Expanded(
                     child: Text(
-                      card.title,
+                      program.title ?? 'Loyalty Program',
                       style: theme.textTheme.titleMedium?.copyWith(
                         fontWeight: FontWeight.w700,
                         color: AppTheme.specNavy,
                       ),
                     ),
                   ),
-                  if (card.isRedeemed)
+                  if (enrollment.isRedeemed)
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                       decoration: BoxDecoration(
@@ -186,13 +207,13 @@ class _MyPunchCardTile extends StatelessWidget {
               ],
               const SizedBox(height: 10),
               Text(
-                card.rewardDescription,
+                program.rewardDescription,
                 style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
               ),
               const SizedBox(height: 14),
               Row(
                 children: [
-                  for (int i = 0; i < card.punchesRequired; i++)
+                  for (int i = 0; i < program.punchesRequired; i++)
                     Padding(
                       padding: const EdgeInsets.only(right: 6),
                       child: Container(
@@ -200,23 +221,23 @@ class _MyPunchCardTile extends StatelessWidget {
                         height: 28,
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
-                          color: i < card.punchesEarned
+                          color: i < enrollment.currentPunches
                               ? AppTheme.specGold
                               : theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.8),
                           border: Border.all(
-                            color: i < card.punchesEarned
+                            color: i < enrollment.currentPunches
                                 ? AppTheme.specGold
                                 : theme.colorScheme.outline.withValues(alpha: 0.5),
                           ),
                         ),
-                        child: i < card.punchesEarned
+                        child: i < enrollment.currentPunches
                             ? Icon(Icons.check_rounded, size: 16, color: AppTheme.specNavy)
                             : null,
                       ),
                     ),
                   const SizedBox(width: 8),
                   Text(
-                    '${card.punchesEarned}/${card.punchesRequired} punches',
+                    '${enrollment.currentPunches}/${program.punchesRequired} punches',
                     style: theme.textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w600, color: AppTheme.specNavy),
                   ),
                 ],

@@ -1,12 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cajun_local/features/auth/presentation/controllers/auth_controller.dart';
-import 'package:cajun_local/core/data/providers/app_data_providers.dart';
 import 'package:cajun_local/core/data/deal_type_icons.dart';
-import 'package:cajun_local/core/data/mock_data.dart';
+import 'package:cajun_local/features/deals/data/models/deal.dart';
+import 'package:cajun_local/features/locations/data/models/parish.dart';
+import 'package:cajun_local/features/businesses/data/models/business_category.dart';
 import 'package:cajun_local/features/deals/data/models/user_deal.dart';
+import 'package:cajun_local/features/deals/data/repositories/deals_repository.dart';
+import 'package:cajun_local/features/locations/data/repositories/parish_repository.dart';
+import 'package:cajun_local/features/categories/data/repositories/category_repository.dart';
 import 'package:cajun_local/features/businesses/data/repositories/business_managers_repository.dart';
+import 'package:cajun_local/features/businesses/data/repositories/business_repository.dart';
 import 'package:cajun_local/features/profile/data/models/user_parish_preferences.dart';
+import 'package:cajun_local/features/profile/data/repositories/profiles_repository.dart';
+import 'package:cajun_local/features/businesses/data/models/business.dart';
 import 'package:cajun_local/core/theme/app_layout.dart';
 import 'package:cajun_local/core/theme/theme.dart';
 import 'package:cajun_local/features/deals/presentation/screens/my_deals_screen.dart';
@@ -16,7 +23,10 @@ import 'package:cajun_local/shared/widgets/animated_entrance.dart';
 import 'package:cajun_local/shared/widgets/deal_detail_popup.dart';
 import 'package:cajun_local/shared/widgets/app_buttons.dart';
 import 'package:cajun_local/core/revenuecat/present_subscription_paywall.dart';
-import 'package:cajun_local/features/profile/data/repositories/profiles_repository.dart';
+import 'package:cajun_local/core/data/providers/app_data_providers.dart';
+import 'package:cajun_local/features/deals/data/repositories/punch_card_programs_repository.dart';
+import 'package:cajun_local/features/deals/data/models/punch_card_program.dart';
+import 'package:cajun_local/features/deals/data/repositories/user_deals_repository.dart';
 
 /// Deal type filter options: value (null = all) and label.
 const List<({String? value, String label})> _dealTypeFilterOptions = [
@@ -169,14 +179,14 @@ class _DiscountsTab extends ConsumerStatefulWidget {
 }
 
 class _DiscountsTabState extends ConsumerState<_DiscountsTab> {
-  List<MockDeal>? _deals;
+  List<Deal>? _deals;
   Map<String, UserDeal> _userDealsByDealId = {};
   bool _loading = true;
   Set<String> _parishIds = {};
-  List<MockParish> _parishes = [];
+  List<Parish> _parishes = [];
   String? _categoryId;
   String? _dealType;
-  List<MockCategory> _categories = [];
+  List<BusinessCategory> _categories = [];
   bool _parishIdsInitialized = false;
 
   @override
@@ -184,13 +194,13 @@ class _DiscountsTabState extends ConsumerState<_DiscountsTab> {
     super.didChangeDependencies();
     if (!_parishIdsInitialized) {
       _parishIdsInitialized = true;
-      final ds = ref.read(listingDataSourceProvider);
-      Future.wait<dynamic>([UserParishPreferences.getPreferredParishIds(), ds.getParishes()])
+      final parishRepo = ref.read(parishRepositoryProvider);
+      Future.wait<dynamic>([UserParishPreferences.getPreferredParishIds(), parishRepo.listParishes()])
           .then((results) {
             if (mounted) {
               setState(() {
                 _parishIds = results[0] as Set<String>;
-                _parishes = results[1] as List<MockParish>;
+                _parishes = results[1] as List<Parish>;
                 _load();
               });
             }
@@ -213,20 +223,31 @@ class _DiscountsTabState extends ConsumerState<_DiscountsTab> {
 
   Future<void> _load() async {
     setState(() => _loading = true);
-    final dataSource = ref.read(listingDataSourceProvider);
+    final categoryRepo = ref.read(categoryRepositoryProvider);
+    final dealRepo = ref.read(dealsRepositoryProvider);
     final uid = ref.read(authControllerProvider).valueOrNull?.id;
-    final repo = ref.read(userDealsRepositoryProvider);
+    final userDealRepo = ref.read(userDealsRepositoryProvider);
 
-    final categories = await dataSource.getCategories();
+    final categories = await categoryRepo.listCategories();
     final results = await Future.wait<dynamic>([
-      dataSource.getActiveDealsFiltered(parishIds: _parishIds, categoryId: _categoryId, dealType: _dealType),
-      uid != null ? repo.listForUser(uid) : Future<List<UserDeal>>.value([]),
+      dealRepo.listApproved(),
+      uid != null ? userDealRepo.listForUser(uid) : Future<List<UserDeal>>.value([]),
     ]);
     if (mounted) {
       final list = results[1] as List<UserDeal>;
+      final allApproved = results[0] as List<Deal>;
+      
+      // Client-side filtering as fallback until API supports it
+      final filtered = allApproved.where((d) {
+        if (_dealType != null && d.dealType != _dealType) return false;
+        // Parish/Category filtering would require fetching business details or backend support.
+        // For now, listing all approved deals.
+        return true;
+      }).toList();
+
       setState(() {
         _categories = categories;
-        _deals = results[0] as List<MockDeal>;
+        _deals = filtered;
         _userDealsByDealId = {for (var e in list) e.dealId: e};
         _loading = false;
       });
@@ -352,9 +373,8 @@ class _DiscountsTabState extends ConsumerState<_DiscountsTab> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final dataSource = ref.watch(listingDataSourceProvider);
-    final userDealsRepo = ref.watch(userDealsRepositoryProvider);
     final uid = ref.watch(authControllerProvider).valueOrNull?.id;
+    final userDealRepo = ref.watch(userDealsRepositoryProvider);
     final userTierService = ref.watch(userTierServiceProvider);
     final canClaimDeals = uid != null && (userTierService.value?.canClaimDeals ?? false);
     final canSeeExclusiveDeals = userTierService.value?.canSeeExclusiveDeals ?? false;
@@ -526,7 +546,7 @@ class _DiscountsTabState extends ConsumerState<_DiscountsTab> {
                     child: Material(
                       color: Colors.transparent,
                       child: InkWell(
-                        onTap: () => presentSubscriptionPaywall(context),
+                        onTap: () => presentSubscriptionPaywall(context, ref),
                         borderRadius: BorderRadius.circular(_cardRadius),
                         child: Container(
                           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
@@ -583,9 +603,9 @@ class _DiscountsTabState extends ConsumerState<_DiscountsTab> {
                   child: AnimatedEntrance(
                     delay: Duration(milliseconds: 60 * (index + 1)),
                     child: isMemberOnlyLocked
-                        ? _LockedDealCard(deal: deal, onTap: () => presentSubscriptionPaywall(context))
-                        : FutureBuilder<MockListing?>(
-                            future: dataSource.getListingById(deal.listingId),
+                        ? _LockedDealCard(deal: deal, onTap: () => presentSubscriptionPaywall(context, ref))
+                        : FutureBuilder<Business?>(
+                            future: BusinessRepository().getById(deal.businessId),
                             builder: (context, listSnap) {
                               final listing = listSnap.data;
                               return _DealCard(
@@ -601,7 +621,7 @@ class _DiscountsTabState extends ConsumerState<_DiscountsTab> {
                                         ? () {
                                             Navigator.of(context).push(
                                               MaterialPageRoute<void>(
-                                                builder: (_) => ListingDetailScreen(listingId: deal.listingId),
+                                                builder: (_) => ListingDetailScreen(listingId: deal.businessId),
                                               ),
                                             );
                                           }
@@ -609,29 +629,19 @@ class _DiscountsTabState extends ConsumerState<_DiscountsTab> {
                                     isClaimed: isClaimed,
                                     isUsed: isUsed,
                                     usedAt: ud?.usedAt,
-                                    onClaim: canClaimDeals
+                                    onClaim: canClaimDeals && uid != null
                                         ? () async {
-                                            await userDealsRepo.claim(uid, deal.id);
+                                            await userDealRepo.claim(uid, deal.id);
                                             final authRepoInternal = ref.read(profilesRepositoryProvider);
-                                            final claimerProfile = await authRepoInternal.getProfile(uid);
                                             final ownerUserId =
                                                 await BusinessManagersRepository().getFirstManagerUserId(
-                                                  deal.listingId,
+                                                  deal.businessId,
                                                 ) ??
-                                                await ref.read(businessRepositoryProvider).getCreatedBy(deal.listingId);
+                                                await ref.read(businessRepositoryProvider).getCreatedBy(deal.businessId);
                                             if (ownerUserId != null) {
                                               final ownerProfile = await authRepoInternal.getProfile(ownerUserId);
                                               final to = ownerProfile?.email?.trim();
                                               if (to != null && to.isNotEmpty) {
-                                                /* await SendEmailService().send(
-                                                  to: to,
-                                                  template: 'deal_claimed',
-                                                  variables: {
-                                                    'display_name': claimerProfile?.displayName ?? 'A customer',
-                                                    'deal_title': deal.title,
-                                                    'business_name': listing?.name ?? deal.listingId,
-                                                  },
-                                                ); // TODO: Implement backend email notification */
                                               }
                                             }
                                             if (mounted) {
@@ -647,7 +657,7 @@ class _DiscountsTabState extends ConsumerState<_DiscountsTab> {
                                           }
                                         : null,
                                     onClaimUpsell: uid != null && !canClaimDeals
-                                        ? () => presentSubscriptionPaywall(context)
+                                        ? () => presentSubscriptionPaywall(context, ref)
                                         : null,
                                   );
                                 },
@@ -668,7 +678,7 @@ class _DiscountsTabState extends ConsumerState<_DiscountsTab> {
 class _LockedDealCard extends StatelessWidget {
   const _LockedDealCard({required this.deal, required this.onTap});
 
-  final MockDeal deal;
+  final Deal deal;
   final VoidCallback onTap;
 
   @override
@@ -717,7 +727,7 @@ class _LockedDealCard extends StatelessWidget {
                     ),
                     const SizedBox(height: 6),
                     Text(
-                      deal.description,
+                      deal.description ?? '',
                       style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
@@ -748,7 +758,7 @@ class _LockedDealCard extends StatelessWidget {
 class _DealCard extends StatelessWidget {
   const _DealCard({required this.deal, required this.onTap, this.listingName, this.isUsed = false});
 
-  final MockDeal deal;
+  final Deal deal;
   final String? listingName;
   final VoidCallback onTap;
   final bool isUsed;
@@ -820,36 +830,10 @@ class _DealCard extends StatelessWidget {
               ),
               const SizedBox(height: 10),
               Text(
-                deal.description,
+                deal.description ?? '',
                 style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant, height: 1.35),
               ),
-              if (deal.code != null) ...[
-                const SizedBox(height: 10),
-                Row(
-                  children: [
-                    Text(
-                      'Code: ',
-                      style: theme.textTheme.labelMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-                    ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                      decoration: BoxDecoration(
-                        color: AppTheme.specOffWhite,
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: AppTheme.specGold.withValues(alpha: 0.5)),
-                      ),
-                      child: Text(
-                        deal.code!,
-                        style: theme.textTheme.labelLarge?.copyWith(
-                          fontWeight: FontWeight.w700,
-                          letterSpacing: 1.2,
-                          color: AppTheme.specNavy,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
+              const SizedBox(height: 10),
             ],
           ),
         ),
@@ -866,12 +850,12 @@ class _LoyaltyTab extends ConsumerStatefulWidget {
 }
 
 class _LoyaltyTabState extends ConsumerState<_LoyaltyTab> {
-  List<MockPunchCard>? _punchCards;
+  List<PunchCardProgram>? _programs;
   bool _loading = true;
   Set<String> _parishIds = {};
-  List<MockParish> _parishes = [];
+  List<Parish> _parishes = [];
   String? _categoryId;
-  List<MockCategory> _categories = [];
+  List<BusinessCategory> _categories = [];
   bool _parishIdsInitialized = false;
 
   @override
@@ -879,13 +863,13 @@ class _LoyaltyTabState extends ConsumerState<_LoyaltyTab> {
     super.didChangeDependencies();
     if (!_parishIdsInitialized) {
       _parishIdsInitialized = true;
-      final ds = ref.read(listingDataSourceProvider);
-      Future.wait<dynamic>([UserParishPreferences.getPreferredParishIds(), ds.getParishes()])
+      final parishRepo = ref.read(parishRepositoryProvider);
+      Future.wait<dynamic>([UserParishPreferences.getPreferredParishIds(), parishRepo.listParishes()])
           .then((results) {
             if (mounted) {
               setState(() {
                 _parishIds = results[0] as Set<String>;
-                _parishes = results[1] as List<MockParish>;
+                _parishes = results[1] as List<Parish>;
                 _load();
               });
             }
@@ -901,20 +885,23 @@ class _LoyaltyTabState extends ConsumerState<_LoyaltyTab> {
           });
       return;
     }
-    if (_punchCards == null && _loading && _parishIdsInitialized) {
+    if (_programs == null && _loading && _parishIdsInitialized) {
       _load();
     }
   }
 
   Future<void> _load() async {
     setState(() => _loading = true);
-    final dataSource = ref.read(listingDataSourceProvider);
-    final categories = await dataSource.getCategories();
-    final cards = await dataSource.getActivePunchCardsFiltered(parishIds: _parishIds, categoryId: _categoryId);
+    final categoryRepo = ref.read(categoryRepositoryProvider);
+    final punchRepo = ref.read(punchCardProgramsRepositoryProvider);
+
+    final categories = await categoryRepo.listCategories();
+    final programs = await punchRepo.listActive();
+
     if (mounted) {
       setState(() {
         _categories = categories;
-        _punchCards = cards;
+        _programs = programs;
         _loading = false;
       });
     }
@@ -1039,9 +1026,8 @@ class _LoyaltyTabState extends ConsumerState<_LoyaltyTab> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final dataSource = ref.watch(listingDataSourceProvider);
     final padding = AppLayout.horizontalPadding(context);
-    final punchCards = _punchCards ?? const [];
+    final programs = _programs ?? const [];
 
     return CustomScrollView(
       slivers: [
@@ -1168,36 +1154,39 @@ class _LoyaltyTabState extends ConsumerState<_LoyaltyTab> {
           const SliverFillRemaining(
             child: Center(child: CircularProgressIndicator(color: AppTheme.specNavy)),
           )
-        else if (punchCards.isEmpty)
+        else if (programs.isEmpty)
           SliverFillRemaining(child: _emptyState(context, theme))
         else
           SliverPadding(
             padding: EdgeInsets.fromLTRB(padding.left, 0, padding.right, 28),
             sliver: SliverList(
               delegate: SliverChildBuilderDelegate((context, index) {
-                final card = punchCards[index];
-                return FutureBuilder<MockListing?>(
-                  future: dataSource.getListingById(card.listingId),
-                  builder: (context, listSnap) {
-                    final listing = listSnap.data;
-                    return Padding(
-                      padding: const EdgeInsets.only(bottom: 14),
-                      child: AnimatedEntrance(
+                final program = programs[index];
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 14),
+                  child: FutureBuilder<Business?>(
+                    future: BusinessRepository().getById(program.businessId),
+                    builder: (context, listSnap) {
+                      final listing = listSnap.data;
+                      return AnimatedEntrance(
                         delay: Duration(milliseconds: 60 * (index + 1)),
                         child: _LoyaltyCard(
-                          punchCard: card,
+                          program: program,
                           listingName: listing?.name,
                           onTap: () {
+                            if (listing == null) return;
                             Navigator.of(context).push(
-                              MaterialPageRoute<void>(builder: (_) => ListingDetailScreen(listingId: card.listingId)),
+                              MaterialPageRoute<void>(
+                                builder: (_) => ListingDetailScreen(listingId: program.businessId),
+                              ),
                             );
                           },
                         ),
-                      ),
-                    );
-                  },
+                      );
+                    },
+                  ),
                 );
-              }, childCount: punchCards.length),
+              }, childCount: programs.length),
             ),
           ),
       ],
@@ -1206,9 +1195,9 @@ class _LoyaltyTabState extends ConsumerState<_LoyaltyTab> {
 }
 
 class _LoyaltyCard extends StatelessWidget {
-  const _LoyaltyCard({required this.punchCard, required this.onTap, this.listingName});
+  const _LoyaltyCard({required this.program, required this.onTap, this.listingName});
 
-  final MockPunchCard punchCard;
+  final PunchCardProgram program;
   final VoidCallback? onTap;
   final String? listingName;
 
@@ -1238,7 +1227,7 @@ class _LoyaltyCard extends StatelessWidget {
                 children: [
                   Expanded(
                     child: Text(
-                      punchCard.title,
+                      program.title ?? 'Loyalty Program',
                       style: theme.textTheme.titleMedium?.copyWith(
                         fontWeight: FontWeight.w700,
                         color: AppTheme.specNavy,
@@ -1257,38 +1246,25 @@ class _LoyaltyCard extends StatelessWidget {
               ],
               const SizedBox(height: 10),
               Text(
-                punchCard.rewardDescription,
+                program.rewardDescription,
                 style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
               ),
               const SizedBox(height: 14),
               Row(
                 children: [
-                  for (int i = 0; i < punchCard.punchesRequired; i++)
-                    Padding(
-                      padding: const EdgeInsets.only(right: 6),
-                      child: Container(
-                        width: 28,
-                        height: 28,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: i < punchCard.punchesEarned
-                              ? AppTheme.specGold
-                              : theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.8),
-                          border: Border.all(
-                            color: i < punchCard.punchesEarned
-                                ? AppTheme.specGold
-                                : theme.colorScheme.outline.withValues(alpha: 0.5),
-                          ),
-                        ),
-                        child: i < punchCard.punchesEarned
-                            ? Icon(Icons.check_rounded, size: 16, color: AppTheme.specNavy)
-                            : null,
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: AppTheme.specGold.withValues(alpha: 0.2),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      '${program.punchesRequired} punches for reward',
+                      style: theme.textTheme.labelMedium?.copyWith(
+                        fontWeight: FontWeight.w700,
+                        color: AppTheme.specNavy,
                       ),
                     ),
-                  const SizedBox(width: 8),
-                  Text(
-                    '${punchCard.punchesEarned}/${punchCard.punchesRequired}',
-                    style: theme.textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w600, color: AppTheme.specNavy),
                   ),
                 ],
               ),

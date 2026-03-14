@@ -2,7 +2,7 @@ import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'package:cajun_local/core/data/deal_type_icons.dart';
-import 'package:cajun_local/core/data/mock_data.dart';
+import 'package:cajun_local/features/deals/data/models/deal.dart';
 import 'package:cajun_local/shared/widgets/app_buttons.dart';
 import 'package:cajun_local/core/theme/theme.dart';
 import 'package:cajun_local/features/listing/presentation/screens/listing_detail_screen.dart';
@@ -22,7 +22,7 @@ class DealDetailPopup extends StatefulWidget {
     this.onClaimUpsell,
   });
 
-  final MockDeal deal;
+  final Deal deal;
   final String? listingName;
   final VoidCallback? onGoToListing;
   final bool showViewBusinessButton;
@@ -46,7 +46,7 @@ class DealDetailPopup extends StatefulWidget {
   /// Shows a glassy bottom sheet with full deal details.
   static Future<void> show(
     BuildContext context, {
-    required MockDeal deal,
+    required Deal deal,
     String? listingName,
     VoidCallback? onGoToListing,
     bool showViewBusinessButton = true,
@@ -160,14 +160,14 @@ class _DealDetailPopupState extends State<DealDetailPopup> {
                           ),
                           child: Icon(DealTypeIcons.iconFor(widget.deal.dealType), size: 36, color: AppTheme.specGold),
                         ),
-                        if (widget.deal.expiry != null) ...[
+                        if (widget.deal.endDate != null) ...[
                           const SizedBox(height: 8),
                           Row(
                             children: [
                               Icon(Icons.schedule_rounded, size: 16, color: AppTheme.specGold.withValues(alpha: 0.9)),
                               const SizedBox(width: 6),
                               Text(
-                                'Valid until ${_formatDate(widget.deal.expiry!)} — don\'t miss out',
+                                'Valid until ${_formatDate(widget.deal.endDate!)} — don\'t miss out',
                                 style: theme.textTheme.bodySmall?.copyWith(
                                   color: AppTheme.specWhite.withValues(alpha: 0.9),
                                 ),
@@ -222,45 +222,11 @@ class _DealDetailPopupState extends State<DealDetailPopup> {
                             ],
                           ),
                           child: Text(
-                            widget.deal.description,
+                            widget.deal.description ?? 'No description provided.',
                             style: theme.textTheme.bodyMedium?.copyWith(color: AppTheme.specNavy, height: 1.5),
                           ),
                         ),
-                        if (widget.deal.code != null) ...[
-                          const SizedBox(height: 14),
-                          Text(
-                            'Your promo code',
-                            style: theme.textTheme.labelMedium?.copyWith(
-                              color: AppTheme.specNavy.withValues(alpha: 0.8),
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                          const SizedBox(height: 6),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
-                            decoration: BoxDecoration(
-                              color: AppTheme.specGold.withValues(alpha: 0.2),
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(color: AppTheme.specGold, width: 2),
-                            ),
-                            child: Row(
-                              children: [
-                                Expanded(
-                                  child: Text(
-                                    widget.deal.code!,
-                                    style: theme.textTheme.titleLarge?.copyWith(
-                                      fontWeight: FontWeight.w800,
-                                      letterSpacing: 1.5,
-                                      fontFamily: 'monospace',
-                                      color: AppTheme.specNavy,
-                                    ),
-                                  ),
-                                ),
-                                Icon(Icons.copy_rounded, size: 20, color: AppTheme.specNavy.withValues(alpha: 0.6)),
-                              ],
-                            ),
-                          ),
-                        ],
+                        // Codes are not in Deal model yet, omitting for now or placing in description
                         const SizedBox(height: 20),
                         if (onClaim != null || onClaimUpsell != null || isClaimed) ...[
                           if (isClaimed)
@@ -337,7 +303,7 @@ class _DealDetailPopupState extends State<DealDetailPopup> {
                               } else {
                                 Navigator.of(context).push(
                                   MaterialPageRoute<void>(
-                                    builder: (_) => ListingDetailScreen(listingId: widget.deal.listingId),
+                                    builder: (_) => ListingDetailScreen(listingId: widget.deal.businessId),
                                   ),
                                 );
                               }

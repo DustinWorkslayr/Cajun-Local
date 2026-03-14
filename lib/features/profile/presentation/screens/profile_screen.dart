@@ -6,7 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cajun_local/features/auth/presentation/controllers/auth_controller.dart';
 import 'package:cajun_local/core/data/services/app_storage_service.dart';
 import 'package:cajun_local/core/data/services/storage_upload_constants.dart';
-import 'package:cajun_local/core/data/app_data_scope.dart';
+import 'package:cajun_local/core/data/providers/app_data_providers.dart';
 import 'package:cajun_local/core/data/mock_data.dart';
 import 'package:cajun_local/features/businesses/data/repositories/business_managers_repository.dart';
 import 'package:cajun_local/features/messaging/data/repositories/form_submissions_repository.dart';
@@ -58,7 +58,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    // Load once when context is ready (AppDataScope available).
+    // Load once when context is ready.
     if (!_loadStarted) {
       _loadStarted = true;
       _dataFuture = _loadProfileData();
@@ -67,16 +67,17 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
 
   Future<_ProfilePageData> _loadProfileData() async {
     try {
-      final scope = AppDataScope.of(context);
-      final dataSource = scope.dataSource;
-      final useBackend = dataSource.useBackend;
-
-      final userFuture = dataSource.getCurrentUser();
-      final uid = ref.read(authControllerProvider).valueOrNull?.id;
-      final businessIdsFuture = (useBackend && uid != null)
+      final user = ref.read(authControllerProvider).valueOrNull;
+      final mockUser = user != null
+          ? MockUser(displayName: user.email.split('@').first, email: user.email, avatarUrl: null)
+          : _anonymousUser;
+      
+      final uid = user?.id;
+      final businessIdsFuture = (uid != null)
           ? BusinessManagersRepository().listBusinessIdsForUser(uid)
           : Future.value(<String>[]);
-      final results = await Future.wait<dynamic>([userFuture, businessIdsFuture]).timeout(
+      
+      final results = await Future.wait<dynamic>([Future.value(mockUser), businessIdsFuture]).timeout(
         const Duration(seconds: 15),
         onTimeout: () {
           throw TimeoutException('Profile load timed out');
@@ -117,10 +118,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   /// Starts Stripe Checkout for user subscription (Cajun+ Membership). Opens browser.
   Future<void> _startStripeCheckout() async {
     if (!mounted) return;
-    final scope = AppDataScope.of(context);
     ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Opening checkout…')));
     try {
-      final plans = await UserPlansRepository().list();
+      final plans = await ref.read(userPlansRepositoryProvider).list();
       if (!mounted) return;
       final tier = StripeConfig.defaultUserTier;
       final plan = plans.where((p) => p.tier.toLowerCase() == tier).firstOrNull;
@@ -173,7 +173,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         if (!mounted) return;
         final uid = ref.read(authControllerProvider).valueOrNull?.id;
         if (uid != null) {
-          scope.userTierService.refresh(uid);
+          ref.read(userTierServiceProvider).refresh(uid);
         }
       } else {
         if (!mounted) return;
@@ -202,10 +202,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       if (await canLaunchUrl(uri)) {
         await launchUrl(uri, mode: LaunchMode.externalApplication);
         if (!mounted) return;
-        final scope = AppDataScope.of(context);
         final uid = ref.read(authControllerProvider).valueOrNull?.id;
         if (uid != null) {
-          scope.userTierService.refresh(uid);
+          ref.read(userTierServiceProvider).refresh(uid);
         }
       } else {
         if (!mounted) return;
@@ -537,10 +536,8 @@ class _ProfileContentState extends ConsumerState<_ProfileContent> with SingleTic
   }
 
   Future<void> _pickAndSetProfilePhoto() async {
-    final scope = AppDataScope.of(context);
     final uid = ref.read(authControllerProvider).valueOrNull?.id;
-    final useBackend = scope.dataSource.useBackend;
-    if (!useBackend || uid == null) {
+    if (uid == null) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Sign in to add a profile picture')));
       return;
     }
@@ -573,11 +570,8 @@ class _ProfileContentState extends ConsumerState<_ProfileContent> with SingleTic
 
   @override
   Widget build(BuildContext context) {
-    final scope = AppDataScope.of(context);
-    final dataSource = scope.dataSource;
-    final useBackend = dataSource.useBackend;
     final uid = ref.watch(authControllerProvider).valueOrNull?.id;
-    final signedIn = useBackend && uid != null;
+    final signedIn = uid != null;
     final hasListings = widget.user.ownedListingIds.isNotEmpty || widget.isBusinessManager;
     final padding = AppLayout.horizontalPadding(context);
     final isTablet = AppLayout.isTablet(context);
@@ -956,9 +950,8 @@ class _ProfileContentState extends ConsumerState<_ProfileContent> with SingleTic
 
   Widget _buildBillingTab(BuildContext context, EdgeInsets padding) {
     final theme = Theme.of(context);
-    final scope = AppDataScope.of(context);
     return ValueListenableBuilder<ResolvedPermissions?>(
-      valueListenable: scope.userTierService.permissions,
+      valueListenable: ref.read(userTierServiceProvider).permissions,
       builder: (context, perms, _) {
         final resolved = perms ?? ResolvedPermissions.free;
         final isPaid = resolved.tier == 'plus' || resolved.tier == 'pro';
@@ -1038,9 +1031,9 @@ class _ProfileContentState extends ConsumerState<_ProfileContent> with SingleTic
                   if (isPaid) ...[
                     const SizedBox(height: 10),
                     TextButton(
-                      onPressed: scope.revenueCatService != null
+                      onPressed: ref.read(revenueCatServiceProvider) != null
                           ? () async {
-                              await scope.revenueCatService!.presentCustomerCenter(
+                              await ref.read(revenueCatServiceProvider)!.presentCustomerCenter(
                                 onRestoreCompleted: (info) {
                                   if (context.mounted) {
                                     ScaffoldMessenger.of(
@@ -1067,7 +1060,7 @@ class _ProfileContentState extends ConsumerState<_ProfileContent> with SingleTic
                         minimumSize: Size.zero,
                         tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                       ),
-                      child: Text(scope.revenueCatService != null ? 'Manage subscription' : 'Open billing portal'),
+                      child: Text(ref.read(revenueCatServiceProvider) != null ? 'Manage subscription' : 'Open billing portal'),
                     ),
                   ],
                 ],
@@ -1127,9 +1120,9 @@ class _ProfileContentState extends ConsumerState<_ProfileContent> with SingleTic
           const SizedBox(height: 16),
           AppPrimaryButton(
             onPressed: () async {
-              final rc = AppDataScope.of(context).revenueCatService;
+              final rc = ref.read(revenueCatServiceProvider);
               if (rc != null) {
-                await presentSubscriptionPaywall(context);
+                await presentSubscriptionPaywall(context, ref);
               } else {
                 widget.onStartStripeCheckout?.call();
               }

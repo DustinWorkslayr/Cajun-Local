@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cajun_local/app/app.dart';
+import 'package:cajun_local/core/data/providers/app_data_providers.dart';
 import 'package:cajun_local/core/revenuecat/revenuecat_service.dart';
 
 void main() async {
@@ -9,7 +10,10 @@ void main() async {
   final revenueCatService = await RevenueCatService.configure();
   runApp(
     ProviderScope(
-      child: SizedBox.expand(child: CajunLocalApp(revenueCatService: revenueCatService)),
+      overrides: [
+        revenueCatServiceProvider.overrideWithValue(revenueCatService),
+      ],
+      child: const SizedBox.expand(child: CajunLocalApp()),
     ),
   );
 }

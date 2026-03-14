@@ -66,6 +66,14 @@ class BusinessImagesRepository {
       'status': approvedBy != null ? _approved : 'pending',
     });
   }
+
+  Future<void> delete(String id) async {
+    await _api.deleteImage(id);
+  }
+
+  Future<void> reorder(String businessId, List<String> orderedIds) async {
+    await _api.updateSortOrder(orderedIds);
+  }
 }
 
 @riverpod

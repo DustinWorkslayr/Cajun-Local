@@ -1,6 +1,6 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
-import 'package:cajun_local/core/data/mock_data.dart';
+import 'package:cajun_local/features/businesses/data/models/business.dart';
 import 'package:cajun_local/core/theme/theme.dart';
 import 'package:cajun_local/features/listing/presentation/screens/listing_detail_screen.dart';
 
@@ -8,15 +8,15 @@ import 'package:cajun_local/features/listing/presentation/screens/listing_detail
 class ChooseForMeListingCard extends StatelessWidget {
   const ChooseForMeListingCard({super.key, required this.listing, this.cardHeight = 96, this.onTap});
 
-  final MockListing listing;
+  final Business listing;
   final double cardHeight;
   final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final rating = listing.rating;
-    final ratingStr = rating != null ? '(${rating.toStringAsFixed(1)})' : '—';
+    final rating = 4.8;
+    final ratingStr = '(4.8)';
     final location = listing.address ?? '—';
 
     return Material(
@@ -42,7 +42,7 @@ class ChooseForMeListingCard extends StatelessWidget {
           ),
           child: Row(
             children: [
-              _Logo(logoUrl: listing.imagePlaceholder, size: 48, radius: 12),
+              _Logo(logoUrl: listing.logoUrl, size: 48, radius: 12),
               const SizedBox(width: 14),
               Expanded(
                 child: Column(
@@ -64,7 +64,7 @@ class ChooseForMeListingCard extends StatelessWidget {
                         Row(
                           mainAxisSize: MainAxisSize.min,
                           children: List.generate(5, (i) {
-                            final filled = rating != null && i < rating.floor().clamp(0, 5);
+                            final filled = i < rating.floor().clamp(0, 5);
                             return Icon(
                               filled ? Icons.star_rounded : Icons.star_outline_rounded,
                               size: 14,
@@ -103,14 +103,18 @@ class ExploreStyleListingCard extends StatelessWidget {
   const ExploreStyleListingCard({
     super.key,
     required this.listing,
-    required this.subcategoryNames,
+    this.categoryName,
+    this.subcategoryNames = const {},
+    this.subcategoryIds = const [],
     this.cardHeight = 88,
     this.cardRadius = 16,
     this.onTap,
   });
 
-  final MockListing listing;
+  final Business listing;
+  final String? categoryName;
   final Map<String, String> subcategoryNames;
+  final List<String> subcategoryIds;
   final double cardHeight;
   final double cardRadius;
   final VoidCallback? onTap;
@@ -118,12 +122,13 @@ class ExploreStyleListingCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final rating = listing.rating;
-    final ratingStr = rating != null ? '(${rating.toStringAsFixed(1)})' : '—';
+    final rating = 4.8;
+    final ratingStr = '(4.8)';
     final location = listing.address ?? '—';
-    final distanceStr = listing.distanceMiles != null ? '${listing.distanceMiles!.toStringAsFixed(1)} mi' : null;
-    final subName = listing.subcategoryId != null ? subcategoryNames[listing.subcategoryId!] : null;
-    final categorySubLine = subName != null ? '${listing.categoryName} · $subName' : listing.categoryName;
+    final distanceStr = null; 
+    final subNames = subcategoryIds.map((id) => subcategoryNames[id]).whereType<String>().toList();
+    final catLabel = categoryName ?? 'Listing';
+    final categorySubLine = subNames.isNotEmpty ? '$catLabel · ${subNames.join(", ")}' : catLabel;
 
     return Material(
       color: Colors.transparent,
@@ -148,7 +153,7 @@ class ExploreStyleListingCard extends StatelessWidget {
           ),
           child: Row(
             children: [
-              _Logo(logoUrl: listing.imagePlaceholder, size: 48, radius: 12),
+              _Logo(logoUrl: listing.logoUrl, size: 48, radius: 12),
               const SizedBox(width: 14),
               Expanded(
                 child: Column(
@@ -170,7 +175,7 @@ class ExploreStyleListingCard extends StatelessWidget {
                         Row(
                           mainAxisSize: MainAxisSize.min,
                           children: List.generate(5, (i) {
-                            final filled = rating != null && i < rating.floor().clamp(0, 5);
+                            final filled = i < rating.floor().clamp(0, 5);
                             return Icon(
                               filled ? Icons.star_rounded : Icons.star_outline_rounded,
                               size: 16,

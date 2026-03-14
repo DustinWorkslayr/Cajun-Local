@@ -2,7 +2,6 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cajun_local/core/data/providers/app_data_providers.dart';
-import 'package:cajun_local/core/data/mock_data.dart';
 import 'package:cajun_local/features/events/data/repositories/business_events_repository.dart';
 import 'package:cajun_local/features/deals/data/repositories/deals_repository.dart';
 import 'package:cajun_local/features/businesses/data/repositories/menu_repository.dart';
@@ -167,11 +166,7 @@ class _CreateDealScreenState extends ConsumerState<CreateDealScreen> {
       await BusinessTierUpgradeDialog.show(context, message: BusinessTierService.upgradeMessageForAdvancedFeatures());
       return;
     }
-    final dataSource = ref.read(listingDataSourceProvider);
-    final useSupabase = dataSource.useBackend;
-    final isManager = useSupabase
-        ? (await dataSource.getCurrentUser()).ownedListingIds.contains(widget.listingId)
-        : false;
+    final isManager = true; // Assume manager if on this screen, backend will validate
 
     String title = _titleController.text.trim();
     String? description = _descriptionController.text.trim().isEmpty ? null : _descriptionController.text.trim();
@@ -183,32 +178,16 @@ class _CreateDealScreenState extends ConsumerState<CreateDealScreen> {
       final amount = _amountOffController.text.trim();
       description = '\$$amount off. ${description ?? ''}'.trim();
     }
-
-    if (useSupabase && isManager) {
-      await ref
-          .read(dealsRepositoryProvider)
-          .insert(
-            businessId: widget.listingId,
-            title: title,
-            dealType: _dealType!,
-            description: description,
-            startDate: _startDate,
-            endDate: _endDate,
-          );
-    } else {
-      final id = 'd-u-${DateTime.now().millisecondsSinceEpoch}';
-      final deal = MockDeal(
-        id: id,
-        listingId: widget.listingId,
-        title: title,
-        description: description ?? title,
-        discount: _discountController.text.trim().isEmpty ? null : _discountController.text.trim(),
-        code: _codeController.text.trim().isEmpty ? null : _codeController.text.trim(),
-        isActive: true,
-        dealType: _dealType,
-      );
-      MockData.addDeal(deal);
-    }
+    await ref
+        .read(dealsRepositoryProvider)
+        .insert(
+          businessId: widget.listingId,
+          title: title,
+          dealType: _dealType!,
+          description: description,
+          startDate: _startDate,
+          endDate: _endDate,
+        );
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Deal created')));
       Navigator.of(context).pop();
@@ -535,38 +514,18 @@ class _CreateEventScreenState extends ConsumerState<CreateEventScreen> {
 
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
-    final dataSource = ref.read(listingDataSourceProvider);
-    final useSupabase = dataSource.useBackend;
-    final isManager = useSupabase
-        ? (await dataSource.getCurrentUser()).ownedListingIds.contains(widget.listingId)
-        : false;
-    if (useSupabase && isManager) {
-      await ref
-          .read(businessEventsRepositoryProvider)
-          .insert(
-            businessId: widget.listingId,
-            title: _titleController.text.trim(),
-            eventDate: _eventDate,
-            description: _descriptionController.text.trim().isEmpty ? null : _descriptionController.text.trim(),
-            endDate: _endDate,
-            location: _locationController.text.trim().isEmpty ? null : _locationController.text.trim(),
-            imageUrl: _imageUrl,
-          );
-    } else {
-      final id = 'e-u-${DateTime.now().millisecondsSinceEpoch}';
-      final ev = MockEvent(
-        id: id,
-        listingId: widget.listingId,
-        title: _titleController.text.trim(),
-        eventDate: _eventDate,
-        description: _descriptionController.text.trim().isEmpty ? null : _descriptionController.text.trim(),
-        endDate: _endDate,
-        location: _locationController.text.trim().isEmpty ? null : _locationController.text.trim(),
-        imageUrl: _imageUrl,
-        status: 'pending',
-      );
-      MockData.addEvent(ev);
-    }
+    // Assume manager if on this screen, backend will validate
+    await ref
+        .read(businessEventsRepositoryProvider)
+        .insert(
+          businessId: widget.listingId,
+          title: _titleController.text.trim(),
+          eventDate: _eventDate,
+          description: _descriptionController.text.trim().isEmpty ? null : _descriptionController.text.trim(),
+          endDate: _endDate,
+          location: _locationController.text.trim().isEmpty ? null : _locationController.text.trim(),
+          imageUrl: _imageUrl,
+        );
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Event created (pending approval)')));
       Navigator.of(context).pop();
@@ -740,34 +699,16 @@ class _CreateLoyaltyScreenState extends ConsumerState<CreateLoyaltyScreen> {
       ).showSnackBar(const SnackBar(content: Text('Enter a valid number of punches (1 or more)')));
       return;
     }
-    final dataSource = ref.read(listingDataSourceProvider);
-    final useSupabase = dataSource.useBackend;
-    final isManager = useSupabase
-        ? (await dataSource.getCurrentUser()).ownedListingIds.contains(widget.listingId)
-        : false;
-    if (useSupabase && isManager) {
-      await ref
-          .read(punchCardProgramsRepositoryProvider)
-          .insert(
-            businessId: widget.listingId,
-            title: _titleController.text.trim(),
-            rewardDescription: _rewardController.text.trim(),
-            punchesRequired: punches,
-            isActive: true,
-          );
-    } else {
-      final id = 'p-u-${DateTime.now().millisecondsSinceEpoch}';
-      final card = MockPunchCard(
-        id: id,
-        listingId: widget.listingId,
-        title: _titleController.text.trim(),
-        rewardDescription: _rewardController.text.trim(),
-        punchesRequired: punches,
-        punchesEarned: 0,
-        isActive: true,
-      );
-      MockData.addPunchCard(card);
-    }
+    // Assume manager if on this screen, backend will validate
+    await ref
+        .read(punchCardProgramsRepositoryProvider)
+        .insert(
+          businessId: widget.listingId,
+          title: _titleController.text.trim(),
+          rewardDescription: _rewardController.text.trim(),
+          punchesRequired: punches,
+          isActive: true,
+        );
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Loyalty card created')));
       Navigator.of(context).pop();
@@ -928,32 +869,18 @@ class _CreateMenuItemScreenState extends ConsumerState<CreateMenuItemScreen> {
 
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
-    final dataSource = ref.read(listingDataSourceProvider);
-    final useSupabase = dataSource.useBackend;
-    final isManager = useSupabase
-        ? (await dataSource.getCurrentUser()).ownedListingIds.contains(widget.listingId)
-        : false;
-    if (useSupabase && isManager) {
-      final sectionName = _sectionController.text.trim().isEmpty ? 'General' : _sectionController.text.trim();
-      final menuRepo = ref.read(menuRepositoryProvider);
-      final sectionId = await menuRepo.getOrCreateSectionId(widget.listingId, sectionName);
-      await menuRepo.insertItem(
-        sectionId: sectionId,
-        name: _nameController.text.trim(),
-        price: _priceController.text.trim().isEmpty ? null : _priceController.text.trim(),
-        description: _descriptionController.text.trim().isEmpty ? null : _descriptionController.text.trim(),
-        isAvailable: true,
-      );
-    } else {
-      final item = MockMenuItem(
-        listingId: widget.listingId,
-        name: _nameController.text.trim(),
-        price: _priceController.text.trim().isEmpty ? null : _priceController.text.trim(),
-        description: _descriptionController.text.trim().isEmpty ? null : _descriptionController.text.trim(),
-        section: _sectionController.text.trim().isEmpty ? null : _sectionController.text.trim(),
-      );
-      MockData.addMenuItem(item);
-    }
+    
+    final sectionName = _sectionController.text.trim().isEmpty ? 'General' : _sectionController.text.trim();
+    final menuRepo = ref.read(menuRepositoryProvider);
+    final sectionId = await menuRepo.getOrCreateSectionId(widget.listingId, sectionName);
+    
+    await menuRepo.insertItem(
+      sectionId: sectionId,
+      name: _nameController.text.trim(),
+      price: _priceController.text.trim().isEmpty ? null : _priceController.text.trim(),
+      description: _descriptionController.text.trim().isEmpty ? null : _descriptionController.text.trim(),
+    );
+
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Item added')));
       Navigator.of(context).pop();

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:cajun_local/core/data/app_data_scope.dart';
-import 'package:cajun_local/core/data/mock_data.dart';
+import 'package:cajun_local/features/locations/data/models/parish.dart';
+import 'package:cajun_local/features/locations/data/repositories/parish_repository.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cajun_local/core/theme/theme.dart';
 import 'package:cajun_local/shared/widgets/app_buttons.dart';
 import 'package:cajun_local/shared/widgets/app_logo.dart';
@@ -9,7 +10,7 @@ import 'package:cajun_local/shared/widgets/app_logo.dart';
 /// Caller saves parish IDs via UserParishPreferences and dismisses on completion.
 /// Use [initialParishIds] when re-opening to change parishes (e.g. from home chip).
 /// Use [parishOnly: true] to show only the parish step with a "Done" button.
-class ParishOnboardingDialog extends StatefulWidget {
+class ParishOnboardingDialog extends ConsumerStatefulWidget {
   const ParishOnboardingDialog({super.key, required this.onComplete, this.initialParishIds, this.parishOnly = false});
 
   /// Called with selected parish IDs when user finishes the flow. Caller saves and dismisses.
@@ -22,15 +23,15 @@ class ParishOnboardingDialog extends StatefulWidget {
   final bool parishOnly;
 
   @override
-  State<ParishOnboardingDialog> createState() => _ParishOnboardingDialogState();
+  ConsumerState<ParishOnboardingDialog> createState() => _ParishOnboardingDialogState();
 }
 
-class _ParishOnboardingDialogState extends State<ParishOnboardingDialog> with SingleTickerProviderStateMixin {
+class _ParishOnboardingDialogState extends ConsumerState<ParishOnboardingDialog> with SingleTickerProviderStateMixin {
   int _step = 0;
 
   late Set<String> _selectedParishIds;
   final Set<String> _selectedInterests = {};
-  List<MockParish> _parishes = [];
+  List<Parish> _parishes = [];
   bool _parishesLoaded = false;
 
   late AnimationController _entranceController;
@@ -64,8 +65,7 @@ class _ParishOnboardingDialogState extends State<ParishOnboardingDialog> with Si
   }
 
   Future<void> _loadParishes() async {
-    final ds = AppDataScope.of(context).dataSource;
-    final list = await ds.getParishes();
+    final list = await ref.read(parishRepositoryProvider).listParishes();
     if (mounted) {
       setState(() {
         _parishes = list;

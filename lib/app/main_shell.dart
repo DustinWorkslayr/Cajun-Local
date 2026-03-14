@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cajun_local/features/auth/presentation/controllers/auth_controller.dart';
-import 'package:cajun_local/core/data/app_data_scope.dart';
+import 'package:cajun_local/core/data/providers/app_data_providers.dart';
 import 'package:cajun_local/core/data/mock_data.dart';
 import 'package:cajun_local/features/businesses/data/repositories/business_managers_repository.dart';
 import 'package:cajun_local/features/businesses/data/repositories/business_repository.dart';
@@ -11,6 +11,7 @@ import 'package:cajun_local/debug_agent_log.dart';
 import 'package:cajun_local/features/profile/data/models/user_parish_preferences.dart';
 import 'package:cajun_local/core/theme/app_layout.dart';
 import 'package:cajun_local/core/theme/theme.dart';
+import 'package:cajun_local/features/categories/data/repositories/category_repository.dart';
 import 'package:cajun_local/features/categories/presentation/screens/categories_screen.dart';
 import 'package:cajun_local/features/deals/presentation/screens/deals_screen.dart';
 import 'package:cajun_local/features/favorites/presentation/screens/favorites_screen.dart';
@@ -108,7 +109,7 @@ class _MainShellState extends ConsumerState<MainShell> with SingleTickerProvider
       _currentIndex = 2; // Explore tab
       _exploreInitialCategoryId = null;
     });
-    final categories = await AppDataScope.of(context).dataSource.getCategories();
+    final categories = await ref.read(categoryRepositoryProvider).listCategories();
     if (!mounted) return;
     final selectedId = await showExploreCategoryPickerDialog(context: context, categories: categories);
     if (!mounted) return;
@@ -221,7 +222,7 @@ class _MainShellState extends ConsumerState<MainShell> with SingleTickerProvider
 
   void _onAskLocalTap() {
     final user = ref.read(authControllerProvider).valueOrNull;
-    final tierService = AppDataScope.of(context).userTierService;
+    final tierService = ref.read(userTierServiceProvider);
     if (user == null) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Sign in to use Ask Local.')));
       return;

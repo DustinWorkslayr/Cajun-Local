@@ -29,7 +29,7 @@ class BottomNavWidget extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final barCount = screenCount.clamp(1, _icons.length);
-    final bottomPadding = MediaQuery.paddingOf(context).bottom;
+
 
     return Container(
       decoration: BoxDecoration(
