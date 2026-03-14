@@ -127,14 +127,29 @@ class HomeQuickActionsWidget extends StatelessWidget {
       );
     }
 
-    return Row(
-      children: [
-        Expanded(child: chip('Deals', Icons.local_offer_rounded, onDeals)),
-        const SizedBox(width: 12),
-        Expanded(child: chip('Events', Icons.event_rounded, onEvents)),
-        const SizedBox(width: 12),
-        Expanded(child: chip('Choose for Me', Icons.shuffle_rounded, onChooseForMe)),
-      ],
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final useVertical = constraints.maxWidth < 360;
+        
+        return Wrap(
+          spacing: 12,
+          runSpacing: 12,
+          children: [
+            SizedBox(
+              width: useVertical ? double.infinity : (constraints.maxWidth - 24) / 3,
+              child: chip('Deals', Icons.local_offer_rounded, onDeals),
+            ),
+            SizedBox(
+              width: useVertical ? double.infinity : (constraints.maxWidth - 24) / 3,
+              child: chip('Events', Icons.event_rounded, onEvents),
+            ),
+            SizedBox(
+              width: useVertical ? double.infinity : (constraints.maxWidth - 24) / 3,
+              child: chip('Choose for Me', Icons.shuffle_rounded, onChooseForMe),
+            ),
+          ],
+        );
+      },
     );
   }
 }

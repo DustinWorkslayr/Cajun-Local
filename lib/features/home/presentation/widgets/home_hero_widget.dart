@@ -88,10 +88,11 @@ class HomeHeroWidget extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 12),
-                    Row(
+                    Wrap(
+                      spacing: 12,
+                      runSpacing: 12,
                       children: [
                         AppSecondaryButton(onPressed: onExplore, child: const Text('Explore')),
-                        const SizedBox(width: 12),
                         Material(
                           color: AppTheme.specOffWhite,
                           borderRadius: BorderRadius.circular(14),

@@ -56,7 +56,11 @@ class LatestPostCardWidget extends StatelessWidget {
             borderRadius: BorderRadius.circular(radius),
             border: Border.all(color: AppTheme.specNavy.withValues(alpha: 0.06)),
             boxShadow: [
-              BoxShadow(color: Colors.black.withValues(alpha: 0.06), blurRadius: 16, offset: const Offset(0, 4)),
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.06),
+                blurRadius: 16,
+                offset: const Offset(0, 4),
+              ),
             ],
           ),
           child: Column(
@@ -67,7 +71,7 @@ class LatestPostCardWidget extends StatelessWidget {
                 child: Stack(
                   children: [
                     SizedBox(
-                      height: 140,
+                      height: 128,
                       width: double.infinity,
                       child: coverUrl != null && coverUrl.isNotEmpty
                           ? CachedNetworkImage(
@@ -86,7 +90,7 @@ class LatestPostCardWidget extends StatelessWidget {
                       left: 0,
                       right: 0,
                       child: Container(
-                        height: 4,
+                        height: 3,
                         decoration: BoxDecoration(
                           gradient: LinearGradient(
                             begin: Alignment.centerLeft,
@@ -99,72 +103,80 @@ class LatestPostCardWidget extends StatelessWidget {
                   ],
                 ),
               ),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    if (parishLabel.isNotEmpty)
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: 6),
-                        child: Text(
-                          parishLabel,
-                          style: theme.textTheme.labelSmall?.copyWith(
-                            color: AppTheme.specNavy.withValues(alpha: 0.7),
-                            fontWeight: FontWeight.w600,
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(14, 10, 14, 10),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      if (parishLabel.isNotEmpty)
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 4),
+                          child: Text(
+                            parishLabel,
+                            style: theme.textTheme.labelSmall?.copyWith(
+                              color: AppTheme.specNavy.withValues(alpha: 0.7),
+                              fontWeight: FontWeight.w600,
+                              fontSize: 10,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                           ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
                         ),
-                      ),
-                    Text(
-                      post.title,
-                      style: theme.textTheme.titleSmall?.copyWith(
-                        fontWeight: FontWeight.w700,
-                        color: AppTheme.specNavy,
-                        height: 1.28,
-                      ),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    if (excerpt.isNotEmpty) ...[
-                      const SizedBox(height: 6),
                       Text(
-                        excerpt,
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: AppTheme.specNavy.withValues(alpha: 0.7),
-                          height: 1.35,
+                        post.title,
+                        style: theme.textTheme.titleSmall?.copyWith(
+                          fontWeight: FontWeight.w700,
+                          color: AppTheme.specNavy,
+                          height: 1.2,
+                          fontSize: 13,
                         ),
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                       ),
-                    ],
-                    if (dateStr.isNotEmpty) ...[
-                      const SizedBox(height: 8),
-                      Row(
-                        children: [
-                          Icon(Icons.schedule_rounded, size: 14, color: AppTheme.specNavy.withValues(alpha: 0.55)),
-                          const SizedBox(width: 4),
-                          Text(
-                            dateStr,
-                            style: theme.textTheme.labelSmall?.copyWith(
-                              color: AppTheme.specNavy.withValues(alpha: 0.65),
+                      if (excerpt.isNotEmpty) ...[
+                        const SizedBox(height: 4),
+                        Expanded(
+                          child: Text(
+                            excerpt,
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: AppTheme.specNavy.withValues(alpha: 0.7),
+                              height: 1.3,
+                              fontSize: 11,
                             ),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
                           ),
-                          const Spacer(),
-                          Text(
-                            'Read',
-                            style: theme.textTheme.labelSmall?.copyWith(
-                              fontWeight: FontWeight.w600,
-                              color: AppTheme.specGold,
+                        ),
+                      ],
+                      const Spacer(),
+                      if (dateStr.isNotEmpty) ...[
+                        const SizedBox(height: 6),
+                        Row(
+                          children: [
+                            Icon(Icons.schedule_rounded, size: 14, color: AppTheme.specNavy.withValues(alpha: 0.55)),
+                            const SizedBox(width: 4),
+                            Text(
+                              dateStr,
+                              style: theme.textTheme.labelSmall?.copyWith(
+                                color: AppTheme.specNavy.withValues(alpha: 0.65),
+                              ),
                             ),
-                          ),
-                          const SizedBox(width: 2),
-                          Icon(Icons.arrow_forward_rounded, size: 14, color: AppTheme.specGold),
-                        ],
-                      ),
+                            const Spacer(),
+                            Text(
+                              'Read',
+                              style: theme.textTheme.labelSmall?.copyWith(
+                                fontWeight: FontWeight.w600,
+                                color: AppTheme.specGold,
+                              ),
+                            ),
+                            const SizedBox(width: 2),
+                            Icon(Icons.arrow_forward_rounded, size: 14, color: AppTheme.specGold),
+                          ],
+                        ),
+                      ],
                     ],
-                  ],
+                  ),
                 ),
               ),
             ],
@@ -185,7 +197,9 @@ class LatestPostCardWidget extends StatelessWidget {
           colors: [AppTheme.specNavy.withValues(alpha: 0.12), AppTheme.specGold.withValues(alpha: 0.15)],
         ),
       ),
-      child: Center(child: Icon(Icons.article_rounded, size: 48, color: AppTheme.specNavy.withValues(alpha: 0.22))),
+      child: Center(
+        child: Icon(Icons.article_rounded, size: 48, color: AppTheme.specNavy.withValues(alpha: 0.22)),
+      ),
     );
   }
 }

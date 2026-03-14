@@ -31,30 +31,38 @@ class CategoryCardWidget extends StatelessWidget {
           ),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
+            mainAxisSize: MainAxisSize.min, // Added
             children: [
-              Icon(getCategoryIconData(category.iconName), size: 40, color: AppTheme.specNavy),
-              const SizedBox(height: 14),
-              Text(
-                category.name,
-                textAlign: TextAlign.center,
-                style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700, color: AppTheme.specNavy),
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
+              Icon(getCategoryIconData(category.iconName), size: 36, color: AppTheme.specNavy), // Reduced from 40
+              const SizedBox(height: 10), // Reduced from 14
+              Flexible( // Added Wrap
+                child: Text(
+                  category.name,
+                  textAlign: TextAlign.center,
+                  style: theme.textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.w700, 
+                    color: AppTheme.specNavy,
+                    fontSize: 13, // Slightly smaller
+                  ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
               ),
               if (category.count > 0) ...[
-                const SizedBox(height: 6),
+                const SizedBox(height: 4), // Reduced from 6
                 Text(
                   '${category.count} spots',
                   style: theme.textTheme.bodySmall?.copyWith(
                     color: Theme.of(context).colorScheme.onSurfaceVariant,
                     fontWeight: FontWeight.w500,
+                    fontSize: 11, // Slightly smaller
                   ),
                 ),
               ],
-              const SizedBox(height: 10),
+              const SizedBox(height: 8), // Reduced from 10
               Container(
-                height: 3,
-                width: 32,
+                height: 2.5, // Reduced from 3
+                width: 28, // Reduced from 32
                 decoration: BoxDecoration(
                   color: AppTheme.specGold.withValues(alpha: 0.8),
                   borderRadius: BorderRadius.circular(2),
