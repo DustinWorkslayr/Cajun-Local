@@ -495,7 +495,7 @@ class _DiscountsTabState extends ConsumerState<_DiscountsTab> {
                               Navigator.of(ctx).pop();
                             },
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: AppTheme.primaryColor,
+                              backgroundColor: Theme.of(context).colorScheme.primary,
                               foregroundColor: AppTheme.specNavy,
                             ),
                             label: Text(
@@ -1468,7 +1468,7 @@ class _LoyaltyTabState extends ConsumerState<_LoyaltyTab> {
                               Navigator.of(ctx).pop();
                             },
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: AppTheme.primaryColor,
+                              backgroundColor: Theme.of(context).colorScheme.primary,
                               foregroundColor: AppTheme.specNavy,
                             ),
                             label: Text(

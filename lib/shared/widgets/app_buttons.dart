@@ -38,9 +38,10 @@ class AppPrimaryButton extends StatelessWidget {
   Widget build(BuildContext context) {
     // Merge the provided style with our defaults.
     // We only apply defaults if the property is not provided in 'style'.
-    final defaultStyle = ElevatedButton.styleFrom(
-      backgroundColor: AppTheme.primaryColor,
-      foregroundColor: AppTheme.specNavy,
+    final foregroundColor = Theme.of(context).colorScheme.onPrimary;
+    final defaultStyle = FilledButton.styleFrom(
+      backgroundColor: Theme.of(context).colorScheme.primary,
+      foregroundColor: foregroundColor,
       padding: padding,
       minimumSize: minimumSize,
       elevation: 0,
@@ -60,7 +61,11 @@ class AppPrimaryButton extends StatelessWidget {
       return expanded ? SizedBox(width: double.infinity, child: btn) : btn;
     }
     final c = child ?? label!;
-    final btn = FilledButton(onPressed: onPressed, onLongPress: onLongPress, style: effectiveStyle, child: c);
+    final styledChild = DefaultTextStyle.merge(
+      style: TextStyle(color: foregroundColor, fontWeight: FontWeight.w900),
+      child: c,
+    );
+    final btn = FilledButton(onPressed: onPressed, onLongPress: onLongPress, style: effectiveStyle, child: styledChild);
     return expanded ? SizedBox(width: double.infinity, child: btn) : btn;
   }
 }

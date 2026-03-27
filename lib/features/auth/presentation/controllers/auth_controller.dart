@@ -9,8 +9,18 @@ part 'auth_controller.g.dart';
 class AuthController extends _$AuthController {
   @override
   FutureOr<UserModel?> build() async {
+    final startTime = DateTime.now();
     final api = ref.watch(authApiProvider);
-    return await api.initializeSession();
+    final user = await api.initializeSession();
+    
+    // Ensure splash screen visibility for at least 2 seconds for a premium feel
+    final elapsed = DateTime.now().difference(startTime);
+    const minDelay = Duration(seconds: 2);
+    if (elapsed < minDelay) {
+      await Future.delayed(minDelay - elapsed);
+    }
+    
+    return user;
   }
 
   Future<void> signIn({required String email, required String password}) async {

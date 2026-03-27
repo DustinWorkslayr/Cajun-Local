@@ -268,7 +268,7 @@ class _DealDetailPopupState extends State<DealDetailPopup> {
                                   }
                                 },
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: AppTheme.primaryColor,
+                            backgroundColor: Theme.of(context).colorScheme.primary,
                             foregroundColor: AppTheme.specNavy,
                           ),
                           icon: _isClaiming

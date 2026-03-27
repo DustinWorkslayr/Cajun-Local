@@ -311,7 +311,7 @@ class _ExploreFilterSheetState extends State<ExploreFilterSheet> {
                     AppPrimaryButton(
                       onPressed: () => widget.onApply(_filters, _openNowOnly),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: AppTheme.primaryColor,
+                        backgroundColor: Theme.of(context).colorScheme.primary,
                         foregroundColor: AppTheme.specNavy,
                       ),
                       label: const Text(

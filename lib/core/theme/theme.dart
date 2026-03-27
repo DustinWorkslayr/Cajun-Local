@@ -17,7 +17,7 @@ class AppTheme {
   static const double sectionMaxWidth = 800;
 
   // Spec colors (from Stitch v2 design system namedColors)
-  static const Color primaryColor = Color(0xFFEAB308); // secondary (brand) - updated to darker yellow/gold
+  // static const Color primaryColor = Color(0xFFEAB308); // secondary (brand) - updated to darker yellow/gold
 
   static const Color specNavy = Color(0xFF002045); // primary
   static const Color specGold = Color(0xFF795900); // secondary (brand)
@@ -55,9 +55,8 @@ class AppTheme {
 
     return FlexThemeData.light(
       colors: const FlexSchemeColor(
-        // primary: specGold,
-        primary: primaryColor,
-        primaryContainer: Color(0xFFFFDDB3),
+        primary: const Color(0xFFEAB308),
+        primaryContainer: const Color(0xFFFFDDB3),
         secondary: specNavy,
         secondaryContainer: Color(0xFFD6E3FF),
         tertiary: specRed,

@@ -26,8 +26,8 @@ extension BuildContextExtension on BuildContext {
           children: [
             Container(
               padding: const EdgeInsets.all(4),
-              decoration: BoxDecoration(color: AppTheme.primaryColor.withValues(alpha: 0.2), shape: BoxShape.circle),
-              child: const Icon(Icons.check_circle_rounded, color: AppTheme.primaryColor, size: 18),
+              decoration: BoxDecoration(color: colorScheme.primary.withOpacity(0.2), shape: BoxShape.circle),
+              child: Icon(Icons.check_circle_rounded, color: colorScheme.primary, size: 18),
             ),
             const SizedBox(width: 12),
             Expanded(
@@ -48,7 +48,7 @@ extension BuildContextExtension on BuildContext {
         elevation: 0,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16),
-          side: BorderSide(color: AppTheme.primaryColor.withValues(alpha: 0.3), width: 1),
+          side: BorderSide(color: colorScheme.primary.withOpacity(0.3), width: 1),
         ),
         margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
         duration: const Duration(seconds: 3),
@@ -64,7 +64,7 @@ extension BuildContextExtension on BuildContext {
           children: [
             Container(
               padding: const EdgeInsets.all(4),
-              decoration: BoxDecoration(color: AppTheme.specRed.withValues(alpha: 0.2), shape: BoxShape.circle),
+              decoration: BoxDecoration(color: AppTheme.specRed.withOpacity(0.2), shape: BoxShape.circle),
               child: const Icon(Icons.error_outline_rounded, color: AppTheme.specRed, size: 18),
             ),
             const SizedBox(width: 12),
@@ -86,7 +86,7 @@ extension BuildContextExtension on BuildContext {
         elevation: 0,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16),
-          side: BorderSide(color: AppTheme.specRed.withValues(alpha: 0.3), width: 1),
+          side: BorderSide(color: AppTheme.specRed.withOpacity(0.3), width: 1),
         ),
         margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
         duration: const Duration(seconds: 5),

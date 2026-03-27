@@ -21,6 +21,8 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:cajun_local/features/profile/presentation/widgets/profile_header_widget.dart';
 import 'package:cajun_local/features/profile/presentation/widgets/profile_sections.dart';
 import 'package:cajun_local/features/profile/presentation/widgets/profile_preferences_section.dart';
+import 'package:cajun_local/shared/widgets/app_confirmation_dialog.dart';
+import 'package:cajun_local/core/extensions/buildcontext_extension.dart';
 
 // --- Placeholder for failed loads ---
 const _anonymousUser = MockUser(displayName: '', email: null, avatarUrl: null, ownedListingIds: []);
@@ -244,7 +246,7 @@ class _ProfileUnifiedContent extends ConsumerWidget {
               padding.left == 0 ? 16.0 : padding.left,
               16.0,
               padding.right == 0 ? 16.0 : padding.right,
-              40.0,
+              110.0,
             ),
             sliver: SliverList(
               delegate: SliverChildListDelegate([
@@ -277,11 +279,20 @@ class _ProfileUnifiedContent extends ConsumerWidget {
                         padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
                       ),
                       onPressed: () async {
-                        await ref.read(authControllerProvider.notifier).signOut();
-                        if (context.mounted) {
-                          ScaffoldMessenger.of(
-                            context,
-                          ).showSnackBar(const SnackBar(content: Text('Signed out successfully')));
+                        final confirmed = await AppConfirmationDialog.show(
+                          context,
+                          title: 'Sign Out',
+                          content: 'Are you sure you want to sign out of your account?',
+                          confirmLabel: 'Sign Out',
+                          isDanger: true,
+                          icon: Icons.logout_rounded,
+                        );
+
+                        if (confirmed == true && context.mounted) {
+                          await ref.read(authControllerProvider.notifier).signOut();
+                          if (context.mounted) {
+                            context.showSuccessSnackBar('Signed out successfully');
+                          }
                         }
                       },
                       icon: const Icon(Icons.logout_rounded),

@@ -7,6 +7,7 @@ import 'package:cajun_local/features/auth/presentation/screens/forgot_password_r
 import 'package:cajun_local/shared/widgets/app_buttons.dart';
 import 'package:cajun_local/shared/widgets/app_logo.dart';
 import 'package:go_router/go_router.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 class SignInScreen extends ConsumerStatefulWidget {
   const SignInScreen({super.key});
@@ -51,32 +52,22 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
 
   Future<void> _submit() async {
     if (!(_formKey.currentState?.validate() ?? false)) return;
-
-    setState(() {
-      _errorMessage = null;
-      _loading = true;
-    });
-
-    final email = _emailController.text.trim();
-    final password = _passwordController.text;
+    setState(() { _errorMessage = null; _loading = true; });
 
     try {
-      await ref.read(authControllerProvider.notifier).signIn(email: email, password: password);
+      await ref.read(authControllerProvider.notifier).signIn(
+        email: _emailController.text.trim(), 
+        password: _passwordController.text
+      );
       if (mounted) {
         if (_rememberMe) {
           await SignInPreferences.setRememberMe(true);
-          await SignInPreferences.setLastEmail(email);
+          await SignInPreferences.setLastEmail(_emailController.text.trim());
         } else {
           await SignInPreferences.setRememberMe(false);
           await SignInPreferences.clear();
         }
       }
-      
-      final state = ref.read(authControllerProvider);
-      if (state.hasError) {
-        throw state.error!;
-      }
-
       if (mounted) setState(() => _loading = false);
     } catch (e) {
       if (mounted) {
@@ -89,280 +80,260 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
   }
 
   Future<void> _signInWithGoogle() async {
-    setState(() {
-      _errorMessage = null;
-      _loading = true;
-    });
+    setState(() { _errorMessage = null; _loading = true; });
     try {
       await ref.read(authControllerProvider.notifier).signInWithGoogle();
       if (mounted) setState(() => _loading = false);
     } catch (e) {
-      if (mounted) {
-        setState(() {
-          _errorMessage = e.toString();
-          _loading = false;
-        });
-      }
+      if (mounted) setState(() { _errorMessage = e.toString(); _loading = false; });
     }
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-    final primary = colorScheme.primary;
-    final isTablet = MediaQuery.sizeOf(context).width >= AppTheme.breakpointTablet;
-    final mediaHeight = MediaQuery.sizeOf(context).height;
-    final skylineHeight = isTablet ? mediaHeight * 0.08 : mediaHeight * 0.14;
     final isDark = theme.brightness == Brightness.dark;
-    final surfaceColor = isDark ? colorScheme.surface : AppTheme.specWhite;
-    final cardBorderColor = isDark
-        ? colorScheme.outlineVariant.withValues(alpha: 0.5)
-        : AppTheme.specNavy.withValues(alpha: 0.12);
-    final cardShadowColor = isDark ? Colors.black26 : AppTheme.specNavy.withValues(alpha: 0.08);
+    final width = MediaQuery.sizeOf(context).width;
+    final isTablet = width >= AppTheme.breakpointTablet;
+
+    final bgColor = isDark ? AppTheme.specNavy : AppTheme.specWhite;
+    final textColor = isDark ? Colors.white : AppTheme.specNavy;
 
     return Scaffold(
-      backgroundColor: isDark ? colorScheme.surface : AppTheme.specOffWhite,
-      body: LayoutBuilder(
-        builder: (context, constraints) {
-          return Column(
-            children: [
-              Expanded(
-                child: SafeArea(
-                  bottom: false,
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
-                    child: Form(
-                      key: _formKey,
-                      child: LayoutBuilder(
-                        builder: (context, formConstraints) {
-                          return SingleChildScrollView(
-                            child: ConstrainedBox(
-                              constraints: BoxConstraints(minHeight: formConstraints.maxHeight),
-                              child: IntrinsicHeight(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    const SizedBox(height: 16),
-                                    Center(child: AppLogo(height: 88)),
-                                    const SizedBox(height: 10),
-                                    Center(
-                                      child: Container(
-                                        width: 56,
-                                        height: 4,
-                                        decoration: BoxDecoration(
-                                          color: AppTheme.specGold,
-                                          borderRadius: BorderRadius.circular(2),
-                                        ),
-                                      ),
-                                    ),
-                                    const SizedBox(height: 24),
-                                    Center(
-                                      child: Text(
-                                        'Sign in to your account',
-                                        style: theme.textTheme.headlineSmall?.copyWith(
-                                          color: AppTheme.specNavy,
-                                          fontWeight: FontWeight.w700,
-                                        ),
-                                      ),
-                                    ),
-                                    const SizedBox(height: 28),
-                                    Center(
-                                      child: ConstrainedBox(
-                                        constraints: BoxConstraints(maxWidth: isTablet ? 400 : double.infinity),
-                                        child: Container(
-                                          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 28),
-                                          decoration: BoxDecoration(
-                                            color: surfaceColor,
-                                            borderRadius: BorderRadius.circular(20),
-                                            border: Border.all(color: cardBorderColor, width: 1),
-                                            boxShadow: [BoxShadow(color: cardShadowColor, blurRadius: 24, offset: const Offset(0, 8))],
-                                          ),
-                                          child: Column(
-                                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                                            children: [
-                                              TextFormField(
-                                                controller: _emailController,
-                                                decoration: InputDecoration(
-                                                  labelText: 'Email',
-                                                  hintText: 'you@example.com',
-                                                  prefixIcon: Icon(Icons.email_outlined, color: primary),
-                                                  focusedBorder: OutlineInputBorder(
-                                                    borderRadius: BorderRadius.circular(12),
-                                                    borderSide: const BorderSide(color: AppTheme.specNavy, width: 1.5),
-                                                  ),
-                                                ),
-                                                keyboardType: TextInputType.emailAddress,
-                                                autocorrect: false,
-                                                textInputAction: TextInputAction.next,
-                                                onFieldSubmitted: (_) => FocusScope.of(context).nextFocus(),
-                                                validator: (v) {
-                                                  if (v == null || v.trim().isEmpty) return 'Enter your email';
-                                                  return null;
-                                                },
-                                              ),
-                                              const SizedBox(height: 18),
-                                              TextFormField(
-                                                controller: _passwordController,
-                                                decoration: InputDecoration(
-                                                  labelText: 'Password',
-                                                  hintText: '••••••••',
-                                                  prefixIcon: Icon(Icons.lock_outline_rounded, color: primary),
-                                                  focusedBorder: OutlineInputBorder(
-                                                    borderRadius: BorderRadius.circular(12),
-                                                    borderSide: const BorderSide(color: AppTheme.specNavy, width: 1.5),
-                                                  ),
-                                                ),
-                                                obscureText: true,
-                                                textInputAction: TextInputAction.done,
-                                                onFieldSubmitted: (_) => _submit(),
-                                                validator: (v) {
-                                                  if (v == null || v.isEmpty) return 'Enter your password';
-                                                  return null;
-                                                },
-                                              ),
-                                              const SizedBox(height: 14),
-                                              Row(
-                                                children: [
-                                                  SizedBox(
-                                                    height: 24,
-                                                    width: 24,
-                                                    child: Checkbox(
-                                                      value: _rememberMe,
-                                                      onChanged: _loading ? null : (v) => setState(() => _rememberMe = v ?? false),
-                                                      fillColor: WidgetStateProperty.resolveWith<Color>(
-                                                        (Set<WidgetState> states) =>
-                                                            states.contains(WidgetState.selected) ? AppTheme.specRed : Colors.transparent,
-                                                      ),
-                                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
-                                                    ),
-                                                  ),
-                                                  const SizedBox(width: 10),
-                                                  GestureDetector(
-                                                    onTap: _loading ? null : () => setState(() => _rememberMe = !_rememberMe),
-                                                    child: Text('Remember me', style: theme.textTheme.bodyMedium?.copyWith(color: AppTheme.specNavy)),
-                                                  ),
-                                                  const Spacer(),
-                                                  TextButton(
-                                                    onPressed: _loading ? null : () {
-                                                      Navigator.of(context).push(
-                                                        MaterialPageRoute<void>(
-                                                          builder: (_) => const ForgotPasswordRequestScreen(),
-                                                        ),
-                                                      );
-                                                    },
-                                                    child: Text(
-                                                      'Forgot password?',
-                                                      style: TextStyle(color: AppTheme.specRed, fontWeight: FontWeight.w600),
-                                                    ),
-                                                  ),
-                                                ],
-                                              ),
-                                              if (_errorMessage != null) ...[
-                                                const SizedBox(height: 18),
-                                                Container(
-                                                  padding: const EdgeInsets.all(12),
-                                                  decoration: BoxDecoration(color: colorScheme.errorContainer, borderRadius: BorderRadius.circular(12)),
-                                                  child: Text(
-                                                    _errorMessage!,
-                                                    style: theme.textTheme.bodySmall?.copyWith(color: colorScheme.onErrorContainer),
-                                                  ),
-                                                ),
-                                              ],
-                                              const SizedBox(height: 24),
-                                              AppPrimaryButton(
-                                                onPressed: _loading ? null : _submit,
-                                                child: _loading
-                                                    ? SizedBox(
-                                                        height: 22,
-                                                        width: 22,
-                                                        child: CircularProgressIndicator(strokeWidth: 2, color: AppTheme.specNavy),
-                                                      )
-                                                    : const Text(
-                                                        'Sign in',
-                                                        style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
-                                                      ),
-                                              ),
-                                              const SizedBox(height: 22),
-                                              Row(
-                                                children: [
-                                                  Expanded(child: Divider(color: AppTheme.specNavy.withValues(alpha: 0.25))),
-                                                  Padding(
-                                                    padding: const EdgeInsets.symmetric(horizontal: 14),
-                                                    child: Text(
-                                                      'or',
-                                                      style: theme.textTheme.bodySmall?.copyWith(
-                                                        color: AppTheme.specNavy.withValues(alpha: 0.7),
-                                                        fontWeight: FontWeight.w500,
-                                                      ),
-                                                    ),
-                                                  ),
-                                                  Expanded(child: Divider(color: AppTheme.specNavy.withValues(alpha: 0.25))),
-                                                ],
-                                              ),
-                                              const SizedBox(height: 22),
-                                              OutlinedButton(
-                                                onPressed: _loading ? null : _signInWithGoogle,
-                                                style: OutlinedButton.styleFrom(
-                                                  padding: const EdgeInsets.symmetric(vertical: 14),
-                                                  side: BorderSide(color: AppTheme.specNavy.withValues(alpha: 0.5), width: 1.5),
-                                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                                                  foregroundColor: AppTheme.specNavy,
-                                                ),
-                                                child: Row(
-                                                  mainAxisAlignment: MainAxisAlignment.center,
-                                                  mainAxisSize: MainAxisSize.min,
-                                                  children: [
-                                                    Image.asset(
-                                                      'assets/images/googleicon.webp',
-                                                      width: 22,
-                                                      height: 22,
-                                                      fit: BoxFit.contain,
-                                                      errorBuilder: (_, __, ___) => Icon(Icons.g_mobiledata_rounded, size: 22, color: AppTheme.specNavy),
-                                                    ),
-                                                    const SizedBox(width: 12),
-                                                    Text(
-                                                      'Sign in with Google',
-                                                      style: theme.textTheme.labelLarge?.copyWith(color: AppTheme.specNavy, fontWeight: FontWeight.w600),
-                                                    ),
-                                                  ],
-                                                ),
-                                              ),
-                                              const SizedBox(height: 18),
-                                              Center(
-                                                child: TextButton(
-                                                  onPressed: _loading ? null : () => context.go('/auth/register'),
-                                                  child: const Text(
-                                                    'Need an account? Sign up',
-                                                    style: TextStyle(color: AppTheme.specRed, fontWeight: FontWeight.w600),
-                                                  ),
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                  ],
+      backgroundColor: bgColor,
+      body: Stack(
+        children: [
+          // Baseline Image - Enhanced Visibility
+          Positioned(
+            left: 0, right: 0, bottom: 0,
+            child: Opacity(
+              opacity: 0.7,
+              child: Image.asset(
+                'assets/images/skyline-2.png',
+                width: double.infinity,
+                fit: BoxFit.cover,
+                alignment: Alignment.bottomCenter,
+                color: isDark ? Colors.white : AppTheme.specNavy,
+                colorBlendMode: BlendMode.dstATop,
+              ),
+            ),
+          ),
+          
+          SafeArea(
+            child: Center(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 24),
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(maxWidth: isTablet ? 500 : 400),
+                  child: Column(
+                    children: [
+                      const AppLogo(height: 70),
+                      const SizedBox(height: 12),
+                      Container(height: 2, width: 20, color: AppTheme.specGold),
+                      const SizedBox(height: 32),
+                      
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: Text(
+                          'SIGN IN',
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 30,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: -1.0,
+                            color: textColor,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: Text(
+                          'Experience your community through\na curated local lens.',
+                          style: GoogleFonts.beVietnamPro(
+                            fontSize: 15,
+                            height: 1.4,
+                            color: textColor.withOpacity(0.6),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 32),
+                      
+                      Form(
+                        key: _formKey,
+                        child: Column(
+                          children: [
+                            _buildInput(
+                              controller: _emailController,
+                              label: 'Email Address',
+                              isDark: isDark,
+                              keyboardType: TextInputType.emailAddress,
+                              validator: (v) {
+                                if (v == null || v.trim().isEmpty) return 'Enter email';
+                                if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(v.trim())) return 'Invalid email format';
+                                return null;
+                              },
+                            ),
+                            const SizedBox(height: 20),
+                            _buildInput(
+                              controller: _passwordController,
+                              label: 'Password',
+                              isDark: isDark,
+                              obscureText: true,
+                              validator: (v) => (v == null || v.isEmpty) ? 'Enter password' : null,
+                            ),
+                          ],
+                        ),
+                      ),
+                      
+                      const SizedBox(height: 12),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Row(
+                            children: [
+                              SizedBox(
+                                height: 20, width: 20,
+                                child: Checkbox(
+                                  value: _rememberMe,
+                                  onChanged: (v) => setState(() => _rememberMe = v ?? false),
+                                  activeColor: AppTheme.specGold,
+                                  checkColor: AppTheme.specNavy,
+                                  side: BorderSide(color: textColor.withOpacity(0.3)),
                                 ),
                               ),
-                            ),
-                          );
-                        },
+                              const SizedBox(width: 8),
+                              Text('Remember Me', style: GoogleFonts.beVietnamPro(fontSize: 14, color: textColor.withOpacity(0.7))),
+                            ],
+                          ),
+                          GestureDetector(
+                            onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const ForgotPasswordRequestScreen())),
+                            child: Text('Forgot Password?', style: GoogleFonts.beVietnamPro(fontSize: 14, color: AppTheme.specRed, fontWeight: FontWeight.bold)),
+                          ),
+                        ],
                       ),
-                    ),
+                      
+                      if (_errorMessage != null) ...[
+                        const SizedBox(height: 20),
+                        Text(_errorMessage!, textAlign: TextAlign.center, style: GoogleFonts.beVietnamPro(color: AppTheme.specRed, fontSize: 13, fontWeight: FontWeight.bold)),
+                      ],
+                      
+                      const SizedBox(height: 36),
+                      AppPrimaryButton(
+                        onPressed: _loading ? null : _submit,
+                        label: _loading
+                          ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2, color: AppTheme.specNavy))
+                          : const Text(
+                              'GET STARTED',
+                              style: TextStyle(fontWeight: FontWeight.w900, letterSpacing: 1.5),
+                            ),
+                      ),
+                      
+                      const SizedBox(height: 32),
+                      Row(
+                        children: [
+                          Expanded(child: Divider(color: textColor.withOpacity(0.1))),
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 16),
+                            child: Text('OR', style: GoogleFonts.beVietnamPro(fontSize: 11, fontWeight: FontWeight.bold, color: textColor.withOpacity(0.3))),
+                          ),
+                          Expanded(child: Divider(color: textColor.withOpacity(0.1))),
+                        ],
+                      ),
+                      const SizedBox(height: 32),
+                      
+                      _SocialButton(
+                        onPressed: _loading ? null : _signInWithGoogle,
+                        isDark: isDark,
+                        label: 'Sign in with Google',
+                      ),
+                      
+                      const SizedBox(height: 36),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text("New to Cajun Local? ", style: GoogleFonts.beVietnamPro(color: textColor.withOpacity(0.5))),
+                          GestureDetector(
+                            onTap: () => context.go('/auth/register'),
+                            child: Text('Create Account', style: GoogleFonts.beVietnamPro(color: AppTheme.specGold, fontWeight: FontWeight.bold)),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 48),
+                    ],
                   ),
                 ),
               ),
-              SizedBox(
-                height: skylineHeight,
-                width: double.infinity,
-                child: Image.asset('assets/images/skyline-2.png', fit: BoxFit.cover, alignment: Alignment.bottomCenter),
-              ),
-            ],
-          );
-        },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildInput({
+    required TextEditingController controller,
+    required String label,
+    required bool isDark,
+    bool obscureText = false,
+    TextInputType? keyboardType,
+    String? Function(String?)? validator,
+  }) {
+    final borderColor = isDark ? Colors.white.withOpacity(0.2) : AppTheme.specNavy.withOpacity(0.1);
+    final focusColor = AppTheme.specGold;
+    
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label.toUpperCase(),
+          style: GoogleFonts.beVietnamPro(fontSize: 10, fontWeight: FontWeight.w900, letterSpacing: 2.0, color: focusColor),
+        ),
+        const SizedBox(height: 10),
+        TextFormField(
+          controller: controller,
+          obscureText: obscureText,
+          keyboardType: keyboardType,
+          style: GoogleFonts.beVietnamPro(color: isDark ? Colors.white : AppTheme.specNavy, fontWeight: FontWeight.bold),
+          decoration: InputDecoration(
+            isDense: true,
+            contentPadding: const EdgeInsets.only(bottom: 10),
+            enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: borderColor)),
+            focusedBorder: UnderlineInputBorder(borderSide: BorderSide(color: focusColor, width: 2)),
+            errorBorder: UnderlineInputBorder(borderSide: BorderSide(color: AppTheme.specRed)),
+            focusedErrorBorder: UnderlineInputBorder(borderSide: BorderSide(color: AppTheme.specRed, width: 2)),
+          ),
+          validator: validator,
+        ),
+      ],
+    );
+  }
+}
+
+class _SocialButton extends StatelessWidget {
+  final VoidCallback? onPressed;
+  final bool isDark;
+  final String label;
+
+  const _SocialButton({required this.onPressed, required this.isDark, required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    final borderColor = isDark ? Colors.white.withOpacity(0.1) : AppTheme.specNavy.withOpacity(0.1);
+    return OutlinedButton(
+      onPressed: onPressed,
+      style: OutlinedButton.styleFrom(
+        minimumSize: const Size(double.infinity, 54),
+        side: BorderSide(color: borderColor),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        foregroundColor: isDark ? Colors.white : AppTheme.specNavy,
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Image.asset('assets/images/googleicon.webp', width: 20, height: 20, errorBuilder: (_, __, ___) => const Icon(Icons.g_mobiledata)),
+          const SizedBox(width: 12),
+          Text(label, style: GoogleFonts.beVietnamPro(fontWeight: FontWeight.bold)),
+        ],
       ),
     );
   }

@@ -268,12 +268,6 @@ class _AppMenuDrawerState extends ConsumerState<AppMenuDrawer> {
                   onTap: () => widget.onNavigateToTab(2),
                 ),
                 NavTile(
-                  icon: Icons.favorite_outline_rounded,
-                  title: 'Favorites',
-                  selected: widget.currentIndex == 3,
-                  onTap: () => widget.onNavigateToTab(3),
-                ),
-                NavTile(
                   icon: Icons.local_offer_outlined,
                   title: 'Deals',
                   selected: widget.currentIndex == 4,

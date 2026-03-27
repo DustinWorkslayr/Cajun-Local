@@ -19,6 +19,8 @@ import 'package:cajun_local/shared/widgets/app_bar_widget.dart';
 import 'package:cajun_local/shared/widgets/bottom_nav_widget.dart';
 import 'package:cajun_local/shared/widgets/quick_scan_sheet.dart';
 import 'widgets/app_menu_drawer.dart';
+import 'package:cajun_local/shared/widgets/app_confirmation_dialog.dart';
+import 'package:cajun_local/core/extensions/buildcontext_extension.dart';
 
 class MainShell extends ConsumerStatefulWidget {
   const MainShell({super.key, required this.navigationShell});
@@ -94,13 +96,25 @@ class _MainShellState extends ConsumerState<MainShell> with SingleTickerProvider
   }
 
   Future<void> _signOut() async {
-    _closeMenu();
-    await ref.read(authControllerProvider.notifier).signOut();
-    if (mounted) {
-      setState(() {
-        _quickScanLoyaltyCards = null;
-        _notificationsUnreadFuture = null;
-      });
+    final confirmed = await AppConfirmationDialog.show(
+      context,
+      title: 'Sign Out',
+      content: 'Are you sure you want to sign out of your account?',
+      confirmLabel: 'Sign Out',
+      isDanger: true,
+      icon: Icons.logout_rounded,
+    );
+
+    if (confirmed == true && mounted) {
+      _closeMenu();
+      await ref.read(authControllerProvider.notifier).signOut();
+      if (mounted) {
+        context.showSuccessSnackBar('Signed out successfully');
+        setState(() {
+          _quickScanLoyaltyCards = null;
+          _notificationsUnreadFuture = null;
+        });
+      }
     }
   }
 
