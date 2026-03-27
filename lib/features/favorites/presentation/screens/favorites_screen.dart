@@ -1,15 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:cajun_local/features/businesses/data/models/business.dart';
 import 'package:cajun_local/features/businesses/data/models/business_category.dart';
 import 'package:cajun_local/features/categories/data/repositories/category_repository.dart';
 import 'package:cajun_local/features/favorites/presentation/providers/favorites_providers.dart';
 import 'package:cajun_local/core/theme/app_layout.dart';
 import 'package:cajun_local/core/theme/theme.dart';
-import 'package:cajun_local/features/listing/presentation/screens/listing_detail_screen.dart';
+import 'package:cajun_local/shared/widgets/app_buttons.dart';
 import 'package:cajun_local/shared/widgets/animated_entrance.dart';
+import 'package:cajun_local/shared/widgets/app_refresh_indicator.dart';
 
-/// Favorites tab — saved listings grouped/filtered by category. 
+/// Favorites tab — saved listings grouped/filtered by category.
 class FavoritesScreen extends ConsumerStatefulWidget {
   const FavoritesScreen({super.key});
 
@@ -21,7 +23,7 @@ class _FavoritesScreenState extends ConsumerState<FavoritesScreen> {
   /// Selected category id; null = "All".
   String? _selectedCategoryId;
 
-   /// Group listings by categoryId.
+  /// Group listings by categoryId.
   static Map<String, List<Business>> _groupByCategory(List<Business> listings) {
     final map = <String, List<Business>>{};
     for (final l in listings) {
@@ -43,6 +45,7 @@ class _FavoritesScreenState extends ConsumerState<FavoritesScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final listingsAsync = ref.watch(favoriteListingsProvider);
+    final padding = AppLayout.horizontalPadding(context);
 
     return Container(
       color: AppTheme.specOffWhite,
@@ -60,147 +63,158 @@ class _FavoritesScreenState extends ConsumerState<FavoritesScreen> {
 
           final grouped = _groupByCategory(listings);
           final categoryIds = grouped.keys.toList();
-          final padding = AppLayout.horizontalPadding(context);
+          final categories = ref.watch(allCategoriesProvider).valueOrNull ?? [];
 
-          return RefreshIndicator(
+          final displayedList = _selectedCategoryId == null
+              ? listings
+              : (grouped[_selectedCategoryId] ?? []);
+
+          return AppRefreshIndicator(
             onRefresh: () async {
               ref.invalidate(userFavoriteIdsProvider);
               await ref.read(userFavoriteIdsProvider.future);
             },
-            color: AppTheme.specNavy,
             child: CustomScrollView(
               slivers: [
-                // Category filter chips
+                // ── Header ────────────────────────────────────────────
                 SliverToBoxAdapter(
                   child: Padding(
-                    padding: EdgeInsets.fromLTRB(padding.left, 12, padding.right, 8),
-                    child: SingleChildScrollView(
-                      scrollDirection: Axis.horizontal,
-                      child: Row(
-                        children: [
-                          Padding(
-                            padding: const EdgeInsets.only(right: 8),
-                            child: FilterChip(
-                              label: const Text('All'),
-                              selected: _selectedCategoryId == null,
-                              onSelected: (_) => setState(() => _selectedCategoryId = null),
-                              selectedColor: AppTheme.specGold.withValues(alpha: 0.35),
-                              checkmarkColor: AppTheme.specNavy,
+                    padding: EdgeInsets.fromLTRB(padding.left, 20, padding.right, 0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Eyebrow label
+                        Text(
+                          'MY COLLECTION',
+                          style: theme.textTheme.labelSmall?.copyWith(
+                            color: AppTheme.specGold,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: 2.0,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        // Title + count
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            Expanded(
+                              child: Text(
+                                'Your Favorites',
+                                style: theme.textTheme.headlineSmall?.copyWith(
+                                  color: AppTheme.specNavy,
+                                  fontFamily: 'Libre Baskerville',
+                                  fontWeight: FontWeight.w700,
+                                  height: 1.15,
+                                ),
+                              ),
+                            ),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                              decoration: BoxDecoration(
+                                color: AppTheme.specNavy,
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Icon(Icons.favorite_rounded, size: 12, color: AppTheme.specSecondaryContainer),
+                                  const SizedBox(width: 5),
+                                  Text(
+                                    '${listings.length}',
+                                    style: theme.textTheme.labelMedium?.copyWith(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.w800,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 16),
+                        // Category pill row — same segmented style as Deals tab bar
+                        Container(
+                          padding: const EdgeInsets.all(4),
+                          decoration: BoxDecoration(
+                            color: AppTheme.specNavy.withValues(alpha: 0.08),
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                          child: SingleChildScrollView(
+                            scrollDirection: Axis.horizontal,
+                            child: Row(
+                              children: [
+                                null,
+                                ...categoryIds,
+                              ].map((id) {
+                                final label = id == null
+                                    ? 'All'
+                                    : _categoryDisplayName(id, categories);
+                                final isSelected = _selectedCategoryId == id;
+                                return GestureDetector(
+                                  onTap: () => setState(() => _selectedCategoryId = id),
+                                  child: AnimatedContainer(
+                                    duration: const Duration(milliseconds: 160),
+                                    margin: const EdgeInsets.only(right: 4),
+                                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                                    decoration: BoxDecoration(
+                                      color: isSelected ? AppTheme.specWhite : Colors.transparent,
+                                      borderRadius: BorderRadius.circular(10),
+                                      boxShadow: isSelected
+                                          ? [BoxShadow(color: AppTheme.specNavy.withValues(alpha: 0.10), blurRadius: 8, offset: const Offset(0, 2))]
+                                          : [],
+                                    ),
+                                    child: Text(
+                                      label,
+                                      style: TextStyle(
+                                        fontSize: 13,
+                                        fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                                        color: isSelected
+                                            ? AppTheme.specNavy
+                                            : AppTheme.specNavy.withValues(alpha: 0.45),
+                                      ),
+                                    ),
+                                  ),
+                                );
+                              }).toList(),
                             ),
                           ),
-                          ...categoryIds.map((cid) {
-                            final categories = ref.watch(allCategoriesProvider).valueOrNull ?? [];
-                            final name = _categoryDisplayName(cid, categories);
-                            return Padding(
-                              padding: const EdgeInsets.only(right: 8),
-                              child: FilterChip(
-                                label: Text(name),
-                                selected: _selectedCategoryId == cid,
-                                onSelected: (_) => setState(() => _selectedCategoryId = cid),
-                                selectedColor: AppTheme.specGold.withValues(alpha: 0.35),
-                                checkmarkColor: AppTheme.specNavy,
-                              ),
-                            );
-                          }),
-                        ],
-                      ),
+                        ),
+                        const SizedBox(height: 20),
+                      ],
                     ),
                   ),
                 ),
-                
-                if (_selectedCategoryId == null) ...[
-                  ...categoryIds.expand((cid) {
-                    final list = grouped[cid]!;
-                    final categories = ref.watch(allCategoriesProvider).valueOrNull ?? [];
-                    final name = _categoryDisplayName(cid, categories);
-                    return [
-                      SliverToBoxAdapter(
-                        child: Padding(
-                          padding: EdgeInsets.fromLTRB(padding.left, 16, padding.right, 8),
-                          child: Row(
-                            children: [
-                              Container(
-                                width: 4,
-                                height: 20,
-                                decoration: BoxDecoration(
-                                  color: AppTheme.specGold,
-                                  borderRadius: BorderRadius.circular(2),
-                                ),
-                              ),
-                              const SizedBox(width: 10),
-                              Text(
-                                name,
-                                style: theme.textTheme.titleMedium?.copyWith(
-                                  fontWeight: FontWeight.w700,
-                                  color: AppTheme.specNavy,
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              Text(
-                                '${list.length}',
-                                style: theme.textTheme.bodySmall?.copyWith(
-                                  color: AppTheme.specNavy.withValues(alpha: 0.7),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                      SliverPadding(
-                        padding: EdgeInsets.fromLTRB(padding.left, 0, padding.right, 8),
-                        sliver: SliverList(
-                          delegate: SliverChildBuilderDelegate((context, index) {
-                            final listing = list[index];
-                            return Padding(
-                              padding: const EdgeInsets.only(bottom: 14),
-                              child: AnimatedEntrance(
-                                delay: Duration(milliseconds: 50 * (index + 1)),
-                                child: _FavoriteCard(
-                                  listing: listing,
-                                  onTap: () {
-                                    Navigator.of(context).push(
-                                      MaterialPageRoute<void>(
-                                        builder: (_) => ListingDetailScreen(listingId: listing.id),
-                                      ),
-                                    );
-                                  },
-                                ),
-                              ),
-                            );
-                          }, childCount: list.length),
-                        ),
-                      ),
-                    ];
-                  }),
-                ] else ...[
-                  SliverPadding(
-                    padding: EdgeInsets.fromLTRB(padding.left, 8, padding.right, 28),
-                    sliver: SliverList(
-                      delegate: SliverChildBuilderDelegate((context, index) {
-                        final list = grouped[_selectedCategoryId] ?? [];
-                        if (index >= list.length) return const SizedBox.shrink();
-                        final listing = list[index];
+
+                // ── Cards ─────────────────────────────────────────────
+                SliverPadding(
+                  padding: EdgeInsets.symmetric(horizontal: padding.left),
+                  sliver: SliverList(
+                    delegate: SliverChildBuilderDelegate(
+                      (context, index) {
+                        if (index >= displayedList.length) return const SizedBox.shrink();
+                        final listing = displayedList[index];
+                        final categoryName = _categoryDisplayName(listing.categoryId, categories);
+
                         return Padding(
                           padding: const EdgeInsets.only(bottom: 14),
                           child: AnimatedEntrance(
                             delay: Duration(milliseconds: 50 * (index + 1)),
                             child: _FavoriteCard(
                               listing: listing,
+                              categoryName: categoryName,
                               onTap: () {
-                                Navigator.of(context).push(
-                                  MaterialPageRoute<void>(
-                                    builder: (_) => ListingDetailScreen(listingId: listing.id),
-                                  ),
-                                );
+                                context.push('/listing/${listing.id}');
                               },
                             ),
                           ),
                         );
-                      }, childCount: grouped[_selectedCategoryId]?.length ?? 0),
+                      },
+                      childCount: displayedList.length,
                     ),
                   ),
-                ],
-                const SliverToBoxAdapter(child: SizedBox(height: 24)),
+                ),
+
+                SliverToBoxAdapter(child: SizedBox(height: 110 + MediaQuery.paddingOf(context).bottom)),
               ],
             ),
           );
@@ -211,7 +225,8 @@ class _FavoritesScreenState extends ConsumerState<FavoritesScreen> {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               const Text('Error loading favorites'),
-              ElevatedButton(
+              const SizedBox(height: 16),
+              AppPrimaryButton(
                 onPressed: () => ref.invalidate(userFavoriteIdsProvider),
                 child: const Text('Retry'),
               ),
@@ -237,20 +252,29 @@ class _FavoritesScreenState extends ConsumerState<FavoritesScreen> {
             mainAxisSize: MainAxisSize.min,
             children: [
               Container(
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(color: AppTheme.specGold.withValues(alpha: 0.15), shape: BoxShape.circle),
-                child: Icon(icon, size: 56, color: AppTheme.specRed),
+                padding: const EdgeInsets.all(24),
+                decoration: BoxDecoration(
+                  color: AppTheme.specGold.withValues(alpha: 0.12),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(icon, size: 64, color: AppTheme.specGold),
               ),
               const SizedBox(height: 24),
               Text(
                 title,
-                style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700, color: AppTheme.specNavy),
+                style: theme.textTheme.headlineSmall?.copyWith(
+                  fontWeight: FontWeight.w800,
+                  color: AppTheme.specNavy,
+                ),
                 textAlign: TextAlign.center,
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 12),
               Text(
                 subtitle,
-                style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: AppTheme.specNavy.withValues(alpha: 0.7),
+                  height: 1.5,
+                ),
                 textAlign: TextAlign.center,
               ),
             ],
@@ -261,13 +285,32 @@ class _FavoritesScreenState extends ConsumerState<FavoritesScreen> {
   }
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Favorite Card
+// ─────────────────────────────────────────────────────────────────────────────
+
 class _FavoriteCard extends StatelessWidget {
-  const _FavoriteCard({required this.listing, required this.onTap});
+  const _FavoriteCard({
+    required this.listing,
+    required this.categoryName,
+    required this.onTap,
+  });
 
   final Business listing;
+  final String categoryName;
   final VoidCallback onTap;
 
-  static const double _cardRadius = 14;
+  static const double _cardRadius = 16;
+
+  IconData _getCategoryIcon() {
+    final cat = listing.categoryId.toLowerCase();
+    if (cat.contains('restaurant') || cat.contains('food')) return Icons.restaurant_rounded;
+    if (cat.contains('shopping') || cat.contains('store')) return Icons.store_rounded;
+    if (cat.contains('services')) return Icons.work_rounded;
+    if (cat.contains('health')) return Icons.medical_services_rounded;
+    if (cat.contains('outdoors')) return Icons.park_rounded;
+    return Icons.place_rounded;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -275,57 +318,96 @@ class _FavoriteCard extends StatelessWidget {
 
     return Material(
       color: Colors.transparent,
+      borderRadius: BorderRadius.circular(_cardRadius),
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(_cardRadius),
         child: Container(
-          padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
             color: AppTheme.specWhite,
             borderRadius: BorderRadius.circular(_cardRadius),
             boxShadow: [
-              BoxShadow(color: Colors.black.withValues(alpha: 0.07), blurRadius: 12, offset: const Offset(0, 4)),
+              BoxShadow(
+                color: AppTheme.specNavy.withValues(alpha: 0.07),
+                blurRadius: 16,
+                offset: const Offset(0, 5),
+              ),
             ],
           ),
-          child: Row(
-            children: [
-              Container(
-                width: 56,
-                height: 56,
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(12),
-                  color: AppTheme.specGold.withValues(alpha: 0.2),
+          child: Padding(
+            padding: const EdgeInsets.all(14),
+            child: Row(
+              // No CrossAxisAlignment.stretch — avoids the SliverList hasSize crash
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                // Icon square
+                Container(
+                  width: 56,
+                  height: 56,
+                  decoration: BoxDecoration(
+                    color: AppTheme.specNavy,
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: Center(
+                    child: Icon(_getCategoryIcon(), size: 26, color: AppTheme.specGold),
+                  ),
                 ),
-                child: Icon(Icons.store_rounded, size: 28, color: AppTheme.specNavy),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      listing.name,
-                      style: theme.textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w700,
-                        color: AppTheme.specNavy,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    if (listing.tagline != null && listing.tagline!.isNotEmpty) ...[
-                      const SizedBox(height: 4),
+                const SizedBox(width: 14),
+                // Content
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Category tag
                       Text(
-                        listing.tagline!,
-                        style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-                        maxLines: 1,
+                        categoryName.toUpperCase(),
+                        style: theme.textTheme.labelSmall?.copyWith(
+                          color: AppTheme.specGold,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 0.8,
+                          fontSize: 10,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      // Business name
+                      Text(
+                        listing.name,
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.w800,
+                          color: AppTheme.specNavy,
+                          height: 1.2,
+                        ),
+                        maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                       ),
+                      const SizedBox(height: 8),
+                      // View details
+                      Row(
+                        children: [
+                          const Icon(Icons.arrow_right_alt_rounded, size: 15,
+                              color: AppTheme.specGold),
+                          const SizedBox(width: 3),
+                          Text(
+                            'View details',
+                            style: theme.textTheme.labelSmall?.copyWith(
+                              color: AppTheme.specGold,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ],
+                      ),
                     ],
-                  ],
+                  ),
                 ),
-              ),
-              Icon(Icons.arrow_forward_ios_rounded, size: 14, color: AppTheme.specNavy.withValues(alpha: 0.6)),
-            ],
+                const SizedBox(width: 8),
+                // Chevron
+                Icon(
+                  Icons.chevron_right_rounded,
+                  size: 22,
+                  color: AppTheme.specNavy.withValues(alpha: 0.2),
+                ),
+              ],
+            ),
           ),
         ),
       ),

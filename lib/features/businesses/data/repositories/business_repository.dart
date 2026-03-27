@@ -1,6 +1,7 @@
 import 'package:cajun_local/core/api/api_client.dart';
 import 'package:cajun_local/features/businesses/data/api/business_api.dart';
 import 'package:cajun_local/features/businesses/data/models/business.dart';
+import 'package:cajun_local/features/businesses/data/models/featured_business.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 part 'business_repository.g.dart';
@@ -164,6 +165,11 @@ class BusinessRepository {
   /// Admin: permanently delete a business.
   Future<void> deleteBusiness(String id) async {
     await _api.deleteBusiness(id);
+  }
+
+  /// Get featured businesses with basic details and category info.
+  Future<List<FeaturedBusiness>> getFeaturedBusiness({int limit = 10}) async {
+    return _api.getFeaturedBusiness(limit: limit);
   }
 }
 

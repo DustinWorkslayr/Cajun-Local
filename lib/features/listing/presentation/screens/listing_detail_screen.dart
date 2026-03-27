@@ -2,6 +2,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:cajun_local/features/auth/presentation/controllers/auth_controller.dart';
 import 'package:cajun_local/core/data/providers/app_data_providers.dart';
@@ -22,7 +23,6 @@ import 'package:cajun_local/shared/widgets/app_buttons.dart';
 import 'package:cajun_local/core/revenuecat/present_subscription_paywall.dart';
 import 'package:cajun_local/core/theme/theme.dart';
 import 'package:cajun_local/features/listing/presentation/screens/claim_business_screen.dart';
-import 'package:cajun_local/features/my_listings/presentation/screens/listing_edit_screen.dart';
 import 'package:cajun_local/core/data/contact_form_templates.dart';
 import 'package:cajun_local/features/messaging/presentation/screens/conversation_thread_screen.dart';
 import 'package:cajun_local/shared/widgets/contact_form_widget.dart';
@@ -213,7 +213,16 @@ class _ListingDetailContent extends ConsumerWidget {
       stretch: true,
       backgroundColor: Colors.transparent,
       systemOverlayStyle: SystemUiOverlayStyle.light,
-      leading: _GlassButton(icon: Icons.arrow_back_ios_new_rounded, onTap: () => Navigator.of(context).pop()),
+      leading: _GlassButton(
+        icon: Icons.arrow_back_ios_new_rounded,
+        onTap: () {
+          if (context.canPop()) {
+            context.pop();
+          } else {
+            context.go('/');
+          }
+        },
+      ),
       actions: [
         if (data.isOwnerOrManager) ...[
           Tooltip(
@@ -221,9 +230,7 @@ class _ListingDetailContent extends ConsumerWidget {
             child: _GlassButton(
               icon: Icons.edit_rounded,
               onTap: () {
-                Navigator.of(
-                  context,
-                ).push(MaterialPageRoute<void>(builder: (_) => ListingEditScreen(listingId: listing.id)));
+                context.push('/listing/${listing.id}/edit');
               },
             ),
           ),

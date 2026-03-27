@@ -12,6 +12,7 @@ import 'package:cajun_local/features/profile/data/repositories/profiles_reposito
 import 'package:cajun_local/core/theme/theme.dart';
 import 'package:cajun_local/shared/widgets/app_buttons.dart';
 import 'package:cajun_local/features/messaging/presentation/screens/conversation_thread_screen.dart';
+import 'package:cajun_local/shared/widgets/app_refresh_indicator.dart';
 
 /// Inbox of contact form submissions for businesses the current user manages.
 /// Shows which listing each submission is for when user has multiple businesses.
@@ -192,7 +193,7 @@ class _FormSubmissionsInboxScreenState extends ConsumerState<FormSubmissionsInbo
         ),
       );
     }
-    return RefreshIndicator(
+    return AppRefreshIndicator(
       onRefresh: _load,
       child: ListView.builder(
         padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),

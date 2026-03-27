@@ -166,7 +166,6 @@ class _CreateDealScreenState extends ConsumerState<CreateDealScreen> {
       await BusinessTierUpgradeDialog.show(context, message: BusinessTierService.upgradeMessageForAdvancedFeatures());
       return;
     }
-    final isManager = true; // Assume manager if on this screen, backend will validate
 
     String title = _titleController.text.trim();
     String? description = _descriptionController.text.trim().isEmpty ? null : _descriptionController.text.trim();

@@ -5,6 +5,7 @@ import 'package:cajun_local/features/messaging/data/repositories/conversations_r
 import 'package:cajun_local/core/theme/app_layout.dart';
 import 'package:cajun_local/core/theme/theme.dart';
 import 'package:cajun_local/features/messaging/presentation/screens/conversation_thread_screen.dart';
+import 'package:cajun_local/shared/widgets/app_refresh_indicator.dart';
 
 /// List of conversations for the current user (as customer). Tapping opens the thread.
 class MyConversationsScreen extends StatefulWidget {
@@ -115,7 +116,7 @@ class _MyConversationsScreenState extends State<MyConversationsScreen> {
                 ),
               ),
             )
-          : RefreshIndicator(
+          : AppRefreshIndicator(
               onRefresh: _load,
               child: ListView.builder(
                 padding: EdgeInsets.fromLTRB(

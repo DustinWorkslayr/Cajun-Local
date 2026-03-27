@@ -10,7 +10,6 @@ export 'package:cajun_local/features/deals/data/repositories/user_deals_reposito
 export 'package:cajun_local/features/profile/data/repositories/user_punch_cards_repository.dart';
 export 'package:cajun_local/features/events/data/repositories/event_rsvps_repository.dart';
 export 'package:cajun_local/features/profile/data/repositories/profiles_repository.dart';
-export 'package:cajun_local/core/data/listing_data_source.dart';
 
 import 'package:cajun_local/features/profile/data/repositories/user_plans_repository.dart';
 import 'package:cajun_local/features/profile/data/repositories/user_subscriptions_repository.dart';
@@ -23,17 +22,16 @@ import 'package:cajun_local/core/revenuecat/revenuecat_service.dart';
 import 'package:cajun_local/core/subscription/business_tier_service.dart';
 import 'package:cajun_local/core/data/services/app_storage_service.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 final userTierServiceProvider = Provider<UserTierService>((ref) {
   final subscriptionsRepository = ref.watch(userSubscriptionsRepositoryProvider);
   final plansRepository = ref.watch(userPlansRepositoryProvider);
   final service = UserTierService(subscriptionsRepository: subscriptionsRepository, plansRepository: plansRepository);
-  
+
   // Watch userId to trigger refresh on auth changes
   final userId = ref.watch(authControllerProvider).valueOrNull?.id;
   service.refresh(userId);
-  
+
   return service;
 });
 
@@ -42,7 +40,6 @@ final userPermissionsProvider = StateProvider<ResolvedPermissions>((ref) {
   // Initial value
   return service.value ?? ResolvedPermissions.free;
 });
-
 
 final revenueCatServiceProvider = Provider<RevenueCatService?>((ref) {
   return null;

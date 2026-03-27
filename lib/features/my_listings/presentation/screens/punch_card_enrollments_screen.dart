@@ -3,6 +3,7 @@ import 'package:cajun_local/features/profile/data/models/punch_card_enrollment.d
 import 'package:cajun_local/features/profile/data/repositories/user_punch_cards_repository.dart';
 import 'package:cajun_local/core/theme/theme.dart';
 import 'package:cajun_local/shared/widgets/app_buttons.dart';
+import 'package:cajun_local/shared/widgets/app_refresh_indicator.dart';
 
 /// Lists punch card enrollments for a business. Managers can redeem full cards.
 class PunchCardEnrollmentsScreen extends StatefulWidget {
@@ -97,7 +98,7 @@ class _PunchCardEnrollmentsScreenState extends State<PunchCardEnrollmentsScreen>
                 style: theme.textTheme.titleMedium?.copyWith(color: AppTheme.specNavy.withValues(alpha: 0.8)),
               ),
             )
-          : RefreshIndicator(
+          : AppRefreshIndicator(
               onRefresh: _load,
               child: ListView(
                 padding: const EdgeInsets.all(16),

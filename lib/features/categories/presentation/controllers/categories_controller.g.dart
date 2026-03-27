@@ -48,7 +48,7 @@ final filterPanelDataProvider =
 typedef FilterPanelDataRef =
     AutoDisposeFutureProviderRef<(int, List<BusinessCategory>, List<Parish>)>;
 String _$categoriesControllerHash() =>
-    r'297ad2f3b7f14dde83e35ab1ce93bb23da18e758';
+    r'48a542a7ee41a8e0658273b16e79aa60e6460372';
 
 /// See also [CategoriesController].
 @ProviderFor(CategoriesController)

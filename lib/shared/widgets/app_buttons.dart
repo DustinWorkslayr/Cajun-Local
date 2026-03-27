@@ -36,20 +36,19 @@ class AppPrimaryButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final effectiveStyle = (style ?? const ButtonStyle()).copyWith(
-      backgroundColor: WidgetStateProperty.resolveWith((states) {
-        if (states.contains(WidgetState.disabled)) return AppTheme.specGold.withValues(alpha: 0.5);
-        return AppTheme.specGold;
-      }),
-      foregroundColor: WidgetStateProperty.resolveWith((states) {
-        if (states.contains(WidgetState.disabled)) return AppTheme.specNavy.withValues(alpha: 0.5);
-        return AppTheme.specNavy;
-      }),
-      padding: WidgetStateProperty.all(padding),
-      minimumSize: WidgetStateProperty.all(minimumSize),
-      elevation: WidgetStateProperty.all(0),
-      shape: WidgetStateProperty.all(RoundedRectangleBorder(borderRadius: BorderRadius.circular(_defaultRadius))),
+    // Merge the provided style with our defaults.
+    // We only apply defaults if the property is not provided in 'style'.
+    final defaultStyle = ElevatedButton.styleFrom(
+      backgroundColor: AppTheme.primaryColor,
+      foregroundColor: AppTheme.specNavy,
+      padding: padding,
+      minimumSize: minimumSize,
+      elevation: 0,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(_defaultRadius)),
     );
+
+    final effectiveStyle = style == null ? defaultStyle : defaultStyle.merge(style);
+
     if (icon != null && label != null) {
       final btn = FilledButton.icon(
         onPressed: onPressed,

@@ -2,6 +2,7 @@ import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'package:cajun_local/core/data/deal_type_icons.dart';
+import 'package:cajun_local/core/extensions/buildcontext_extension.dart';
 import 'package:cajun_local/features/deals/data/models/deal.dart';
 import 'package:cajun_local/shared/widgets/app_buttons.dart';
 import 'package:cajun_local/core/theme/theme.dart';
@@ -84,249 +85,261 @@ class _DealDetailPopupState extends State<DealDetailPopup> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final isDark = theme.brightness == Brightness.dark;
     final isClaimed = widget.isClaimed;
     final onClaim = widget.onClaim;
     final onClaimUpsell = widget.onClaimUpsell;
 
-    return ClipRRect(
-      borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
-        child: Container(
-          constraints: BoxConstraints(maxHeight: MediaQuery.sizeOf(context).height * 0.75),
-          decoration: BoxDecoration(
-            color: (isDark ? colorScheme.surface : AppTheme.specOffWhite).withValues(alpha: 0.98),
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-            border: Border.all(color: AppTheme.specGold.withValues(alpha: 0.35), width: 1.5),
-            boxShadow: [
-              BoxShadow(color: AppTheme.specNavy.withValues(alpha: 0.12), blurRadius: 20, offset: const Offset(0, -4)),
-            ],
-          ),
-          child: SafeArea(
-            top: false,
-            child: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const SizedBox(height: 10),
-                  Container(
-                    width: 36,
-                    height: 4,
-                    decoration: BoxDecoration(
-                      color: AppTheme.specNavy.withValues(alpha: 0.2),
-                      borderRadius: BorderRadius.circular(2),
-                    ),
+    return Container(
+      decoration: BoxDecoration(
+        color: isDark ? theme.colorScheme.surface : AppTheme.specWhite,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      child: SafeArea(
+        top: false,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const SizedBox(height: 10),
+            Container(
+              width: 36,
+              height: 4,
+              decoration: BoxDecoration(
+                color: AppTheme.specNavy.withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            // Navy Header Card
+            Container(
+              margin: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+              padding: const EdgeInsets.fromLTRB(16, 14, 12, 14),
+              decoration: BoxDecoration(
+                color: AppTheme.specNavy,
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: [
+                  BoxShadow(
+                    color: AppTheme.specNavy.withValues(alpha: 0.15),
+                    blurRadius: 12,
+                    offset: const Offset(0, 4),
                   ),
-                  // Hero: navy band with discount + urgency
+                ],
+              ),
+              child: Row(
+                children: [
                   Container(
-                    width: double.infinity,
-                    margin: const EdgeInsets.fromLTRB(20, 16, 20, 0),
-                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                    padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [AppTheme.specNavy, AppTheme.specNavy.withValues(alpha: 0.92)],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ),
-                      borderRadius: BorderRadius.circular(16),
-                      boxShadow: [
-                        BoxShadow(
-                          color: AppTheme.specNavy.withValues(alpha: 0.25),
-                          blurRadius: 12,
-                          offset: const Offset(0, 4),
-                        ),
-                      ],
+                      color: AppTheme.specGold.withValues(alpha: 0.2),
+                      borderRadius: BorderRadius.circular(10),
                     ),
+                    child: Icon(DealTypeIcons.iconFor(widget.deal.dealType), size: 20, color: AppTheme.specGold),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'A deal worth grabbing',
-                          style: theme.textTheme.labelLarge?.copyWith(
-                            color: AppTheme.specGold.withValues(alpha: 0.95),
-                            fontWeight: FontWeight.w600,
-                            letterSpacing: 0.5,
+                          'DEAL DETAILS',
+                          style: theme.textTheme.labelSmall?.copyWith(
+                            color: AppTheme.specGold,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: 1.5,
                           ),
                         ),
-                        const SizedBox(height: 12),
-                        Container(
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: AppTheme.specGold.withValues(alpha: 0.25),
-                            borderRadius: BorderRadius.circular(14),
-                            border: Border.all(color: AppTheme.specGold.withValues(alpha: 0.6), width: 1.5),
+                        Text(
+                          'A local flavor favorite',
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: Colors.white.withValues(alpha: 0.7),
+                            fontWeight: FontWeight.w500,
                           ),
-                          child: Icon(DealTypeIcons.iconFor(widget.deal.dealType), size: 36, color: AppTheme.specGold),
                         ),
-                        if (widget.deal.endDate != null) ...[
-                          const SizedBox(height: 8),
-                          Row(
-                            children: [
-                              Icon(Icons.schedule_rounded, size: 16, color: AppTheme.specGold.withValues(alpha: 0.9)),
-                              const SizedBox(width: 6),
-                              Text(
-                                'Valid until ${_formatDate(widget.deal.endDate!)} — don\'t miss out',
-                                style: theme.textTheme.bodySmall?.copyWith(
-                                  color: AppTheme.specWhite.withValues(alpha: 0.9),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
                       ],
                     ),
                   ),
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        Text(
-                          widget.deal.title,
-                          style: theme.textTheme.titleLarge?.copyWith(
-                            fontWeight: FontWeight.w700,
-                            color: AppTheme.specNavy,
-                          ),
-                        ),
-                        if (widget.listingName != null) ...[
-                          const SizedBox(height: 6),
-                          Row(
-                            children: [
-                              Icon(Icons.store_rounded, size: 18, color: AppTheme.specRed),
-                              const SizedBox(width: 6),
-                              Text(
-                                widget.listingName!,
-                                style: theme.textTheme.bodyMedium?.copyWith(
-                                  fontWeight: FontWeight.w600,
-                                  color: AppTheme.specRed,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
-                        const SizedBox(height: 12),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                          decoration: BoxDecoration(
-                            color: AppTheme.specWhite,
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: AppTheme.specGold.withValues(alpha: 0.4)),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withValues(alpha: 0.04),
-                                blurRadius: 8,
-                                offset: const Offset(0, 2),
-                              ),
-                            ],
-                          ),
-                          child: Text(
-                            widget.deal.description ?? 'No description provided.',
-                            style: theme.textTheme.bodyMedium?.copyWith(color: AppTheme.specNavy, height: 1.5),
-                          ),
-                        ),
-                        // Codes are not in Deal model yet, omitting for now or placing in description
-                        const SizedBox(height: 20),
-                        if (onClaim != null || onClaimUpsell != null || isClaimed) ...[
-                          if (isClaimed)
-                            Container(
-                              padding: const EdgeInsets.symmetric(vertical: 12),
-                              decoration: BoxDecoration(
-                                color: colorScheme.primaryContainer.withValues(alpha: 0.5),
-                                borderRadius: BorderRadius.circular(14),
-                              ),
-                              child: Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Icon(
-                                    widget.isUsed ? Icons.check_circle_rounded : Icons.check_circle_rounded,
-                                    size: 22,
-                                    color: widget.isUsed ? colorScheme.tertiary : colorScheme.primary,
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Flexible(
-                                    child: Text(
-                                      widget.isUsed
-                                          ? (widget.usedAt != null
-                                                ? 'Redeemed on ${_formatDate(widget.usedAt!)}'
-                                                : 'Redeemed')
-                                          : 'You claimed this deal',
-                                      style: theme.textTheme.labelLarge?.copyWith(
-                                        fontWeight: FontWeight.w600,
-                                        color: colorScheme.onPrimaryContainer,
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            )
-                          else
-                            AppPrimaryButton(
-                              onPressed: _isClaiming
-                                  ? null
-                                  : () async {
-                                      if (onClaim != null) {
-                                        setState(() => _isClaiming = true);
-                                        try {
-                                          await onClaim();
-                                          if (!context.mounted) return;
-                                          Navigator.of(context).pop();
-                                        } finally {
-                                          if (mounted) setState(() => _isClaiming = false);
-                                        }
-                                        return;
-                                      }
-                                      if (onClaimUpsell != null) {
-                                        onClaimUpsell();
-                                        return;
-                                      }
-                                    },
-                              expanded: false,
-                              icon: _isClaiming
-                                  ? SizedBox(
-                                      width: 22,
-                                      height: 22,
-                                      child: CircularProgressIndicator(strokeWidth: 2, color: AppTheme.specNavy),
-                                    )
-                                  : const Icon(Icons.local_offer_rounded, size: 22),
-                              label: Text(_isClaiming ? 'Claiming...' : 'Grab this deal'),
-                            ),
-                          const SizedBox(height: 10),
-                        ],
-                        if (widget.showViewBusinessButton)
-                          AppOutlinedButton(
-                            onPressed: () {
-                              Navigator.of(context).pop();
-                              if (widget.onGoToListing != null) {
-                                widget.onGoToListing!();
-                              } else {
-                                Navigator.of(context).push(
-                                  MaterialPageRoute<void>(
-                                    builder: (_) => ListingDetailScreen(listingId: widget.deal.businessId),
-                                  ),
-                                );
-                              }
-                            },
-                            icon: const Icon(Icons.store_rounded, size: 20),
-                            label: const Text('View business'),
-                          ),
-                        const SizedBox(height: 8),
-                        TextButton(
-                          onPressed: () => Navigator.of(context).pop(),
-                          child: Text(
-                            'Close',
-                            style: TextStyle(color: colorScheme.onSurfaceVariant.withValues(alpha: 0.8)),
-                          ),
-                        ),
-                      ],
+                  GestureDetector(
+                    onTap: () => Navigator.of(context).pop(),
+                    child: Container(
+                      padding: const EdgeInsets.all(6),
+                      decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.12), shape: BoxShape.circle),
+                      child: const Icon(Icons.close_rounded, size: 18, color: Colors.white),
                     ),
                   ),
                 ],
               ),
             ),
-          ),
+            Flexible(
+              child: SingleChildScrollView(
+                padding: EdgeInsets.fromLTRB(20, 24, 20, MediaQuery.paddingOf(context).bottom + 48),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Text(
+                      widget.deal.title,
+                      style: theme.textTheme.headlineSmall?.copyWith(
+                        fontWeight: FontWeight.w800,
+                        color: AppTheme.specNavy,
+                        fontFamily: 'Libre Baskerville',
+                      ),
+                    ),
+                    if (widget.listingName != null) ...[
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          Icon(Icons.store_rounded, size: 18, color: AppTheme.specGold),
+                          const SizedBox(width: 8),
+                          Text(
+                            widget.listingName!,
+                            style: theme.textTheme.titleMedium?.copyWith(
+                              fontWeight: FontWeight.w700,
+                              color: AppTheme.specNavy.withValues(alpha: 0.8),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                    const SizedBox(height: 24),
+                    _sectionLabel('DESCRIPTION'),
+                    const SizedBox(height: 10),
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: AppTheme.specOffWhite,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: AppTheme.specNavy.withValues(alpha: 0.08)),
+                      ),
+                      child: Text(
+                        widget.deal.description ?? 'No description provided.',
+                        style: theme.textTheme.bodyMedium?.copyWith(color: AppTheme.specNavy, height: 1.6),
+                      ),
+                    ),
+                    if (widget.deal.endDate != null) ...[
+                      const SizedBox(height: 20),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                        decoration: BoxDecoration(
+                          color: AppTheme.specRed.withValues(alpha: 0.08),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.timer_outlined, size: 18, color: AppTheme.specRed),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Text(
+                                'Offer valid until ${_formatDate(widget.deal.endDate!)}',
+                                style: theme.textTheme.labelLarge?.copyWith(
+                                  color: AppTheme.specRed,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                    const SizedBox(height: 32),
+                    if (onClaim != null || onClaimUpsell != null || isClaimed) ...[
+                      if (isClaimed)
+                        _buildClaimedStatus(theme)
+                      else
+                        AppPrimaryButton(
+                          onPressed: _isClaiming
+                              ? null
+                              : () async {
+                                  if (onClaim != null) {
+                                    setState(() => _isClaiming = true);
+                                    try {
+                                      await onClaim();
+                                      if (!context.mounted) return;
+                                      context.showSuccessSnackBar('Deal claimed successfully!');
+                                      Navigator.of(context).pop();
+                                    } catch (e) {
+                                      if (!context.mounted) return;
+                                      context.showErrorSnackBar('Failed to claim deal. Please try again.');
+                                    } finally {
+                                      if (mounted) setState(() => _isClaiming = false);
+                                    }
+                                    return;
+                                  }
+                                  if (onClaimUpsell != null) {
+                                    onClaimUpsell();
+                                    return;
+                                  }
+                                },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppTheme.primaryColor,
+                            foregroundColor: AppTheme.specNavy,
+                          ),
+                          icon: _isClaiming
+                              ? const SizedBox(
+                                  width: 20,
+                                  height: 20,
+                                  child: CircularProgressIndicator(strokeWidth: 2, color: AppTheme.specNavy),
+                                )
+                              : const Icon(Icons.local_offer_rounded, size: 20),
+                          label: Text(_isClaiming ? 'Claiming...' : 'Grab this deal'),
+                        ),
+                      const SizedBox(height: 12),
+                    ],
+                    if (widget.showViewBusinessButton)
+                      AppOutlinedButton(
+                        onPressed: () {
+                          Navigator.of(context).pop();
+                          if (widget.onGoToListing != null) {
+                            widget.onGoToListing!();
+                          } else {
+                            Navigator.of(context).push(
+                              MaterialPageRoute<void>(
+                                builder: (_) => ListingDetailScreen(listingId: widget.deal.businessId),
+                              ),
+                            );
+                          }
+                        },
+                        icon: const Icon(Icons.store_rounded, size: 20),
+                        label: const Text('Visit Business'),
+                      ),
+                  ],
+                ),
+              ),
+            ),
+          ],
         ),
+      ),
+    );
+  }
+
+  Widget _sectionLabel(String label) {
+    return Text(
+      label,
+      style: Theme.of(
+        context,
+      ).textTheme.labelMedium?.copyWith(color: AppTheme.specNavy, fontWeight: FontWeight.w800, letterSpacing: 1.0),
+    );
+  }
+
+  Widget _buildClaimedStatus(ThemeData theme) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      decoration: BoxDecoration(
+        color: const Color(0xFFE8F5E9),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFF81C784).withValues(alpha: 0.4)),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const Icon(Icons.check_circle_rounded, size: 22, color: Color(0xFF2E7D32)),
+          const SizedBox(width: 10),
+          Flexible(
+            child: Text(
+              widget.isUsed
+                  ? (widget.usedAt != null ? 'Redeemed on ${_formatDate(widget.usedAt!)}' : 'Redeemed')
+                  : 'You claimed this deal',
+              style: theme.textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w700, color: const Color(0xFF1B5E20)),
+            ),
+          ),
+        ],
       ),
     );
   }

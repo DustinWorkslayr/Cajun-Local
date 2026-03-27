@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
-import 'package:cajun_local/core/data/mock_data.dart';
+import 'package:cajun_local/features/businesses/data/models/listing_filters.dart';
+import 'package:cajun_local/features/businesses/data/models/business_category.dart';
+import 'package:cajun_local/features/locations/data/models/parish.dart';
+import 'package:cajun_local/features/categories/data/models/subcategory.dart';
 import 'package:cajun_local/shared/widgets/app_buttons.dart';
 
 /// Slide-out panel from the right: Filters & Categories with search,
 /// expandable categories with multiselect subcategories, and parish selector.
-/// [totalCount] and [categories] are optional; when null, 0 and [] are used (no mock data).
 class FiltersSlideOut extends StatefulWidget {
   const FiltersSlideOut({
     super.key,
@@ -19,9 +21,9 @@ class FiltersSlideOut extends StatefulWidget {
   final ListingFilters initialFilters;
   final void Function(ListingFilters filters) onApply;
   final VoidCallback onClose;
-  final List<MockParish> parishes;
+  final List<Parish> parishes;
   final int? totalCount;
-  final List<MockCategory>? categories;
+  final List<BusinessCategory>? categories;
 
   @override
   State<FiltersSlideOut> createState() => _FiltersSlideOutState();
@@ -60,7 +62,7 @@ class _FiltersSlideOutState extends State<FiltersSlideOut> with SingleTickerProv
   }
 
   int get _totalCount => widget.totalCount ?? 0;
-  List<MockCategory> get _categories => widget.categories ?? [];
+  List<BusinessCategory> get _categories => widget.categories ?? [];
 
   @override
   Widget build(BuildContext context) {
@@ -320,30 +322,32 @@ class _FiltersSlideOutState extends State<FiltersSlideOut> with SingleTickerProv
         ..._categories.expand((cat) {
           final isExpanded = _expandedCategoryId == cat.id;
           final isSelected = _filters.categoryId == cat.id;
+          final subcategories = cat.subcategories;
+
           return [
             KeyedSubtree(
               key: ValueKey(cat.id),
               child: _CategoryTile(
                 label: cat.name,
-                count: cat.count,
+                count: cat.businessCount,
                 isExpanded: isExpanded,
                 isSelected: isSelected,
-                hasSubcategories: cat.subcategories.isNotEmpty,
+                hasSubcategories: subcategories.isNotEmpty,
                 onTap: () => setState(() {
-                  if (isExpanded) {
-                    _expandedCategoryId = null;
+                  if (isSelected) {
+                    _expandedCategoryId = isExpanded ? null : cat.id;
                   } else {
                     _expandedCategoryId = cat.id;
-                    _filters = _filters.copyWith(categoryId: cat.id);
+                    _filters = _filters.copyWith(categoryId: cat.id, subcategoryIds: {});
                   }
                 }),
               ),
             ),
-            if (isExpanded && cat.subcategories.isNotEmpty)
+            if (isExpanded && subcategories.isNotEmpty)
               Padding(
                 padding: const EdgeInsets.only(left: 12, top: 4, bottom: 6),
                 child: _SubcategoryMultiselect(
-                  subcategories: cat.subcategories,
+                  subcategories: subcategories,
                   selectedIds: _filters.subcategoryIds,
                   onChanged: (ids) => setState(() {
                     _filters = _filters.copyWith(subcategoryIds: ids);
@@ -443,11 +447,10 @@ class _CategoryTile extends StatelessWidget {
   }
 }
 
-/// Multiselect subcategory: dropdown trigger that opens a bottom sheet with chips.
 class _SubcategoryMultiselect extends StatelessWidget {
   const _SubcategoryMultiselect({required this.subcategories, required this.selectedIds, required this.onChanged});
 
-  final List<MockSubcategory> subcategories;
+  final List<Subcategory> subcategories;
   final Set<String> selectedIds;
   final void Function(Set<String>) onChanged;
 

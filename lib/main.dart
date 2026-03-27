@@ -1,3 +1,5 @@
+import 'package:device_preview/device_preview.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cajun_local/app/app.dart';
@@ -9,11 +11,14 @@ void main() async {
   // Initialize RevenueCat (no-op on web; requires iOS/Android for IAP).
   final revenueCatService = await RevenueCatService.configure();
   runApp(
-    ProviderScope(
-      overrides: [
-        revenueCatServiceProvider.overrideWithValue(revenueCatService),
-      ],
-      child: const SizedBox.expand(child: CajunLocalApp()),
+    DevicePreview(
+      enabled: !kReleaseMode,
+      builder: (context) => ProviderScope(
+        overrides: [
+          revenueCatServiceProvider.overrideWithValue(revenueCatService),
+        ],
+        child: const SizedBox.expand(child: CajunLocalApp()),
+      ),
     ),
   );
 }

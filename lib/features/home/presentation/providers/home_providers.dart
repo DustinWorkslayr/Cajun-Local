@@ -1,6 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
-import 'package:cajun_local/core/data/mock_data.dart';
 import 'package:cajun_local/features/news/data/models/blog_post.dart';
 import 'package:cajun_local/features/locations/data/models/parish.dart';
 import 'package:cajun_local/features/news/data/repositories/blog_posts_repository.dart';
@@ -9,61 +8,23 @@ import 'package:cajun_local/features/businesses/data/repositories/business_repos
 import 'package:cajun_local/features/categories/data/repositories/category_repository.dart';
 import 'package:cajun_local/features/events/data/repositories/business_events_repository.dart';
 import 'package:cajun_local/features/profile/data/models/user_parish_preferences.dart';
+import 'package:cajun_local/features/businesses/data/models/business_category.dart';
+import 'package:cajun_local/features/businesses/data/models/featured_business.dart';
+import '../../data/models/home_models.dart';
 
 part 'home_providers.g.dart';
 
 @riverpod
-Future<List<MockSpot>> homeFeaturedSpots(Ref ref) async {
+Future<List<FeaturedBusiness>> homeFeaturedSpots(Ref ref) async {
   final businessRepo = ref.watch(businessRepositoryProvider);
-  final categoryRepo = ref.watch(categoryRepositoryProvider);
-
-  final businesses = await businessRepo.listApproved(limit: 10);
-  final categories = await categoryRepo.listCategories();
-  final catMap = {for (final c in categories) c.id: c.name};
-
-  final spots = <MockSpot>[];
-  for (final b in businesses) {
-    final subIds = await categoryRepo.getSubcategoryIdsForBusiness(b.id);
-    String? subLabel;
-    if (subIds.isNotEmpty) {
-      final subs = await categoryRepo.listSubcategories(categoryId: b.categoryId);
-      final firstSub = subs.where((s) => s.id == subIds.first).firstOrNull;
-      subLabel = firstSub?.name;
-    }
-
-    spots.add(MockSpot(
-      id: b.id,
-      name: b.name,
-      subtitle: b.tagline ?? b.name,
-      categoryId: b.categoryId,
-      categoryName: catMap[b.categoryId],
-      subcategoryName: subLabel,
-      logoUrl: b.logoUrl,
-      rating: null,
-    ));
-  }
-  return spots;
+  return businessRepo.getFeaturedBusiness(limit: 10);
 }
 
 @riverpod
-Future<List<MockCategory>> homeCategories(Ref ref) async {
+Future<List<BusinessCategory>> homeCategories(Ref ref) async {
   final categoryRepo = ref.watch(categoryRepositoryProvider);
-  final businessRepo = ref.watch(businessRepositoryProvider);
-
-  final rawCategories = await categoryRepo.listCategories();
-  final categories = <MockCategory>[];
-  for (final c in rawCategories) {
-    final count = await businessRepo.listApprovedCount(categoryId: c.id);
-    categories.add(MockCategory(
-      id: c.id,
-      name: c.name,
-      iconName: c.icon ?? 'store',
-      count: count,
-      subcategories: c.subcategories.map((s) => MockSubcategory(id: s.id, name: s.name)).toList(),
-      bucket: c.bucket,
-    ));
-  }
-  return categories;
+  // Optimized: backend now returns business_count directly in listCategories
+  return categoryRepo.listCategories();
 }
 
 @riverpod
@@ -74,7 +35,7 @@ Future<List<BlogPost>> homeLatestPosts(Ref ref) async {
 }
 
 @riverpod
-Future<List<(MockEvent, String)>> homeUpcomingEvents(Ref ref) async {
+Future<List<HomeEvent>> homeUpcomingEvents(Ref ref) async {
   final eventsRepo = ref.watch(businessEventsRepositoryProvider);
   final businessRepo = ref.watch(businessRepositoryProvider);
 
@@ -82,29 +43,29 @@ Future<List<(MockEvent, String)>> homeUpcomingEvents(Ref ref) async {
   final now = DateTime.now();
   final startOfToday = DateTime(now.year, now.month, now.day);
 
-  final filteredEvents = rawEvents.where((e) {
-    final local = e.eventDate.isUtc ? e.eventDate.toLocal() : e.eventDate;
-    final eventDay = DateTime(local.year, local.month, local.day);
-    return !eventDay.isBefore(startOfToday);
-  }).take(6).toList();
+  final filteredEvents = rawEvents
+      .where((e) {
+        final local = e.eventDate.isUtc ? e.eventDate.toLocal() : e.eventDate;
+        final eventDay = DateTime(local.year, local.month, local.day);
+        return !eventDay.isBefore(startOfToday);
+      })
+      .take(6)
+      .toList();
 
-  final result = <(MockEvent, String)>[];
+  final result = <HomeEvent>[];
   for (final e in filteredEvents) {
     final business = await businessRepo.getById(e.businessId);
-    result.add((
-      MockEvent(
+    result.add(
+      HomeEvent(
         id: e.id,
-        listingId: e.businessId,
+        businessId: e.businessId,
+        businessName: business?.name ?? 'Local Business',
         title: e.title,
         eventDate: e.eventDate,
-        description: e.description,
-        endDate: e.endDate,
-        location: e.location,
         imageUrl: e.imageUrl,
-        status: e.status,
+        location: e.location,
       ),
-      business?.name ?? 'Local Business'
-    ));
+    );
   }
   return result;
 }

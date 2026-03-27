@@ -1,42 +1,21 @@
-/// Schema-aligned model for `business_events` (backend-cheatsheet §1).
-library;
+import 'package:freezed_annotation/freezed_annotation.dart';
 
-class BusinessEvent {
-  const BusinessEvent({
-    required this.id,
-    required this.businessId,
-    required this.title,
-    required this.eventDate,
-    this.description,
-    this.endDate,
-    this.location,
-    this.imageUrl,
-    this.status = 'pending',
-  });
+part 'business_event.freezed.dart';
+part 'business_event.g.dart';
 
-  final String id;
-  final String businessId;
-  final String title;
-  final DateTime eventDate;
-  final String? description;
-  final DateTime? endDate;
-  final String? location;
-  final String? imageUrl;
-  final String status;
+@freezed
+abstract class BusinessEvent with _$BusinessEvent {
+  const factory BusinessEvent({
+    required String id,
+    @JsonKey(name: 'business_id') required String businessId,
+    required String title,
+    @JsonKey(name: 'event_date') required DateTime eventDate,
+    String? description,
+    @JsonKey(name: 'end_date') DateTime? endDate,
+    String? location,
+    @JsonKey(name: 'image_url') String? imageUrl,
+    @Default('pending') String status,
+  }) = _BusinessEvent;
 
-  factory BusinessEvent.fromJson(Map<String, dynamic> json) {
-    return BusinessEvent(
-      id: json['id'] as String,
-      businessId: json['business_id'] as String,
-      title: json['title'] as String,
-      eventDate: DateTime.parse(json['event_date'] as String),
-      description: json['description'] as String?,
-      endDate: json['end_date'] != null
-          ? DateTime.tryParse(json['end_date'] as String)
-          : null,
-      location: json['location'] as String?,
-      imageUrl: json['image_url'] as String?,
-      status: json['status'] as String? ?? 'pending',
-    );
-  }
+  factory BusinessEvent.fromJson(Map<String, dynamic> json) => _$BusinessEventFromJson(json);
 }

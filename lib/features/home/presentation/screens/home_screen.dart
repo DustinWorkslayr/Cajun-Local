@@ -1,25 +1,25 @@
 import 'dart:async';
+import 'package:cajun_local/features/home/data/models/home_models.dart';
+import 'package:cajun_local/features/businesses/data/models/featured_business.dart';
+import 'package:cajun_local/features/profile/data/models/user_parish_preferences.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:cajun_local/features/home/presentation/providers/home_providers.dart';
 import 'package:cajun_local/features/news/data/models/blog_post.dart';
-import 'package:cajun_local/core/data/mock_data.dart';
+import 'package:cajun_local/features/businesses/data/models/business_category.dart';
 import 'package:cajun_local/core/theme/theme.dart';
 import 'package:cajun_local/shared/widgets/animated_entrance.dart';
 import 'package:cajun_local/shared/widgets/dismissible_alert_banner.dart';
-import 'package:cajun_local/features/categories/presentation/screens/categories_screen.dart';
-import 'package:cajun_local/features/listing/presentation/screens/listing_detail_screen.dart';
-import 'package:cajun_local/features/local_events/presentation/screens/local_events_screen.dart';
-import 'package:cajun_local/features/favorites/presentation/screens/favorites_screen.dart';
 import 'package:cajun_local/shared/widgets/parish_onboarding_dialog.dart';
 import 'package:cajun_local/shared/widgets/app_empty_state.dart';
 import 'package:cajun_local/core/theme/app_layout.dart';
+import 'package:cajun_local/shared/widgets/app_refresh_indicator.dart';
 
 // Widgets
 import '../widgets/home_hero_widget.dart';
 import '../widgets/home_quick_actions_widget.dart';
 import '../widgets/home_section_header_widget.dart';
-import '../widgets/home_tablet_right_column_widget.dart';
 import '../widgets/latest_post_card_widget.dart';
 import '../widgets/popular_card_widget.dart';
 import '../widgets/upcoming_event_card_widget.dart';
@@ -49,7 +49,7 @@ class HomeScreen extends ConsumerStatefulWidget {
   final VoidCallback? onOpenLocalEvents;
   final VoidCallback? onOpenChooseForMe;
   final VoidCallback? onNavigateToFavorites;
-  final void Function(MockCategory)? onSelectCategory;
+  final void Function(BusinessCategory)? onSelectCategory;
 
   @override
   ConsumerState<HomeScreen> createState() => _HomeScreenState();
@@ -97,16 +97,27 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
   Future<void> _checkOnboarding() async {
     final prefs = ref.read(homePreferredParishNamesProvider);
-    if (!prefs.hasValue || prefs.value!.isEmpty) {
+    if (!prefs.hasValue || (prefs.hasValue && prefs.value!.isEmpty)) {
       if (mounted) {
-        showDialog<void>(
-          context: context,
-          builder: (_) => ParishOnboardingDialog(
-            onComplete: (_) {
-              _refreshAll();
-            },
-          ),
-        );
+        final initialParishIds = await UserParishPreferences.getPreferredParishIds();
+        final initialInterestIds = await UserParishPreferences.getPreferredInterestIds();
+        if (mounted) {
+          await showDialog<void>(
+            context: context,
+            barrierDismissible: false,
+            builder: (ctx) => ParishOnboardingDialog(
+              initialParishIds: initialParishIds,
+              initialInterestIds: initialInterestIds,
+              onComplete: (parishIds, interestIds) async {
+                await UserParishPreferences.setPreferredParishIds(parishIds);
+                await UserParishPreferences.setPreferredInterestIds(interestIds);
+                await UserParishPreferences.setCompletedParishOnboarding();
+                if (ctx.mounted) Navigator.of(ctx).pop();
+                _refreshAll();
+              },
+            ),
+          );
+        }
       }
     }
   }
@@ -122,9 +133,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
   void _onSearchSubmitted() {
     final query = _searchController.text.trim();
-    Navigator.of(
-      context,
-    ).push(MaterialPageRoute<void>(builder: (_) => CategoriesScreen(initialSearch: query.isEmpty ? null : query)));
+    if (query.isNotEmpty) {
+      context.go('/explore?search=$query');
+    } else {
+      context.go('/explore');
+    }
   }
 
   String _parishLabelForPost(BlogPost post, Map<String, String> idToName) {
@@ -138,7 +151,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final theme = Theme.of(context);
     final width = MediaQuery.sizeOf(context).width;
     final isTablet = width >= AppTheme.breakpointTablet;
-    final isLargeTablet = width >= AppTheme.breakpointLargeTablet;
     final horizontalPad = AppLayout.horizontalPadding(context).left;
     final padding = EdgeInsets.symmetric(horizontal: horizontalPad);
 
@@ -152,9 +164,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
     return Container(
       color: AppTheme.specOffWhite,
-      child: RefreshIndicator(
+      child: AppRefreshIndicator(
         onRefresh: () async => _refreshAll(),
-        color: AppTheme.specNavy,
         child: AppLayout.constrainSection(
           context,
           CustomScrollView(
@@ -167,92 +178,93 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 ),
               ),
 
-              // --- Hero section ---
+              // --- Hero + Search Section ---
               SliverToBoxAdapter(
                 child: AnimatedEntrance(
-                  child: Padding(
-                    padding: EdgeInsets.fromLTRB(
-                      padding.left,
-                      8,
-                      padding.right,
-                      isTablet ? _sectionSpacingLarge : _sectionSpacing,
-                    ),
-                    child: isTablet
-                        ? SizedBox(
-                            height: 280,
-                            child: Row(
-                              crossAxisAlignment: CrossAxisAlignment.stretch,
-                              children: [
-                                Expanded(
-                                  child: HomeHeroWidget(
-                                    isTablet: true,
-                                    onExplore: () {
-                                      if (widget.onNavigateToExplore != null) {
-                                        widget.onNavigateToExplore!();
-                                      } else {
-                                        Navigator.of(
-                                          context,
-                                        ).push(MaterialPageRoute(builder: (_) => const CategoriesScreen()));
-                                      }
-                                    },
-                                    onFavorites: () {
-                                      if (widget.onNavigateToFavorites != null) {
-                                        widget.onNavigateToFavorites!();
-                                      } else {
-                                        Navigator.of(
-                                          context,
-                                        ).push(MaterialPageRoute(builder: (_) => const FavoritesScreen()));
-                                      }
-                                    },
-                                  ),
-                                ),
-                                const SizedBox(width: _cardGap),
-                                Expanded(
-                                  child: featuredAsync.maybeWhen(
-                                    data: (spots) => HomeTabletRightColumnWidget(
-                                      spots: spots,
-                                      previewScrollController: _heroPreviewScrollController,
-                                      onExplore: () {
-                                        if (widget.onNavigateToExplore != null) {
-                                          widget.onNavigateToExplore!();
-                                        } else {
-                                          Navigator.of(
-                                            context,
-                                          ).push(MaterialPageRoute(builder: (_) => const CategoriesScreen()));
-                                        }
-                                      },
-                                      onTapSpot: (spot) => Navigator.of(
-                                        context,
-                                      ).push(
-                                        MaterialPageRoute(builder: (_) => ListingDetailScreen(listingId: spot.id)),
-                                      ),
-                                    ),
-                                    orElse: () => const Center(child: CircularProgressIndicator()),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          )
-                        : HomeHeroWidget(
-                            isTablet: false,
-                            onExplore: () {
-                              if (widget.onNavigateToExplore != null) {
-                                widget.onNavigateToExplore!();
-                              } else {
-                                Navigator.of(context).push(MaterialPageRoute(builder: (_) => const CategoriesScreen()));
-                              }
-                            },
-                            onFavorites: () {
-                              if (widget.onNavigateToFavorites != null) {
-                                widget.onNavigateToFavorites!();
-                              } else {
-                                Navigator.of(context).push(MaterialPageRoute(builder: (_) => const FavoritesScreen()));
-                              }
-                            },
+                  child: Stack(
+                    clipBehavior: Clip.none,
+                    children: [
+                      HomeHeroWidget(
+                        isTablet: isTablet,
+                        padding: padding,
+                        onExplore: () {
+                          if (widget.onNavigateToExplore != null) {
+                            widget.onNavigateToExplore!();
+                          } else {
+                            context.go('/explore');
+                          }
+                        },
+                        onFavorites: () {
+                          if (widget.onNavigateToFavorites != null) {
+                            widget.onNavigateToFavorites!();
+                          } else {
+                            context.go('/favorites');
+                          }
+                        },
+                      ),
+
+                      // Overlapping Search Bar
+                      Positioned(
+                        left: padding.left,
+                        right: padding.right,
+                        bottom: -28,
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: AppTheme.specWhite,
+                            borderRadius: BorderRadius.circular(16),
+                            boxShadow: [
+                              BoxShadow(
+                                color: const Color(0xFF191C1D).withValues(alpha: 0.06),
+                                blurRadius: 24,
+                                offset: const Offset(0, 8),
+                              ),
+                            ],
                           ),
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: TextField(
+                                  controller: _searchController,
+                                  focusNode: _searchFocusNode,
+                                  onSubmitted: (_) => _onSearchSubmitted(),
+                                  style: theme.textTheme.bodyLarge?.copyWith(color: AppTheme.specOnSurface),
+                                  decoration: InputDecoration(
+                                    hintText: 'Find local flavor...',
+                                    hintStyle: theme.textTheme.bodyLarge?.copyWith(color: AppTheme.specOutline),
+                                    prefixIcon: Icon(Icons.search_rounded, color: AppTheme.specOutline, size: 22),
+                                    border: InputBorder.none,
+                                    enabledBorder: InputBorder.none,
+                                    focusedBorder: InputBorder.none,
+                                    contentPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 16),
+                                  ),
+                                  textInputAction: TextInputAction.search,
+                                ),
+                              ),
+                              Padding(
+                                padding: const EdgeInsets.all(8),
+                                child: Material(
+                                  color: AppTheme.specGold,
+                                  borderRadius: BorderRadius.circular(12),
+                                  child: InkWell(
+                                    onTap: _onSearchSubmitted,
+                                    borderRadius: BorderRadius.circular(12),
+                                    child: const Padding(
+                                      padding: EdgeInsets.all(12),
+                                      child: Icon(Icons.tune_rounded, color: Colors.white, size: 22),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ),
+
+              const SliverToBoxAdapter(child: SizedBox(height: 52)),
 
               // --- Parish selection ---
               prefNamesAsync.maybeWhen(
@@ -266,14 +278,27 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                             child: Material(
                               color: Colors.transparent,
                               child: InkWell(
-                                onTap: () => showDialog<void>(
-                                  context: context,
-                                  builder: (_) => ParishOnboardingDialog(
-                                    onComplete: (_) {
-                                      _refreshAll();
-                                    },
-                                  ),
-                                ),
+                                onTap: () async {
+                                  final initialParishIds = await UserParishPreferences.getPreferredParishIds();
+                                  final initialInterestIds = await UserParishPreferences.getPreferredInterestIds();
+                                  if (context.mounted) {
+                                    await showDialog<void>(
+                                      context: context,
+                                      barrierDismissible: false,
+                                      builder: (ctx) => ParishOnboardingDialog(
+                                        initialParishIds: initialParishIds,
+                                        initialInterestIds: initialInterestIds,
+                                        onComplete: (parishIds, interestIds) async {
+                                          await UserParishPreferences.setPreferredParishIds(parishIds);
+                                          await UserParishPreferences.setPreferredInterestIds(interestIds);
+                                          await UserParishPreferences.setCompletedParishOnboarding();
+                                          if (ctx.mounted) Navigator.of(ctx).pop();
+                                          _refreshAll();
+                                        },
+                                      ),
+                                    );
+                                  }
+                                },
                                 borderRadius: BorderRadius.circular(16),
                                 child: Container(
                                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -321,63 +346,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 orElse: () => const SliverToBoxAdapter(child: SizedBox()),
               ),
 
-              // --- Search bar ---
-              SliverToBoxAdapter(
-                child: AnimatedEntrance(
-                  delay: const Duration(milliseconds: 60),
-                  child: Padding(
-                    padding: EdgeInsets.fromLTRB(padding.left, 0, padding.right, _sectionSpacingLarge),
-                    child: Material(
-                      color: AppTheme.specWhite,
-                      borderRadius: BorderRadius.circular(20),
-                      child: Container(
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(20),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.06),
-                              blurRadius: 12,
-                              offset: const Offset(0, 4),
-                            ),
-                          ],
-                        ),
-                        child: TextField(
-                          controller: _searchController,
-                          focusNode: _searchFocusNode,
-                          onSubmitted: (_) => _onSearchSubmitted(),
-                          decoration: InputDecoration(
-                            hintText: 'Find by name or category — then explore',
-                            hintStyle: theme.textTheme.bodyLarge?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-                            prefixIcon: Icon(Icons.search_rounded, color: AppTheme.specNavy, size: 24),
-                            suffixIcon: ValueListenableBuilder<TextEditingValue>(
-                              valueListenable: _searchController,
-                              builder: (context, value, _) {
-                                if (value.text.isNotEmpty) {
-                                  return IconButton(
-                                    icon: Icon(Icons.clear_rounded, color: AppTheme.specNavy, size: 22),
-                                    onPressed: () => _searchController.clear(),
-                                    tooltip: 'Clear',
-                                  );
-                                }
-                                return IconButton(
-                                  icon: Icon(Icons.arrow_forward_rounded, color: AppTheme.specNavy, size: 22),
-                                  onPressed: _onSearchSubmitted,
-                                  tooltip: 'Search in Explore',
-                                );
-                              },
-                            ),
-                            border: InputBorder.none,
-                            contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-                          ),
-                          textInputAction: TextInputAction.search,
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-
-              // --- Quick actions ---
               SliverToBoxAdapter(
                 child: AnimatedEntrance(
                   delay: const Duration(milliseconds: 80),
@@ -393,8 +361,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 ),
               ),
 
-              // --- Sections ---
-
               // Upcoming events
               ...eventsAsync.maybeWhen(
                 data: (events) => _buildEventsSection(events, theme, padding),
@@ -404,7 +370,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
               // Popular Near You
               ...featuredAsync.maybeWhen(
-                data: (spots) => _buildPopularSection(spots, theme, width, isTablet, isLargeTablet, padding),
+                data: (spots) => _buildPopularSection(spots, theme, width, isTablet, padding),
+                loading: () => [const SliverToBoxAdapter(child: Center(child: CircularProgressIndicator()))],
+                orElse: () => [const SliverToBoxAdapter(child: SizedBox())],
+              ),
+
+              // Categories
+              ...categoriesAsync.maybeWhen(
+                data: (cats) => _buildCategoriesSection(cats, theme, width, isTablet, padding),
                 loading: () => [const SliverToBoxAdapter(child: Center(child: CircularProgressIndicator()))],
                 orElse: () => [const SliverToBoxAdapter(child: SizedBox())],
               ),
@@ -425,16 +398,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 orElse: () => [const SliverToBoxAdapter(child: SizedBox())],
               ),
 
-              // Categories
-              ...categoriesAsync.maybeWhen(
-                data: (cats) => _buildCategoriesSection(cats, theme, width, isTablet, padding),
-                loading: () => [const SliverToBoxAdapter(child: Center(child: CircularProgressIndicator()))],
-                orElse: () => [const SliverToBoxAdapter(child: SizedBox())],
-              ),
-
               // Bottom spacing
               SliverToBoxAdapter(child: const SizedBox(height: _sectionSpacing + 8)),
-              SliverToBoxAdapter(child: SizedBox(height: 24 + MediaQuery.paddingOf(context).bottom)),
+              SliverToBoxAdapter(child: SizedBox(height: 110 + MediaQuery.paddingOf(context).bottom)),
             ],
           ),
         ),
@@ -442,9 +408,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     );
   }
 
-  // --- UI Section Builders ---
-
-  List<Widget> _buildEventsSection(List<(MockEvent, String)> events, ThemeData theme, EdgeInsets padding) {
+  List<Widget> _buildEventsSection(List<HomeEvent> events, ThemeData theme, EdgeInsets padding) {
     return [
       SliverToBoxAdapter(
         child: AnimatedEntrance(
@@ -458,34 +422,27 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
-                    HomeSectionHeaderWidget(
-                      title: 'This week in Acadiana',
-                      titleStyle: theme.textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w700,
-                        color: AppTheme.specNavy,
-                      ),
-                    ),
+                    Expanded(child: HomeSectionHeaderWidget(title: 'This week in Acadiana', subtitle: 'Events & happenings')),
                     if (events.isNotEmpty)
-                      TextButton(
-                        onPressed: () {
+                      GestureDetector(
+                        onTap: () {
                           if (widget.onOpenLocalEvents != null) {
                             widget.onOpenLocalEvents!();
                           } else {
-                            Navigator.of(context).push(MaterialPageRoute(builder: (_) => const LocalEventsScreen()));
+                            context.push('/local-events');
                           }
                         },
-                        style: TextButton.styleFrom(foregroundColor: AppTheme.specGold),
                         child: Row(
                           children: [
                             Text(
                               'See all',
                               style: theme.textTheme.labelLarge?.copyWith(
-                                fontWeight: FontWeight.w600,
-                                color: AppTheme.specNavy,
+                                fontWeight: FontWeight.w700,
+                                color: AppTheme.specGold,
                               ),
                             ),
-                            const SizedBox(width: 4),
-                            const Icon(Icons.arrow_forward_rounded, size: 16),
+                            const SizedBox(width: 2),
+                            const Icon(Icons.arrow_forward_ios_rounded, size: 14, color: AppTheme.specGold),
                           ],
                         ),
                       ),
@@ -499,27 +456,26 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     padding: EdgeInsets.symmetric(vertical: 20),
                   )
                 else
-                  SizedBox(
-                    height: 124,
-                    child: ListView.builder(
-                      controller: _eventsScrollController,
-                      scrollDirection: Axis.horizontal,
-                      clipBehavior: Clip.none,
-                      itemCount: events.length,
-                      itemBuilder: (context, index) {
-                        final (event, businessName) = events[index];
-                        return Padding(
-                          padding: const EdgeInsets.only(right: _cardGap),
-                          child: UpcomingEventCardWidget(
-                            event: event,
-                            businessName: businessName,
-                            onTap: () => Navigator.of(
-                              context,
-                            ).push(MaterialPageRoute(builder: (_) => ListingDetailScreen(listingId: event.listingId))),
-                          ),
-                        );
-                      },
+                  GridView.builder(
+                    padding: const EdgeInsets.only(top: 8),
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: 2,
+                      mainAxisSpacing: 16,
+                      crossAxisSpacing: 16,
+                      childAspectRatio: 0.85,
                     ),
+                    itemCount: events.length > 4 ? 4 : events.length,
+                    itemBuilder: (context, index) {
+                      final event = events[index];
+                      final isFeatured = index % 2 != 0;
+                      return UpcomingEventCardWidget(
+                        event: event,
+                        featured: isFeatured,
+                        onTap: () => context.push('/listing/${event.businessId}'),
+                      );
+                    },
                   ),
                 const SizedBox(height: _sectionSpacingLarge),
               ],
@@ -531,11 +487,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   }
 
   List<Widget> _buildPopularSection(
-    List<MockSpot> spots,
+    List<FeaturedBusiness> spots,
     ThemeData theme,
     double width,
     bool isTablet,
-    bool isLargeTablet,
     EdgeInsets padding,
   ) {
     return [
@@ -549,29 +504,27 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
-                  HomeSectionHeaderWidget(
-                    title: 'Popular Near You',
-                    subtitle: 'Top spots in your parish',
-                    titleStyle: theme.textTheme.titleLarge?.copyWith(
-                      fontWeight: FontWeight.w800,
-                      color: AppTheme.specNavy,
-                    ),
-                  ),
+                  Expanded(child: HomeSectionHeaderWidget(title: 'Popular Near You', subtitle: 'Top local favorites in your parish')),
                   if (spots.isNotEmpty)
-                    TextButton(
-                      onPressed: () {
+                    GestureDetector(
+                      onTap: () {
                         if (widget.onNavigateToExplore != null) {
                           widget.onNavigateToExplore!();
                         } else {
-                          Navigator.of(context).push(MaterialPageRoute(builder: (_) => const CategoriesScreen()));
+                          context.go('/explore');
                         }
                       },
-                      style: TextButton.styleFrom(foregroundColor: AppTheme.specGold),
                       child: Row(
                         children: [
-                          Text('See all', style: theme.textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w600)),
-                          const SizedBox(width: 4),
-                          const Icon(Icons.arrow_forward_rounded, size: 18),
+                          Text(
+                            'See all',
+                            style: theme.textTheme.labelLarge?.copyWith(
+                              fontWeight: FontWeight.w700,
+                              color: AppTheme.specGold,
+                            ),
+                          ),
+                          const SizedBox(width: 2),
+                          const Icon(Icons.arrow_forward_ios_rounded, size: 14, color: AppTheme.specGold),
                         ],
                       ),
                     ),
@@ -597,18 +550,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 crossAxisCount: width > 1200 ? 4 : (width > 850 ? 3 : 2),
                 mainAxisSpacing: _cardGap,
                 crossAxisSpacing: _cardGap,
-                childAspectRatio: width > 1200 ? 1.85 : 1.75,
+                mainAxisExtent: 290,
               ),
               delegate: SliverChildBuilderDelegate((context, index) {
                 final spot = spots[index];
                 return AnimatedEntrance(
                   delay: Duration(milliseconds: 80 + (index * 60)),
-                  child: PopularCardWidget(
-                    spot: spot,
-                    onTap: () => Navigator.of(
-                      context,
-                    ).push(MaterialPageRoute(builder: (_) => ListingDetailScreen(listingId: spot.id))),
-                  ),
+                  child: PopularCardWidget(spot: spot, onTap: () => context.push('/listing/${spot.id}')),
                 );
               }, childCount: spots.length),
             ),
@@ -616,12 +564,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         else
           SliverToBoxAdapter(
             child: SizedBox(
-              height: 132,
+              height: 290,
               child: ListView.builder(
                 controller: _popularScrollController,
                 scrollDirection: Axis.horizontal,
                 padding: EdgeInsets.only(left: padding.left, right: padding.right, bottom: 4),
-                clipBehavior: Clip.none,
                 itemCount: spots.length,
                 itemBuilder: (context, index) {
                   final spot = spots[index];
@@ -632,9 +579,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       delay: Duration(milliseconds: 80 + (index * 60)),
                       child: PopularCardWidget(
                         spot: spot,
-                        onTap: () => Navigator.of(
-                          context,
-                        ).push(MaterialPageRoute(builder: (_) => ListingDetailScreen(listingId: spot.id))),
+                        onTap: () => context.push('/listing/${spot.id}'),
                         cardWidth: cardWidth,
                       ),
                     ),
@@ -664,23 +609,26 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
-                  HomeSectionHeaderWidget(
-                    title: 'Local Stories',
-                    subtitle: 'Stories from Cajun country',
-                    titleStyle: theme.textTheme.titleLarge?.copyWith(
-                      fontWeight: FontWeight.w800,
-                      color: AppTheme.specNavy,
+                  Expanded(
+                    child: HomeSectionHeaderWidget(
+                      title: 'Local Stories',
+                      subtitle: 'Journal entries from across Cajun country',
                     ),
                   ),
                   if (posts.isNotEmpty)
-                    TextButton(
-                      onPressed: () => widget.onNavigateToNews?.call(),
-                      style: TextButton.styleFrom(foregroundColor: AppTheme.specGold),
+                    GestureDetector(
+                      onTap: () => widget.onNavigateToNews?.call(),
                       child: Row(
                         children: [
-                          Text('See all', style: theme.textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w600)),
-                          const SizedBox(width: 4),
-                          const Icon(Icons.arrow_forward_rounded, size: 18),
+                          Text(
+                            'See all',
+                            style: theme.textTheme.labelLarge?.copyWith(
+                              fontWeight: FontWeight.w700,
+                              color: AppTheme.specGold,
+                            ),
+                          ),
+                          const SizedBox(width: 2),
+                          const Icon(Icons.arrow_forward_ios_rounded, size: 14, color: AppTheme.specGold),
                         ],
                       ),
                     ),
@@ -699,45 +647,58 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       ),
       if (posts.isNotEmpty)
         SliverToBoxAdapter(
-          child: SizedBox(
-            height: 300,
-            child: ListView.builder(
-              controller: _blogScrollController,
-              scrollDirection: Axis.horizontal,
-              padding: EdgeInsets.only(left: padding.left, right: padding.right, bottom: 4),
-              clipBehavior: Clip.none,
-              itemCount: posts.length,
-              itemBuilder: (context, index) {
-                final post = posts[index];
-                final cardWidth = (width - padding.left - padding.right - _cardGap * 2) * 0.78;
-                return Padding(
-                  padding: EdgeInsets.only(right: _cardGap),
-                  child: AnimatedEntrance(
-                    delay: Duration(milliseconds: 100 + (index * 60)),
-                    child: LatestPostCardWidget(
-                      post: post,
-                      parishLabel: _parishLabelForPost(post, idToName),
-                      onTap: () => widget.onNavigateToNewsPost?.call(post.id),
-                      cardWidth: cardWidth,
-                    ),
-                  ),
-                );
-              },
-            ),
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final contentWidth = width - padding.left - padding.right;
+              final cardWidth = (contentWidth * 0.85).clamp(280.0, 420.0);
+              final cardHeight = cardWidth * 1.25;
+
+              return SizedBox(
+                height: cardHeight,
+                child: ListView.builder(
+                  controller: _blogScrollController,
+                  scrollDirection: Axis.horizontal,
+                  padding: EdgeInsets.only(left: padding.left, right: padding.right),
+                  itemCount: posts.length,
+                  itemBuilder: (context, index) {
+                    final post = posts[index];
+                    final isFeatured = index == 0;
+
+                    return Padding(
+                      padding: EdgeInsets.only(right: index == posts.length - 1 ? 0 : _cardGap),
+                      child: AnimatedEntrance(
+                        delay: Duration(milliseconds: 100 + (index * 60)),
+                        child: LatestPostCardWidget(
+                          post: post,
+                          parishLabel: _parishLabelForPost(post, idToName),
+                          onTap: () => widget.onNavigateToNewsPost?.call(post.id),
+                          cardWidth: cardWidth,
+                          cardHeight: cardHeight,
+                          featured: isFeatured,
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              );
+            },
           ),
         ),
     ];
   }
 
-  List<Widget> _buildCategoriesSection(List<MockCategory> cats, ThemeData theme, double width, bool isTablet, EdgeInsets padding) {
+  List<Widget> _buildCategoriesSection(
+    List<BusinessCategory> cats,
+    ThemeData theme,
+    double width,
+    bool isTablet,
+    EdgeInsets padding,
+  ) {
     return [
       SliverToBoxAdapter(
         child: Padding(
           padding: EdgeInsets.fromLTRB(padding.left, _sectionSpacingLarge, padding.right, 0),
-          child: HomeSectionHeaderWidget(
-            title: 'Browse by category',
-            titleStyle: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700, color: AppTheme.specNavy),
-          ),
+          child: HomeSectionHeaderWidget(title: 'Browse by category', subtitle: 'Explore by interest'),
         ),
       ),
       const SliverToBoxAdapter(child: SizedBox(height: _sectionTitleBottom)),
@@ -748,7 +709,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             crossAxisCount: width > 1000 ? 5 : (width > 750 ? 4 : (width > 500 ? 3 : 2)),
             mainAxisSpacing: 16,
             crossAxisSpacing: 16,
-            childAspectRatio: isTablet ? 1.1 : 1.25,
+            mainAxisExtent: 200,
           ),
           delegate: SliverChildBuilderDelegate((context, index) {
             final cat = cats[index];
@@ -760,9 +721,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   if (widget.onSelectCategory != null) {
                     widget.onSelectCategory!(cat);
                   } else {
-                    Navigator.of(
-                      context,
-                    ).push(MaterialPageRoute(builder: (_) => CategoriesScreen(initialCategoryId: cat.id)));
+                    context.go('/explore?categoryId=${cat.id}');
                   }
                 },
               ),

@@ -3,7 +3,6 @@ import 'package:cajun_local/core/data/contact_form_templates.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cajun_local/features/businesses/data/models/business.dart';
-import 'package:cajun_local/features/businesses/data/models/business_image.dart';
 import 'package:cajun_local/features/businesses/data/repositories/business_repository.dart';
 import 'package:cajun_local/features/businesses/data/models/menu_item.dart';
 import 'package:cajun_local/features/businesses/data/models/menu_section.dart';
@@ -13,11 +12,8 @@ import 'package:cajun_local/features/deals/data/models/punch_card_program.dart';
 import 'package:cajun_local/features/deals/data/repositories/deals_repository.dart';
 import 'package:cajun_local/features/deals/data/repositories/punch_card_programs_repository.dart';
 import 'package:cajun_local/features/events/data/models/business_event.dart';
-import 'package:cajun_local/features/events/data/repositories/business_events_repository.dart';
 import 'package:cajun_local/features/businesses/data/models/business_manager_entry.dart';
 import 'package:cajun_local/features/businesses/data/repositories/business_managers_repository.dart';
-import 'package:cajun_local/core/data/services/business_images_storage_service.dart';
-import 'package:cajun_local/core/data/services/storage_upload_constants.dart';
 import 'package:cajun_local/core/subscription/business_tier_service.dart';
 import 'package:cajun_local/core/theme/app_layout.dart';
 import 'package:cajun_local/core/theme/theme.dart';
@@ -30,9 +26,6 @@ import 'package:cajun_local/features/my_listings/presentation/screens/event_deta
 import 'package:cajun_local/features/my_listings/presentation/screens/form_submissions_inbox_screen.dart';
 import 'package:cajun_local/features/my_listings/presentation/screens/punch_card_enrollments_screen.dart';
 import 'package:cajun_local/shared/widgets/app_buttons.dart';
-import 'package:cajun_local/shared/widgets/app_section_card.dart';
-import 'package:cajun_local/shared/widgets/business_amenities_editor.dart';
-import 'package:cajun_local/shared/widgets/business_hours_editor.dart';
 import 'package:cajun_local/shared/widgets/business_links_editor.dart';
 import 'package:cajun_local/shared/widgets/owner_onboarding_dialog.dart';
 import 'package:cajun_local/features/my_listings/presentation/controllers/listing_edit_controller.dart';
@@ -317,7 +310,7 @@ class _ListingEditScreenState extends ConsumerState<ListingEditScreen> with Sing
               controller: _tabController,
               isScrollable: true,
               tabAlignment: TabAlignment.start,
-              labelColor: AppTheme.specNavy,
+              labelColor: AppTheme.specGold,
               unselectedLabelColor: AppTheme.specNavy.withValues(alpha: 0.6),
               indicatorColor: AppTheme.specGold,
               indicatorWeight: 3,

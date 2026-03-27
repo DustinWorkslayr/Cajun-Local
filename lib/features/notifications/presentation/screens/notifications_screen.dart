@@ -6,6 +6,7 @@ import 'package:cajun_local/features/notifications/data/repositories/notificatio
 import 'package:cajun_local/core/theme/app_layout.dart';
 import 'package:cajun_local/core/theme/theme.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:cajun_local/shared/widgets/app_refresh_indicator.dart';
 
 /// Per-user notifications list: filter by type, mark read, delete, open action links.
 /// When [onHandleActionUrl] is set and returns true for an action_url, in-app navigation
@@ -258,7 +259,7 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
                       ],
                     ),
                   )
-                : RefreshIndicator(
+                : AppRefreshIndicator(
                     onRefresh: _load,
                     child: ListView.builder(
                       padding: EdgeInsets.fromLTRB(padding.left, 8, padding.right, 24),

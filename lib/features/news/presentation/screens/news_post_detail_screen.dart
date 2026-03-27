@@ -2,6 +2,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_html/flutter_html.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:cajun_local/features/news/data/models/blog_post.dart';
 import 'package:cajun_local/core/theme/app_layout.dart';
 import 'package:cajun_local/core/theme/theme.dart';
@@ -103,7 +104,16 @@ class NewsPostDetailScreen extends ConsumerWidget {
           const SizedBox(height: 16),
           Text('Post not found', style: theme.textTheme.titleMedium?.copyWith(color: AppTheme.specNavy)),
           const SizedBox(height: 24),
-          TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Back')),
+          TextButton(
+            onPressed: () {
+              if (context.canPop()) {
+                context.pop();
+              } else {
+                context.go('/news');
+              }
+            }, 
+            child: const Text('Back')
+          ),
         ],
       ),
     );
@@ -163,7 +173,13 @@ class NewsPostDetailScreen extends ConsumerWidget {
                     borderRadius: BorderRadius.circular(24),
                     child: IconButton(
                       icon: const Icon(Icons.arrow_back_rounded, color: Colors.white),
-                      onPressed: () => Navigator.of(context).pop(),
+                      onPressed: () {
+                        if (context.canPop()) {
+                          context.pop();
+                        } else {
+                          context.go('/news');
+                        }
+                      },
                     ),
                   ),
                 ),
@@ -288,11 +304,7 @@ class NewsPostDetailScreen extends ConsumerWidget {
                           (o) => _OtherBlogTile(
                             post: o,
                             onTap: () {
-                              Navigator.of(context).pushReplacement(
-                                MaterialPageRoute<void>(
-                                  builder: (_) => NewsPostDetailScreen(postId: o.id),
-                                ),
-                              );
+                              context.pushReplacement('/news/${o.id}');
                             },
                           ),
                         ),
@@ -388,7 +400,7 @@ class _OtherBlogTile extends StatelessWidget {
             ),
             clipBehavior: Clip.antiAlias,
             child: Row(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 SizedBox(
                   width: _thumbWidth,

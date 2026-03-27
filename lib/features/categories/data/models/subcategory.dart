@@ -1,26 +1,16 @@
-/// Schema-aligned model for `subcategories` (backend-cheatsheet §1).
-library;
+import 'package:freezed_annotation/freezed_annotation.dart';
 
-class Subcategory {
-  const Subcategory({
-    required this.id,
-    required this.name,
-    required this.categoryId,
-    this.slug,
-  });
+part 'subcategory.freezed.dart';
+part 'subcategory.g.dart';
 
-  final String id;
-  final String name;
-  final String categoryId;
-  /// URL-safe slug (auto-generated: category-slug + '-' + name). Unique.
-  final String? slug;
+@freezed
+abstract class Subcategory with _$Subcategory {
+  const factory Subcategory({
+    required String id,
+    required String name,
+    @JsonKey(name: 'category_id') required String categoryId,
+    String? slug,
+  }) = _Subcategory;
 
-  factory Subcategory.fromJson(Map<String, dynamic> json) {
-    return Subcategory(
-      id: json['id'] as String,
-      name: json['name'] as String,
-      categoryId: json['category_id'] as String,
-      slug: json['slug'] as String?,
-    );
-  }
+  factory Subcategory.fromJson(Map<String, dynamic> json) => _$SubcategoryFromJson(json);
 }

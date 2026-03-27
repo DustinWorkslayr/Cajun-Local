@@ -1,11 +1,12 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:cajun_local/features/news/data/models/blog_post.dart';
 import 'package:cajun_local/core/theme/app_layout.dart';
 import 'package:cajun_local/core/theme/theme.dart';
-import 'package:cajun_local/features/news/presentation/screens/news_post_detail_screen.dart';
 import 'package:cajun_local/features/news/presentation/providers/news_providers.dart';
+import 'package:cajun_local/shared/widgets/app_refresh_indicator.dart';
 
 /// Public News (blog) screen — approved posts only. News-focused, blog-style layout.
 class NewsScreen extends ConsumerWidget {
@@ -44,12 +45,11 @@ class NewsScreen extends ConsumerWidget {
 
     return Scaffold(
       backgroundColor: AppTheme.specOffWhite,
-      body: RefreshIndicator(
+      body: AppRefreshIndicator(
         onRefresh: () async {
           ref.invalidate(newsPostsProvider);
           ref.invalidate(newsParishesProvider);
         },
-        color: AppTheme.specNavy,
         child: CustomScrollView(
           slivers: [
             SliverToBoxAdapter(
@@ -103,11 +103,7 @@ class NewsScreen extends ConsumerWidget {
                               featured: isFirst,
                               bannerHeight: bannerHeight,
                               onTap: () {
-                                Navigator.of(context).push(
-                                  MaterialPageRoute<void>(
-                                    builder: (_) => NewsPostDetailScreen(postId: post.id),
-                                  ),
-                                );
+                                context.push('/news/${post.id}');
                               },
                             ),
                           );
@@ -132,7 +128,7 @@ class NewsScreen extends ConsumerWidget {
                 error: (err, stack) => _buildErrorState(theme, ref),
               ),
             ),
-            const SliverToBoxAdapter(child: SizedBox(height: 32)),
+            SliverToBoxAdapter(child: SizedBox(height: 110 + MediaQuery.paddingOf(context).bottom)),
           ],
         ),
       ),

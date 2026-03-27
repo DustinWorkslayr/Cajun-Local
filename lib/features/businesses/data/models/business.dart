@@ -1,92 +1,35 @@
-/// Schema-aligned model for `businesses` (backend-cheatsheet §1).
-/// Public read: status = 'approved' only.
-library;
+import 'package:freezed_annotation/freezed_annotation.dart';
 
-class Business {
-  const Business({
-    required this.id,
-    required this.name,
-    required this.status,
-    required this.categoryId,
-    this.slug,
-    this.city,
-    this.parish,
-    this.state,
-    this.latitude,
-    this.longitude,
-    this.description,
-    this.address,
-    this.phone,
-    this.website,
-    this.tagline,
-    this.logoUrl,
-    this.bannerUrl,
-    this.contactFormTemplate,
-    this.createdAt,
-    this.updatedAt,
-    this.isClaimable,
-    this.createdBy,
-  });
+part 'business.freezed.dart';
+part 'business.g.dart';
 
-  final String id;
-  final String name;
-  final String status;
-  final String categoryId;
+@freezed
+abstract class Business with _$Business {
+  const factory Business({
+    required String id,
+    required String name,
+    required String status,
+    @JsonKey(name: 'category_id') required String categoryId,
+    String? slug,
+    String? city,
+    String? parish,
+    String? state,
+    double? latitude,
+    double? longitude,
+    String? description,
+    String? address,
+    String? phone,
+    String? website,
+    String? tagline,
+    @JsonKey(name: 'logo_url') String? logoUrl,
+    @JsonKey(name: 'banner_url') String? bannerUrl,
+    @JsonKey(name: 'contact_form_template') String? contactFormTemplate,
+    @JsonKey(name: 'created_at') DateTime? createdAt,
+    @JsonKey(name: 'updated_at') DateTime? updatedAt,
+    @JsonKey(name: 'is_claimable') bool? isClaimable,
+    @JsonKey(name: 'is_open_now') bool? isOpenNow,
+    @JsonKey(name: 'created_by') String? createdBy,
+  }) = _Business;
 
-  /// URL-safe slug (auto-generated from name; duplicates get -1, -2). Unique.
-  final String? slug;
-  final String? city;
-
-  /// Parish id (e.g. 'lafayette') for directory filtering. Single primary parish.
-  final String? parish;
-  final String? state;
-  final double? latitude;
-  final double? longitude;
-  final String? description;
-  final String? address;
-  final String? phone;
-  final String? website;
-  final String? tagline;
-
-  /// URL of business logo (stored in business-images bucket). DB column: logo_url.
-  final String? logoUrl;
-
-  /// URL of listing banner/cover image (hero). DB column: banner_url.
-  final String? bannerUrl;
-
-  /// One of: general_inquiry, appointment_request, quote_request, event_booking. Null = no form.
-  final String? contactFormTemplate;
-  final DateTime? createdAt;
-  final DateTime? updatedAt;
-
-  /// True if no manager has claimed this business; false once claimed. Null if backend does not expose (no badge).
-  final bool? isClaimable;
-  final String? createdBy;
-
-  factory Business.fromJson(Map<String, dynamic> json) {
-    return Business(
-      id: json['id'] as String,
-      name: json['name'] as String,
-      status: json['status'] as String,
-      categoryId: json['category_id'] as String,
-      slug: json['slug'] as String?,
-      city: json['city'] as String?,
-      parish: json['parish'] as String?,
-      state: json['state'] as String?,
-      latitude: (json['latitude'] as num?)?.toDouble(),
-      longitude: (json['longitude'] as num?)?.toDouble(),
-      description: json['description'] as String?,
-      address: json['address'] as String?,
-      phone: json['phone'] as String?,
-      website: json['website'] as String?,
-      tagline: json['tagline'] as String?,
-      logoUrl: json['logo_url'] as String? ?? json['cover_image_url'] as String?,
-      bannerUrl: json['banner_url'] as String? ?? json['cover_image_url'] as String?,
-      contactFormTemplate: json['contact_form_template'] as String?,
-      createdAt: json['created_at'] != null ? DateTime.tryParse(json['created_at'] as String) : null,
-      updatedAt: json['updated_at'] != null ? DateTime.tryParse(json['updated_at'] as String) : null,
-      isClaimable: json['is_claimable'] as bool?,
-      createdBy: json['created_by'] as String?,
-    );
-  }
+  factory Business.fromJson(Map<String, dynamic> json) => _$BusinessFromJson(json);
 }

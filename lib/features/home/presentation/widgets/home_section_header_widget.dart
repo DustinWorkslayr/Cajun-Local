@@ -6,39 +6,39 @@ class HomeSectionHeaderWidget extends StatelessWidget {
     super.key,
     required this.title,
     this.subtitle,
-    required this.titleStyle,
+    this.titleStyle,
   });
 
   final String title;
   final String? subtitle;
   final TextStyle? titleStyle;
 
-  static const double _barHeight = 3;
-  static const double _barWidth = 40;
-
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
-        Text(title, style: titleStyle),
+        Text(
+          title,
+          style: titleStyle ?? theme.textTheme.headlineSmall?.copyWith(
+            color: AppTheme.specNavy,
+            fontWeight: FontWeight.w800,
+            letterSpacing: -0.5,
+          ),
+          softWrap: true,
+        ),
         if (subtitle != null) ...[
-          const SizedBox(height: 6),
+          const SizedBox(height: 4),
           Text(
             subtitle!,
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppTheme.specNavy.withValues(alpha: 0.65)),
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: AppTheme.specOnSurfaceVariant.withValues(alpha: 0.8),
+            ),
+            softWrap: true,
           ),
         ],
-        const SizedBox(height: 6),
-        Container(
-          height: _barHeight,
-          width: _barWidth,
-          decoration: BoxDecoration(
-            color: AppTheme.specGold.withValues(alpha: 0.8),
-            borderRadius: BorderRadius.circular(2),
-          ),
-        ),
       ],
     );
   }

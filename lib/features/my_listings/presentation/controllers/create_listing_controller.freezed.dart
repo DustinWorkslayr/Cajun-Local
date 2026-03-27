@@ -50,7 +50,7 @@ $Res call({
 });
 
 
-
+$BusinessCategoryCopyWith<$Res>? get selectedCategory;$ParishCopyWith<$Res>? get selectedParish;
 
 }
 /// @nodoc
@@ -82,7 +82,31 @@ as bool,createdBusinessId: freezed == createdBusinessId ? _self.createdBusinessI
 as String?,
   ));
 }
+/// Create a copy of CreateListingState
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$BusinessCategoryCopyWith<$Res>? get selectedCategory {
+    if (_self.selectedCategory == null) {
+    return null;
+  }
 
+  return $BusinessCategoryCopyWith<$Res>(_self.selectedCategory!, (value) {
+    return _then(_self.copyWith(selectedCategory: value));
+  });
+}/// Create a copy of CreateListingState
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$ParishCopyWith<$Res>? get selectedParish {
+    if (_self.selectedParish == null) {
+    return null;
+  }
+
+  return $ParishCopyWith<$Res>(_self.selectedParish!, (value) {
+    return _then(_self.copyWith(selectedParish: value));
+  });
+}
 }
 
 
@@ -297,7 +321,7 @@ $Res call({
 });
 
 
-
+@override $BusinessCategoryCopyWith<$Res>? get selectedCategory;@override $ParishCopyWith<$Res>? get selectedParish;
 
 }
 /// @nodoc
@@ -330,7 +354,31 @@ as String?,
   ));
 }
 
+/// Create a copy of CreateListingState
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$BusinessCategoryCopyWith<$Res>? get selectedCategory {
+    if (_self.selectedCategory == null) {
+    return null;
+  }
 
+  return $BusinessCategoryCopyWith<$Res>(_self.selectedCategory!, (value) {
+    return _then(_self.copyWith(selectedCategory: value));
+  });
+}/// Create a copy of CreateListingState
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$ParishCopyWith<$Res>? get selectedParish {
+    if (_self.selectedParish == null) {
+    return null;
+  }
+
+  return $ParishCopyWith<$Res>(_self.selectedParish!, (value) {
+    return _then(_self.copyWith(selectedParish: value));
+  });
+}
 }
 
 // dart format on

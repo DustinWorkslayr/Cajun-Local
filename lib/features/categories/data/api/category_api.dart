@@ -13,7 +13,7 @@ class CategoryApi {
   /// Fetch all categories with their subcategories.
   Future<List<BusinessCategory>> listCategories() async {
     try {
-      final response = await _client.dio.get('/categories/');
+      final response = await _client.dio.get('/categories');
       final data = response.data as List;
       return data.map((json) => BusinessCategory.fromJson(json as Map<String, dynamic>)).toList();
     } on DioException catch (e) {

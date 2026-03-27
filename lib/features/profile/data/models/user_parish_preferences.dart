@@ -8,6 +8,7 @@ class UserParishPreferences {
   UserParishPreferences._();
 
   static const String _keyPreferredParishIds = 'preferred_parish_ids';
+  static const String _keyPreferredInterestIds = 'preferred_interest_ids';
   static const String _keyCompletedParishOnboarding = 'completed_parish_onboarding';
 
   static SharedPreferences? _prefs;
@@ -30,6 +31,24 @@ class UserParishPreferences {
   static Future<void> setPreferredParishIds(Set<String> ids) async {
     final prefs = await _instance;
     await prefs.setString(_keyPreferredParishIds, jsonEncode(ids.toList()));
+  }
+
+  /// Preferred interest IDs.
+  static Future<Set<String>> getPreferredInterestIds() async {
+    final prefs = await _instance;
+    final raw = prefs.getString(_keyPreferredInterestIds);
+    if (raw == null || raw.isEmpty) return {};
+    try {
+      final list = jsonDecode(raw) as List<dynamic>?;
+      return list?.map((e) => e.toString()).toSet() ?? {};
+    } catch (_) {
+      return {};
+    }
+  }
+
+  static Future<void> setPreferredInterestIds(Set<String> ids) async {
+    final prefs = await _instance;
+    await prefs.setString(_keyPreferredInterestIds, jsonEncode(ids.toList()));
   }
 
   static Future<bool> hasCompletedParishOnboarding() async {

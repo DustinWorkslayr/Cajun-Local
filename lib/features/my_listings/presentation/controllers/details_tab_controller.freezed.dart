@@ -49,7 +49,7 @@ $Res call({
 });
 
 
-
+$BusinessCopyWith<$Res>? get businessRaw;
 
 }
 /// @nodoc
@@ -77,7 +77,19 @@ as bool,businessRaw: freezed == businessRaw ? _self.businessRaw : businessRaw //
 as Business?,
   ));
 }
+/// Create a copy of DetailsTabState
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$BusinessCopyWith<$Res>? get businessRaw {
+    if (_self.businessRaw == null) {
+    return null;
+  }
 
+  return $BusinessCopyWith<$Res>(_self.businessRaw!, (value) {
+    return _then(_self.copyWith(businessRaw: value));
+  });
+}
 }
 
 
@@ -287,7 +299,7 @@ $Res call({
 });
 
 
-
+@override $BusinessCopyWith<$Res>? get businessRaw;
 
 }
 /// @nodoc
@@ -316,7 +328,19 @@ as Business?,
   ));
 }
 
+/// Create a copy of DetailsTabState
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$BusinessCopyWith<$Res>? get businessRaw {
+    if (_self.businessRaw == null) {
+    return null;
+  }
 
+  return $BusinessCopyWith<$Res>(_self.businessRaw!, (value) {
+    return _then(_self.copyWith(businessRaw: value));
+  });
+}
 }
 
 // dart format on

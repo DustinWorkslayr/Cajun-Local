@@ -32,7 +32,7 @@ class ResolvedPermissions {
   static const ResolvedPermissions free = ResolvedPermissions(
     tier: 'free',
     maxFavorites: 3,
-    canClaimDeals: false,
+    canClaimDeals: true, // TODO: need to discuess
     canSeeExclusiveDeals: false,
     canSubmitBusiness: false,
     planName: null,

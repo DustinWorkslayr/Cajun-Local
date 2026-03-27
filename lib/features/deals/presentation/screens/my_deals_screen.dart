@@ -12,6 +12,7 @@ import 'package:cajun_local/core/theme/theme.dart';
 import 'package:cajun_local/features/listing/presentation/screens/listing_detail_screen.dart';
 import 'package:cajun_local/shared/widgets/app_buttons.dart';
 import 'package:cajun_local/shared/widgets/deal_detail_popup.dart';
+import 'package:cajun_local/shared/widgets/app_refresh_indicator.dart';
 
 /// Badge shown when a deal has been redeemed/used. Checkmark + "Redeemed" for clarity.
 Widget _redeemedBadge(BuildContext context) {
@@ -208,7 +209,7 @@ class _MyDealsScreenState extends ConsumerState<MyDealsScreen> {
                 ),
               ),
             )
-          : RefreshIndicator(
+          : AppRefreshIndicator(
               onRefresh: _load,
               child: ListView.builder(
                 padding: EdgeInsets.fromLTRB(padding.left, 16, padding.right, 28),

@@ -3,23 +3,22 @@ import 'package:cajun_local/features/locations/data/models/parish.dart';
 import 'package:cajun_local/features/locations/data/repositories/parish_repository.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cajun_local/core/theme/theme.dart';
-import 'package:cajun_local/shared/widgets/app_buttons.dart';
-import 'package:cajun_local/shared/widgets/app_logo.dart';
+import 'package:google_fonts/google_fonts.dart';
 
-/// First-time onboarding or parish selector: pick parishes; optionally a second step for interests.
-/// Caller saves parish IDs via UserParishPreferences and dismisses on completion.
-/// Use [initialParishIds] when re-opening to change parishes (e.g. from home chip).
-/// Use [parishOnly: true] to show only the parish step with a "Done" button.
+/// Enhanced "Unified Dialog" for parish and interest selection.
+/// Matches the high-end editorial design from Stitch v2.
 class ParishOnboardingDialog extends ConsumerStatefulWidget {
-  const ParishOnboardingDialog({super.key, required this.onComplete, this.initialParishIds, this.parishOnly = false});
+  const ParishOnboardingDialog({
+    super.key,
+    required this.onComplete,
+    this.initialParishIds,
+    this.initialInterestIds,
+    this.parishOnly = false,
+  });
 
-  /// Called with selected parish IDs when user finishes the flow. Caller saves and dismisses.
-  final void Function(Set<String> selectedParishIds) onComplete;
-
-  /// Pre-select these parish IDs (e.g. current preferences when re-opening to change parishes).
+  final void Function(Set<String> selectedParishIds, Set<String> selectedInterestIds) onComplete;
   final Set<String>? initialParishIds;
-
-  /// If true, only show the parish step; footer shows "Done" and completes immediately.
+  final Set<String>? initialInterestIds;
   final bool parishOnly;
 
   @override
@@ -28,9 +27,8 @@ class ParishOnboardingDialog extends ConsumerStatefulWidget {
 
 class _ParishOnboardingDialogState extends ConsumerState<ParishOnboardingDialog> with SingleTickerProviderStateMixin {
   int _step = 0;
-
   late Set<String> _selectedParishIds;
-  final Set<String> _selectedInterests = {};
+  late Set<String> _selectedInterests;
   List<Parish> _parishes = [];
   bool _parishesLoaded = false;
 
@@ -44,24 +42,16 @@ class _ParishOnboardingDialogState extends ConsumerState<ParishOnboardingDialog>
   void initState() {
     super.initState();
     _selectedParishIds = Set.from(widget.initialParishIds ?? []);
-    _entranceController = AnimationController(vsync: this, duration: const Duration(milliseconds: 350));
-    _entranceScale = Tween<double>(
-      begin: 0.92,
-      end: 1,
-    ).animate(CurvedAnimation(parent: _entranceController, curve: Curves.easeOutCubic));
-    _entranceOpacity = Tween<double>(
-      begin: 0,
-      end: 1,
-    ).animate(CurvedAnimation(parent: _entranceController, curve: Curves.easeOut));
+    _selectedInterests = Set.from(widget.initialInterestIds ?? []);
+    _entranceController = AnimationController(vsync: this, duration: const Duration(milliseconds: 400));
+    _entranceScale = Tween<double>(begin: 0.95, end: 1.0).animate(
+      CurvedAnimation(parent: _entranceController, curve: Curves.easeOutBack),
+    );
+    _entranceOpacity = Tween<double>(begin: 0, end: 1).animate(
+      CurvedAnimation(parent: _entranceController, curve: Curves.easeIn),
+    );
     _entranceController.forward();
-  }
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    if (!_parishesLoaded && _parishes.isEmpty) {
-      _loadParishes();
-    }
+    _loadParishes();
   }
 
   Future<void> _loadParishes() async {
@@ -89,7 +79,7 @@ class _ParishOnboardingDialogState extends ConsumerState<ParishOnboardingDialog>
   }
 
   void _finish() {
-    widget.onComplete(Set.from(_selectedParishIds));
+    widget.onComplete(Set.from(_selectedParishIds), Set.from(_selectedInterests));
   }
 
   @override
@@ -97,56 +87,40 @@ class _ParishOnboardingDialogState extends ConsumerState<ParishOnboardingDialog>
     final theme = Theme.of(context);
     return Dialog(
       backgroundColor: Colors.transparent,
-      insetPadding: const EdgeInsets.symmetric(horizontal: 20),
+      insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 40),
       child: AnimatedBuilder(
         animation: _entranceController,
-        builder: (context, child) {
-          return Opacity(
-            opacity: _entranceOpacity.value,
-            child: Transform.scale(scale: _entranceScale.value, alignment: Alignment.center, child: child),
-          );
-        },
+        builder: (context, child) => Opacity(
+          opacity: _entranceOpacity.value,
+          child: Transform.scale(scale: _entranceScale.value, child: child),
+        ),
         child: Material(
-          borderRadius: BorderRadius.circular(24),
+          borderRadius: BorderRadius.circular(28),
           color: AppTheme.specWhite,
-          elevation: 24,
-          shadowColor: AppTheme.specNavy.withValues(alpha: 0.25),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(24),
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 420, maxHeight: 580),
-              child: Stack(
-                clipBehavior: Clip.hardEdge,
-                children: [
-                  Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      _buildHeader(theme),
-                      Flexible(
-                        child: AnimatedSwitcher(
-                          duration: const Duration(milliseconds: 320),
-                          switchInCurve: Curves.easeOutCubic,
-                          switchOutCurve: Curves.easeInCubic,
-                          transitionBuilder: (child, animation) {
-                            return SlideTransition(
-                              position: Tween<Offset>(
-                                begin: const Offset(0.15, 0),
-                                end: Offset.zero,
-                              ).animate(CurvedAnimation(parent: animation, curve: Curves.easeOutCubic)),
-                              child: FadeTransition(opacity: animation, child: child),
-                            );
-                          },
-                          child: KeyedSubtree(
-                            key: ValueKey<int>(_step),
-                            child: _step == 0 ? _buildParishStep(theme) : _buildInterestsStep(theme),
+          clipBehavior: Clip.antiAlias,
+          elevation: 12,
+          shadowColor: AppTheme.specNavy.withValues(alpha: 0.15),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 400, maxHeight: 680),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _buildHeader(theme),
+                Flexible(
+                  child: AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 300),
+                    child: _parishesLoaded
+                        ? (_step == 0 ? _buildParishStep(theme) : _buildInterestsStep(theme))
+                        : const Center(
+                            child: Padding(
+                              padding: EdgeInsets.all(40),
+                              child: CircularProgressIndicator(color: AppTheme.specGold),
+                            ),
                           ),
-                        ),
-                      ),
-                      _buildFooter(theme),
-                    ],
                   ),
-                ],
-              ),
+                ),
+                _buildFooter(theme),
+              ],
             ),
           ),
         ),
@@ -155,44 +129,57 @@ class _ParishOnboardingDialogState extends ConsumerState<ParishOnboardingDialog>
   }
 
   Widget _buildHeader(ThemeData theme) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(24, 20, 24, 16),
-      decoration: BoxDecoration(
-        color: AppTheme.specOffWhite,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-        border: Border(bottom: BorderSide(color: AppTheme.specNavy.withValues(alpha: 0.08))),
-      ),
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(28, 28, 28, 16),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          if (_step == 0)
-            Text(
-              "We're glad you're here!",
-              style: theme.textTheme.titleMedium?.copyWith(color: AppTheme.specGold, fontWeight: FontWeight.w600),
-            ),
-          if (_step == 0) const SizedBox(height: 8),
-          const AppLogo(height: 64),
-          const SizedBox(height: 12),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'STEP ${_step + 1} OF $_totalSteps'.toUpperCase(),
+                style: theme.textTheme.labelSmall?.copyWith(
+                  color: AppTheme.specGold,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: 1.2,
+                ),
+              ),
+              Row(
+                children: List.generate(_totalSteps, (index) {
+                  final active = index <= _step;
+                  return Container(
+                    width: 32,
+                    height: 4,
+                    margin: const EdgeInsets.only(left: 6),
+                    decoration: BoxDecoration(
+                      color: active ? AppTheme.specGold : AppTheme.specSurfaceContainer,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  );
+                }),
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
           Text(
-            'Step ${_step + 1} of $_totalSteps',
-            style: theme.textTheme.labelSmall?.copyWith(
-              color: AppTheme.specNavy.withValues(alpha: 0.7),
-              letterSpacing: 0.5,
+            _step == 0 ? 'Pick the parishes to explore' : 'Tell us your interests',
+            style: theme.textTheme.headlineSmall?.copyWith(
+              color: AppTheme.specNavy,
+              fontWeight: FontWeight.w800,
+              height: 1.1,
             ),
           ),
-          const SizedBox(height: 12),
-          Text(
-            _step == 0 ? 'Pick the parishes to explore' : 'What do you hope to get from the app?',
-            style: theme.textTheme.titleLarge?.copyWith(color: AppTheme.specNavy, fontWeight: FontWeight.w700),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 6),
+          const SizedBox(height: 10),
           Text(
             _step == 0
-                ? "Choose one or more areas — we'll show you local businesses and events there. You can change this anytime in Filters."
-                : "Select what you're most excited about. We'll use this to tailor your experience.",
-            style: theme.textTheme.bodySmall?.copyWith(color: AppTheme.specNavy.withValues(alpha: 0.8)),
-            textAlign: TextAlign.center,
+                ? "Choose one or more local areas to discover matching businesses and cultural events."
+                : "Select what you're most excited about so we can tailor your Acadiana experience.",
+            style: GoogleFonts.libreBaskerville(
+              fontSize: 13,
+              height: 1.5,
+              color: AppTheme.specOnSurfaceVariant,
+            ),
           ),
         ],
       ),
@@ -200,119 +187,202 @@ class _ParishOnboardingDialogState extends ConsumerState<ParishOnboardingDialog>
   }
 
   Widget _buildParishStep(ThemeData theme) {
-    if (!_parishesLoaded) {
-      return const Padding(
-        padding: EdgeInsets.all(32),
-        child: Center(child: CircularProgressIndicator(color: AppTheme.specNavy)),
-      );
-    }
-    return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(20, 20, 20, 16),
-      child: Wrap(
-        spacing: 10,
-        runSpacing: 10,
-        children: _parishes.map((p) {
-          final selected = _selectedParishIds.contains(p.id);
-          return FilterChip(
-            label: Text(p.name),
-            selected: selected,
-            onSelected: (v) {
-              setState(() {
-                if (v) {
-                  _selectedParishIds.add(p.id);
-                } else {
-                  _selectedParishIds.remove(p.id);
-                }
-              });
-            },
-            selectedColor: AppTheme.specGold.withValues(alpha: 0.35),
-            checkmarkColor: AppTheme.specNavy,
-            backgroundColor: AppTheme.specNavy.withValues(alpha: 0.06),
-            side: BorderSide(
-              color: selected ? AppTheme.specGold : AppTheme.specNavy.withValues(alpha: 0.2),
-              width: selected ? 2 : 1,
+    return ListView.separated(
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+      itemCount: _parishes.length,
+      separatorBuilder: (_, __) => const SizedBox(height: 10),
+      itemBuilder: (context, index) {
+        final p = _parishes[index];
+        final isSelected = _selectedParishIds.contains(p.id);
+        return InkWell(
+          onTap: () {
+            setState(() {
+              if (isSelected) {
+                _selectedParishIds.remove(p.id);
+              } else {
+                _selectedParishIds.add(p.id);
+              }
+            });
+          },
+          borderRadius: BorderRadius.circular(16),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            decoration: BoxDecoration(
+              color: isSelected ? AppTheme.specGold.withValues(alpha: 0.05) : AppTheme.specSurfaceContainerLow,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: isSelected ? AppTheme.specGold : Colors.transparent,
+                width: 1.5,
+              ),
             ),
-          );
-        }).toList(),
-      ),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: isSelected ? AppTheme.specGold.withValues(alpha: 0.1) : Colors.white,
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    Icons.location_on_rounded,
+                    size: 18,
+                    color: isSelected ? AppTheme.specGold : AppTheme.specOutline,
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Text(
+                    p.name,
+                    style: theme.textTheme.titleSmall?.copyWith(
+                      color: isSelected ? AppTheme.specNavy : AppTheme.specOnSurface,
+                      fontWeight: isSelected ? FontWeight.w700 : FontWeight.w600,
+                    ),
+                  ),
+                ),
+                Checkbox(
+                  value: isSelected,
+                  onChanged: (v) {
+                    setState(() {
+                      if (v ?? false) {
+                        _selectedParishIds.add(p.id);
+                      } else {
+                        _selectedParishIds.remove(p.id);
+                      }
+                    });
+                  },
+                  activeColor: AppTheme.specGold,
+                  checkColor: Colors.white,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+                  side: BorderSide(color: AppTheme.specOutline.withValues(alpha: 0.4), width: 1.5),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 
-  /// Hopes / expectations (first-time users haven't used the app yet).
-  static const List<({String id, String label})> _hopeOptions = [
-    (id: 'eat', label: 'Find great places to eat'),
-    (id: 'events', label: 'Discover events & live music'),
-    (id: 'deals', label: 'Save with deals & punch cards'),
-    (id: 'discover', label: 'Discover new spots'),
-    (id: 'support_local', label: 'Support local businesses'),
-    (id: 'all', label: 'A bit of everything'),
-  ];
-
   Widget _buildInterestsStep(ThemeData theme) {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(20, 20, 20, 16),
-      child: Wrap(
-        spacing: 10,
-        runSpacing: 10,
-        children: _hopeOptions.map((o) {
-          final selected = _selectedInterests.contains(o.id);
-          return FilterChip(
-            label: Text(o.label),
-            selected: selected,
-            onSelected: (v) {
-              setState(() {
-                if (v) {
-                  _selectedInterests.add(o.id);
-                } else {
-                  _selectedInterests.remove(o.id);
-                }
-              });
-            },
-            selectedColor: AppTheme.specGold.withValues(alpha: 0.35),
-            checkmarkColor: AppTheme.specNavy,
-            backgroundColor: AppTheme.specNavy.withValues(alpha: 0.06),
-            side: BorderSide(
-              color: selected ? AppTheme.specGold : AppTheme.specNavy.withValues(alpha: 0.2),
-              width: selected ? 2 : 1,
+    const options = [
+      (id: 'eat', label: 'Find great places to eat', icon: Icons.restaurant_menu_rounded),
+      (id: 'events', label: 'Discover events & live music', icon: Icons.straighten_rounded),
+      (id: 'deals', label: 'Save with deals & punch cards', icon: Icons.local_offer_rounded),
+      (id: 'discover', label: 'Discover new spots', icon: Icons.explore_rounded),
+      (id: 'support_local', label: 'Support local businesses', icon: Icons.volunteer_activism_rounded),
+      (id: 'all', label: 'A bit of everything', icon: Icons.auto_awesome_rounded),
+    ];
+
+    return ListView.separated(
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+      itemCount: options.length,
+      separatorBuilder: (_, __) => const SizedBox(height: 10),
+      itemBuilder: (context, index) {
+        final o = options[index];
+        final isSelected = _selectedInterests.contains(o.id);
+        void toggle() {
+          setState(() {
+            if (isSelected) {
+              _selectedInterests.remove(o.id);
+            } else {
+              if (o.id == 'all') {
+                _selectedInterests.clear();
+                _selectedInterests.add('all');
+              } else {
+                _selectedInterests.remove('all');
+                _selectedInterests.add(o.id);
+              }
+            }
+          });
+        }
+
+        return InkWell(
+          onTap: toggle,
+          borderRadius: BorderRadius.circular(16),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            decoration: BoxDecoration(
+              color: isSelected ? AppTheme.specNavy.withValues(alpha: 0.05) : AppTheme.specSurfaceContainerLow,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: isSelected ? AppTheme.specNavy : Colors.transparent,
+                width: 1.5,
+              ),
             ),
-          );
-        }).toList(),
-      ),
+            child: Row(
+              children: [
+                Icon(
+                  o.icon,
+                  size: 20,
+                  color: isSelected ? AppTheme.specNavy : AppTheme.specOutline,
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Text(
+                    o.label,
+                    style: theme.textTheme.titleSmall?.copyWith(
+                      color: isSelected ? AppTheme.specNavy : AppTheme.specOnSurface,
+                      fontWeight: isSelected ? FontWeight.w700 : FontWeight.w600,
+                    ),
+                  ),
+                ),
+                Checkbox(
+                  value: isSelected,
+                  onChanged: (_) => toggle(),
+                  activeColor: AppTheme.specGold,
+                  checkColor: Colors.white,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+                  side: BorderSide(color: AppTheme.specOutline.withValues(alpha: 0.4), width: 1.5),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 
   Widget _buildFooter(ThemeData theme) {
-    const padding = EdgeInsets.fromLTRB(20, 12, 20, 20);
-
-    if (_step == 0) {
-      final canContinue = _selectedParishIds.isNotEmpty;
-      final isDone = widget.parishOnly;
-      return Column(
-        mainAxisSize: MainAxisSize.min,
+    final canContinue = _selectedParishIds.isNotEmpty;
+    return Padding(
+      padding: const EdgeInsets.all(24),
+      child: Column(
         children: [
-          const Divider(height: 1),
-          Padding(
-            padding: padding,
-            child: AppSecondaryButton(
-              onPressed: canContinue ? (isDone ? _finish : _next) : null,
-              expanded: true,
-              child: Text(canContinue ? (isDone ? 'Done' : 'Continue') : 'Select at least one parish'),
+          SizedBox(
+            width: double.infinity,
+            height: 56,
+            child: ElevatedButton(
+              onPressed: canContinue ? _next : null,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppTheme.specNavy,
+                foregroundColor: Colors.white,
+                disabledBackgroundColor: AppTheme.specNavy.withValues(alpha: 0.12),
+                disabledForegroundColor: AppTheme.specNavy.withValues(alpha: 0.38),
+                elevation: 0,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              ),
+              child: Text(
+                _step == 0 && !widget.parishOnly ? 'Continue' : 'Get Started',
+                style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+          GestureDetector(
+            onTap: () => Navigator.of(context).pop(),
+            child: Text(
+              'Skip for now',
+              style: theme.textTheme.labelLarge?.copyWith(
+                color: AppTheme.specOutline,
+                fontWeight: FontWeight.w600,
+                decoration: TextDecoration.underline,
+              ),
             ),
           ),
         ],
-      );
-    }
-
-    // Step 1 (interests) — optional, can skip
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        const Divider(height: 1),
-        Padding(
-          padding: padding,
-          child: AppSecondaryButton(onPressed: _next, expanded: true, child: const Text('Continue')),
-        ),
-      ],
+      ),
     );
   }
 }

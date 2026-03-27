@@ -13,7 +13,7 @@ class NotificationsApi {
   Future<List<AppNotification>> list({String? type, int skip = 0, int limit = 100}) async {
     try {
       final response = await _client.dio.get(
-        '/notifications/',
+        '/notifications',
         queryParameters: {if (type != null) 'type': type, 'skip': skip, 'limit': limit},
       );
       final data = response.data as List;

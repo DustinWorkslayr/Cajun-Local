@@ -1,21 +1,23 @@
 import 'package:flutter/material.dart';
-import 'package:cajun_local/core/data/mock_data.dart';
+import 'package:cajun_local/features/home/data/models/home_models.dart';
 import 'package:cajun_local/core/theme/theme.dart';
 
+/// "This week in Acadiana" hot-offer card — matches Stitch v2 grid card exactly:
+/// Icon in secondary-container rounded-xl, discount badge, bold title, subtitle.
+/// Two variants: light (white bg) and featured (navy bg).
 class UpcomingEventCardWidget extends StatelessWidget {
   const UpcomingEventCardWidget({
     super.key,
     required this.event,
-    required this.businessName,
     required this.onTap,
+    this.featured = false,
   });
 
-  final MockEvent event;
-  final String businessName;
+  final HomeEvent event;
   final VoidCallback onTap;
+  final bool featured;
 
-  static const _cardWidth = 200.0;
-  static const _radius = 14.0;
+  static const _radius = 24.0;
 
   static String _formatDate(DateTime d) {
     final now = DateTime.now();
@@ -35,61 +37,90 @@ class UpcomingEventCardWidget extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final dateStr = _formatDate(event.eventDate);
+    final bg = featured ? AppTheme.specNavy : AppTheme.specWhite;
+    final titleColor = featured ? Colors.white : AppTheme.specNavy;
+    final subtitleColor = featured ? AppTheme.specOnPrimaryContainer : AppTheme.specOutline;
+    final iconBg = featured ? AppTheme.specNavyContainer : AppTheme.specSecondaryContainer;
+    final iconColor = featured ? AppTheme.specOnPrimaryContainer : AppTheme.specNavy;
 
-    const double cardHeight = 112.0;
-    return SizedBox(
-      width: _cardWidth,
-      height: cardHeight,
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: onTap,
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        height: 192,
+        decoration: BoxDecoration(
+          color: bg,
           borderRadius: BorderRadius.circular(_radius),
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-            decoration: BoxDecoration(
-              color: AppTheme.specWhite,
-              borderRadius: BorderRadius.circular(_radius),
-              border: Border.all(color: AppTheme.specNavy.withValues(alpha: 0.08)),
-              boxShadow: [
-                BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10, offset: const Offset(0, 2)),
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFF191C1D).withValues(alpha: 0.03),
+              blurRadius: 16,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: iconBg,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(
+                    Icons.event_rounded,
+                    size: 22,
+                    color: iconColor,
+                  ),
+                ),
+                if (!featured)
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFFDAD6),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Text(
+                      _formatDate(event.eventDate),
+                      style: theme.textTheme.labelSmall?.copyWith(
+                        color: const Color(0xFF93000A),
+                        fontWeight: FontWeight.w700,
+                        fontSize: 10,
+                      ),
+                    ),
+                  ),
               ],
             ),
-            child: Column(
+            Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  dateStr,
-                  style: theme.textTheme.labelSmall?.copyWith(
-                    color: AppTheme.specGold,
-                    fontWeight: FontWeight.w600,
-                    letterSpacing: 0.3,
+                  event.title,
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    color: titleColor,
+                    fontWeight: FontWeight.w800,
+                    height: 1.2,
                   ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
                 ),
                 const SizedBox(height: 4),
-                Flexible(
-                  child: Text(
-                    event.title,
-                    style: theme.textTheme.titleSmall?.copyWith(
-                      fontWeight: FontWeight.w700,
-                      color: AppTheme.specNavy,
-                      height: 1.25,
-                    ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-                const SizedBox(height: 2),
                 Text(
-                  businessName,
-                  style: theme.textTheme.bodySmall?.copyWith(color: AppTheme.specNavy.withValues(alpha: 0.65)),
+                  event.businessName,
+                  style: theme.textTheme.bodySmall?.copyWith(color: subtitleColor),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
               ],
             ),
-          ),
+          ],
         ),
       ),
     );

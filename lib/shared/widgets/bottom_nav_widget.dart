@@ -1,8 +1,9 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:cajun_local/core/theme/theme.dart';
 
-/// Bottom nav: 6 icons only (no labels), rounded floating bar.
-/// Filename: bottom_nav_widget.dart
+/// Bottom nav — frosted glass, rounded top, gold pill active state.
+/// Matches Stitch v2 "Cajun Local Redesigned" design exactly.
 class BottomNavWidget extends StatelessWidget {
   const BottomNavWidget({
     super.key,
@@ -21,7 +22,6 @@ class BottomNavWidget extends StatelessWidget {
     Icons.home_rounded,
     Icons.article_rounded,
     Icons.explore_rounded,
-    Icons.favorite_rounded,
     Icons.local_offer_rounded,
     Icons.person_rounded,
   ];
@@ -30,96 +30,80 @@ class BottomNavWidget extends StatelessWidget {
   Widget build(BuildContext context) {
     final barCount = screenCount.clamp(1, _icons.length);
 
+    return ClipRRect(
+      borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+        child: Container(
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.85),
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+            boxShadow: [
+              BoxShadow(
+                color: const Color(0xFF191C1D).withValues(alpha: 0.04),
+                blurRadius: 24,
+                offset: const Offset(0, -8),
+              ),
+            ],
+          ),
+          child: SafeArea(
+            top: false,
 
-    return Container(
-      decoration: BoxDecoration(
-        color: AppTheme.specWhite,
-        boxShadow: [
-          BoxShadow(color: Colors.black.withValues(alpha: 0.06), blurRadius: 8, offset: const Offset(0, 2)),
-          BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 16, offset: const Offset(0, 6)),
-        ],
-      ),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-          children: List.generate(barCount, (index) {
-            final selected = index == currentIndex;
-            final label = index < titles.length ? titles[index] : '';
-            final iconData = index < _icons.length ? _icons[index] : Icons.circle_rounded;
-            return Expanded(
-              child: BottomNavItemWidget(icon: iconData, selected: selected, label: label, onTap: () => onTap(index)),
-            );
-          }),
+            child: Container(
+              color: Colors.transparent,
+              padding: const EdgeInsets.fromLTRB(8, 10, 8, 6),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceAround,
+                children: List.generate(barCount, (index) {
+                  final selected = index == currentIndex;
+                  final label = index < titles.length ? titles[index] : '';
+                  final iconData = index < _icons.length ? _icons[index] : Icons.circle_rounded;
+                  return _BottomNavItem(icon: iconData, label: label, selected: selected, onTap: () => onTap(index));
+                }),
+              ),
+            ),
+          ),
         ),
       ),
     );
   }
 }
 
-class BottomNavItemWidget extends StatefulWidget {
-  const BottomNavItemWidget({
-    super.key,
-    required this.icon,
-    required this.selected,
-    required this.label,
-    required this.onTap,
-  });
+class _BottomNavItem extends StatelessWidget {
+  const _BottomNavItem({required this.icon, required this.label, required this.selected, required this.onTap});
 
   final IconData icon;
-  final bool selected;
   final String label;
+  final bool selected;
   final VoidCallback onTap;
 
   @override
-  State<BottomNavItemWidget> createState() => _BottomNavItemWidgetState();
-}
-
-class _BottomNavItemWidgetState extends State<BottomNavItemWidget> {
-  bool _hovered = false;
-
-  @override
   Widget build(BuildContext context) {
-    return MouseRegion(
-      onEnter: (_) => setState(() => _hovered = true),
-      onExit: (_) => setState(() => _hovered = false),
-      cursor: SystemMouseCursors.click,
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: widget.onTap,
-          borderRadius: BorderRadius.circular(20),
-          hoverColor: AppTheme.specGold.withValues(alpha: 0.14),
-          focusColor: AppTheme.specGold.withValues(alpha: 0.2),
-          highlightColor: AppTheme.specGold.withValues(alpha: 0.22),
-          splashColor: AppTheme.specGold.withValues(alpha: 0.35),
-          child: Tooltip(
-            message: widget.label,
-            child: Center(
-              child: AnimatedScale(
-                scale: _hovered ? 1.12 : 1.0,
-                duration: const Duration(milliseconds: 160),
-                curve: Curves.easeOutCubic,
-                child: widget.selected
-                    ? Container(
-                        padding: const EdgeInsets.all(6),
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          boxShadow: [
-                            BoxShadow(color: AppTheme.specGold.withValues(alpha: 0.5), blurRadius: 12, spreadRadius: 0),
-                            BoxShadow(
-                              color: AppTheme.specGold.withValues(alpha: 0.35),
-                              blurRadius: 20,
-                              spreadRadius: -2,
-                            ),
-                          ],
-                        ),
-                        child: Icon(widget.icon, size: 26, color: AppTheme.specNavy),
-                      )
-                    : Icon(widget.icon, size: 26, color: AppTheme.specNavy.withValues(alpha: 0.6)),
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        curve: Curves.easeInOut,
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+        decoration: BoxDecoration(
+          color: selected ? AppTheme.specGold : Colors.transparent,
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 22, color: selected ? Colors.white : AppTheme.specOnSurfaceVariant),
+            const SizedBox(height: 3),
+            Text(
+              label.toUpperCase(),
+              style: TextStyle(
+                fontSize: 9,
+                fontWeight: FontWeight.w600,
+                letterSpacing: 0.8,
+                color: selected ? Colors.white : AppTheme.specOnSurfaceVariant,
               ),
             ),
-          ),
+          ],
         ),
       ),
     );

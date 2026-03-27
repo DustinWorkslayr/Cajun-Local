@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:cajun_local/core/data/mock_data.dart';
+import 'package:cajun_local/features/businesses/data/models/featured_business.dart';
 import 'package:cajun_local/core/theme/theme.dart';
 import 'home_section_header_widget.dart';
 import 'popular_card_widget.dart';
@@ -13,12 +13,12 @@ class HomeTabletRightColumnWidget extends StatelessWidget {
     this.previewScrollController,
   });
 
-  final List<MockSpot> spots;
+  final List<FeaturedBusiness> spots;
   final VoidCallback onExplore;
-  final void Function(MockSpot spot) onTapSpot;
+  final void Function(FeaturedBusiness spot) onTapSpot;
   final ScrollController? previewScrollController;
 
-  static const double _cardRadius = 20;
+  static const double _cardRadius = 24;
 
   @override
   Widget build(BuildContext context) {
@@ -29,7 +29,6 @@ class HomeTabletRightColumnWidget extends StatelessWidget {
         decoration: BoxDecoration(
           color: AppTheme.specWhite,
           borderRadius: BorderRadius.circular(_cardRadius),
-          border: Border.all(color: AppTheme.specNavy.withValues(alpha: 0.08)),
         ),
         child: Center(
           child: Text(
@@ -43,7 +42,13 @@ class HomeTabletRightColumnWidget extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppTheme.specWhite,
         borderRadius: BorderRadius.circular(_cardRadius),
-        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.06), blurRadius: 12, offset: const Offset(0, 4))],
+        boxShadow: [
+          BoxShadow(
+            color: AppTheme.specNavy.withValues(alpha: 0.04),
+            blurRadius: 16,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(_cardRadius),
@@ -52,16 +57,15 @@ class HomeTabletRightColumnWidget extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Padding(
-              padding: const EdgeInsets.fromLTRB(20, 18, 16, 8),
+              padding: const EdgeInsets.fromLTRB(20, 20, 16, 12),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
-                  HomeSectionHeaderWidget(
-                    title: 'Popular in your parish',
-                    titleStyle: theme.textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w700,
-                      color: AppTheme.specNavy,
+                  const Expanded(
+                    child: HomeSectionHeaderWidget(
+                      title: 'Popular near you',
+                      subtitle: 'Highly rated spots',
                     ),
                   ),
                   TextButton(
@@ -75,8 +79,14 @@ class HomeTabletRightColumnWidget extends StatelessWidget {
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Text('See all', style: theme.textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w600)),
-                        const SizedBox(width: 2),
+                        Text(
+                          'See all',
+                          style: theme.textTheme.labelLarge?.copyWith(
+                            fontWeight: FontWeight.w600,
+                            color: AppTheme.specGold,
+                          ),
+                        ),
+                        const SizedBox(width: 4),
                         Icon(Icons.arrow_forward_rounded, size: 16, color: AppTheme.specGold),
                       ],
                     ),
@@ -85,16 +95,14 @@ class HomeTabletRightColumnWidget extends StatelessWidget {
               ),
             ),
             Expanded(
-              child: ListView.builder(
+              child: ListView.separated(
                 controller: previewScrollController,
                 padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
                 itemCount: previewSpots.length,
+                separatorBuilder: (_, __) => const SizedBox(height: 12),
                 itemBuilder: (context, index) {
                   final spot = previewSpots[index];
-                  return Padding(
-                    padding: const EdgeInsets.only(bottom: 12),
-                    child: PopularCardWidget(spot: spot, onTap: () => onTapSpot(spot)),
-                  );
+                  return PopularCardWidget(spot: spot, onTap: () => onTapSpot(spot));
                 },
               ),
             ),

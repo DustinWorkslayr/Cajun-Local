@@ -1,6 +1,6 @@
 import 'dart:async';
 import 'dart:math' show Random;
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:cajun_local/features/businesses/data/models/listing_filters.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import 'package:cajun_local/features/businesses/data/models/business.dart';
@@ -9,7 +9,6 @@ import 'package:cajun_local/features/businesses/data/models/business_category.da
 import 'package:cajun_local/features/categories/data/repositories/category_repository.dart';
 import 'package:cajun_local/features/locations/data/models/parish.dart';
 import 'package:cajun_local/features/locations/data/repositories/parish_repository.dart';
-import 'package:cajun_local/core/data/mock_data.dart';
 import 'package:cajun_local/features/businesses/data/repositories/amenities_repository.dart';
 import 'package:cajun_local/features/businesses/data/repositories/business_ads_repository.dart';
 import 'package:cajun_local/features/businesses/data/repositories/business_subscriptions_repository.dart';
@@ -111,10 +110,7 @@ class CategoriesController extends _$CategoriesController {
   @override
   FutureOr<CategoriesState> build() async {
     final parishIds = await UserParishPreferences.getPreferredParishIds();
-    final initialState = CategoriesState(
-      filters: ListingFilters(parishIds: parishIds.toSet()),
-      openNowOnly: false,
-    );
+    final initialState = CategoriesState(filters: ListingFilters(parishIds: parishIds.toSet()), openNowOnly: false);
     return _performInitialLoad(initialState);
   }
 
@@ -124,18 +120,18 @@ class CategoriesController extends _$CategoriesController {
   Future<void> initializeWith({String? search, String? categoryId}) async {
     final current = state.valueOrNull;
     if (current == null) return;
-    
+
     // Check if anything actually changed
     final searchChanged = search != null && current.filters.searchQuery != search;
     final categoryChanged = categoryId != null && current.filters.categoryId != categoryId;
-    
+
     if (!searchChanged && !categoryChanged) return;
 
     final newFilters = current.filters.copyWith(
       searchQuery: search ?? current.filters.searchQuery,
       categoryId: categoryId ?? current.filters.categoryId,
     );
-    
+
     if (categoryChanged) {
       state = const AsyncValue.loading();
       state = await AsyncValue.guard(() {
@@ -165,7 +161,9 @@ class CategoriesController extends _$CategoriesController {
 
     if (categoryChanged) {
       state = const AsyncValue.loading();
-      state = await AsyncValue.guard(() => _performInitialLoad(newState.cleared().copyWith(filters: filters, openNowOnly: openNowOnly)));
+      state = await AsyncValue.guard(
+        () => _performInitialLoad(newState.cleared().copyWith(filters: filters, openNowOnly: openNowOnly)),
+      );
     } else {
       _applyFiltersAsync(newState);
     }
@@ -174,7 +172,7 @@ class CategoriesController extends _$CategoriesController {
   Future<void> loadMore() async {
     final current = state.valueOrNull;
     if (current == null || current.isLoadingMore || !current.hasMoreFromServer || current.fullListCache == null) return;
-    
+
     state = AsyncValue.data(current.copyWith(isLoadingMore: true));
     try {
       final list = await _businessRepo.listApproved(
@@ -183,16 +181,16 @@ class CategoriesController extends _$CategoriesController {
         categoryId: current.filters.categoryId,
         parishIds: current.filters.parishIds,
       );
-      
+
       final existingIds = current.fullListCache!.map((l) => l.id).toSet();
       final newList = list.where((l) => !existingIds.contains(l.id)).toList();
       final ids = newList.map((l) => l.id).toList();
-      
+
       Map<String, String> newTiers = {};
       if (ids.isNotEmpty) {
         newTiers = await BusinessSubscriptionsRepository().getActivePlanTiersForBusinesses(ids);
       }
-      
+
       final nextState = current.copyWith(
         fullListCache: [...current.fullListCache!, ...newList],
         nextOffset: current.nextOffset + list.length,
@@ -200,7 +198,7 @@ class CategoriesController extends _$CategoriesController {
         isLoadingMore: false,
         tierMap: newTiers.isNotEmpty ? {...current.tierMap, ...newTiers} : current.tierMap,
       );
-      
+
       _applyFiltersAsync(nextState);
     } catch (err, stack) {
       state = AsyncValue.error(err, stack);
@@ -215,12 +213,12 @@ class CategoriesController extends _$CategoriesController {
 
   Future<CategoriesState> _performInitialLoad(CategoriesState currentState) async {
     final list = await _businessRepo.listApproved(
-      limit: _kExplorePageSize, 
-      offset: 0, 
+      limit: _kExplorePageSize,
+      offset: 0,
       categoryId: currentState.filters.categoryId,
       parishIds: currentState.filters.parishIds,
     );
-    
+
     if (list.isEmpty) {
       return currentState.copyWith(
         fullListCache: [],
@@ -279,9 +277,7 @@ class CategoriesController extends _$CategoriesController {
     final dealSet = s.filters.dealOnly ? dealListingIds : null;
 
     final filtered = s.fullListCache!.where((l) {
-      if (s.openNowOnly) {
-         // TODO: Implement open now check if possible, or skip for now
-      }
+      if (s.openNowOnly && l.isOpenNow != true) return false;
       if (dealSet != null && !dealSet.contains(l.id)) return false;
       if (amenitySet != null && !amenitySet.contains(l.id)) return false;
 
@@ -317,15 +313,25 @@ class CategoriesController extends _$CategoriesController {
   ) {
     final rnd = Random();
     final sponsored = list.where((l) => sponsoredIds.contains(l.id)).toList()..shuffle(rnd);
-    final partners = list
-        .where((l) => !sponsoredIds.contains(l.id) && BusinessTierService.fromPlanTier(tierMap[l.id]) == BusinessTier.localPartner)
-        .toList()
-      ..shuffle(rnd);
-    final rest = list
-        .where((l) => !sponsoredIds.contains(l.id) && BusinessTierService.fromPlanTier(tierMap[l.id]) != BusinessTier.localPartner)
-        .toList()
-      ..shuffle(rnd);
-    
+    final partners =
+        list
+            .where(
+              (l) =>
+                  !sponsoredIds.contains(l.id) &&
+                  BusinessTierService.fromPlanTier(tierMap[l.id]) == BusinessTier.localPartner,
+            )
+            .toList()
+          ..shuffle(rnd);
+    final rest =
+        list
+            .where(
+              (l) =>
+                  !sponsoredIds.contains(l.id) &&
+                  BusinessTierService.fromPlanTier(tierMap[l.id]) != BusinessTier.localPartner,
+            )
+            .toList()
+          ..shuffle(rnd);
+
     if (isFiltered) {
       return [...sponsored, ...partners, ...rest];
     }

@@ -6,12 +6,12 @@ part of 'home_providers.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$homeFeaturedSpotsHash() => r'a6c1b044a68831c00f74ec83ebf2bacae44c7a77';
+String _$homeFeaturedSpotsHash() => r'6e1ee9651a9e68cc1a8930184e7cc09d2d93c2a0';
 
 /// See also [homeFeaturedSpots].
 @ProviderFor(homeFeaturedSpots)
 final homeFeaturedSpotsProvider =
-    AutoDisposeFutureProvider<List<MockSpot>>.internal(
+    AutoDisposeFutureProvider<List<FeaturedBusiness>>.internal(
       homeFeaturedSpots,
       name: r'homeFeaturedSpotsProvider',
       debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
@@ -23,13 +23,14 @@ final homeFeaturedSpotsProvider =
 
 @Deprecated('Will be removed in 3.0. Use Ref instead')
 // ignore: unused_element
-typedef HomeFeaturedSpotsRef = AutoDisposeFutureProviderRef<List<MockSpot>>;
-String _$homeCategoriesHash() => r'421daabeb107f5f5f59f4adae3fde5ec29a370e4';
+typedef HomeFeaturedSpotsRef =
+    AutoDisposeFutureProviderRef<List<FeaturedBusiness>>;
+String _$homeCategoriesHash() => r'5a2e88c44d7e72c8ef2dd865595d23444965bedb';
 
 /// See also [homeCategories].
 @ProviderFor(homeCategories)
 final homeCategoriesProvider =
-    AutoDisposeFutureProvider<List<MockCategory>>.internal(
+    AutoDisposeFutureProvider<List<BusinessCategory>>.internal(
       homeCategories,
       name: r'homeCategoriesProvider',
       debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
@@ -41,7 +42,8 @@ final homeCategoriesProvider =
 
 @Deprecated('Will be removed in 3.0. Use Ref instead')
 // ignore: unused_element
-typedef HomeCategoriesRef = AutoDisposeFutureProviderRef<List<MockCategory>>;
+typedef HomeCategoriesRef =
+    AutoDisposeFutureProviderRef<List<BusinessCategory>>;
 String _$homeLatestPostsHash() => r'f101730f64ccc9f36d290f41307c6be7608939f0';
 
 /// See also [homeLatestPosts].
@@ -61,12 +63,12 @@ final homeLatestPostsProvider =
 // ignore: unused_element
 typedef HomeLatestPostsRef = AutoDisposeFutureProviderRef<List<BlogPost>>;
 String _$homeUpcomingEventsHash() =>
-    r'40d8f6277484a73a9a78d5cff0db83cb2e10bfa5';
+    r'7de4dc39491beb5fa71b1e53a07d79d2eb831569';
 
 /// See also [homeUpcomingEvents].
 @ProviderFor(homeUpcomingEvents)
 final homeUpcomingEventsProvider =
-    AutoDisposeFutureProvider<List<(MockEvent, String)>>.internal(
+    AutoDisposeFutureProvider<List<HomeEvent>>.internal(
       homeUpcomingEvents,
       name: r'homeUpcomingEventsProvider',
       debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
@@ -78,8 +80,7 @@ final homeUpcomingEventsProvider =
 
 @Deprecated('Will be removed in 3.0. Use Ref instead')
 // ignore: unused_element
-typedef HomeUpcomingEventsRef =
-    AutoDisposeFutureProviderRef<List<(MockEvent, String)>>;
+typedef HomeUpcomingEventsRef = AutoDisposeFutureProviderRef<List<HomeEvent>>;
 String _$homePreferredParishNamesHash() =>
     r'fa2d0eddfa6b6a6c201ed24d97a62a8c46f9967b';
 

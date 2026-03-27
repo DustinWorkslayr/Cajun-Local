@@ -11,7 +11,7 @@ import 'package:cajun_local/features/businesses/data/repositories/business_repos
 import 'package:cajun_local/features/categories/data/repositories/category_repository.dart';
 import 'package:cajun_local/core/theme/theme.dart';
 import 'package:cajun_local/shared/widgets/app_buttons.dart';
-import 'package:cajun_local/features/listing/presentation/screens/listing_detail_screen.dart';
+import 'package:go_router/go_router.dart';
 import 'package:cajun_local/features/choose_for_me/presentation/widgets/choose_for_me_listing_card.dart';
 
 /// Shows the "Choose for me" slot as a modal popup: listing cards spin in place and land on a random pick.
@@ -1083,9 +1083,8 @@ class _ResultActions extends StatelessWidget {
           const SizedBox(width: 12),
           AppPrimaryButton(
             onPressed: () {
-              final navigator = Navigator.of(context);
               onClose?.call();
-              navigator.push(MaterialPageRoute<void>(builder: (_) => ListingDetailScreen(listingId: winner.id)));
+              context.push('/listing/${winner.id}');
             },
             expanded: false,
             icon: const Icon(Icons.arrow_forward_rounded, size: 20),

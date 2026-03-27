@@ -1,35 +1,21 @@
+import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:cajun_local/features/categories/data/models/subcategory.dart';
 
-class BusinessCategory {
-  const BusinessCategory({
-    required this.id,
-    required this.name,
-    required this.bucket,
-    this.slug,
-    this.icon,
-    this.sortOrder,
-    this.subcategories = const [],
-  });
+part 'business_category.freezed.dart';
+part 'business_category.g.dart';
 
-  final String id;
-  final String name;
-  final String bucket;
-  final String? slug;
-  final String? icon;
-  final int? sortOrder;
-  final List<Subcategory> subcategories;
+@freezed
+abstract class BusinessCategory with _$BusinessCategory {
+  const factory BusinessCategory({
+    required String id,
+    required String name,
+    @Default('explore') String bucket,
+    String? slug,
+    @JsonKey(name: 'icon_name') String? iconName,
+    @JsonKey(name: 'sort_order') int? sortOrder,
+    @Default([]) List<Subcategory> subcategories,
+    @JsonKey(name: 'business_count') @Default(0) int businessCount,
+  }) = _BusinessCategory;
 
-  factory BusinessCategory.fromJson(Map<String, dynamic> json) {
-    return BusinessCategory(
-      id: json['id'] as String,
-      name: json['name'] as String,
-      bucket: json['bucket'] as String? ?? 'explore',
-      slug: json['slug'] as String?,
-      icon: json['icon'] as String?,
-      sortOrder: (json['sort_order'] as num?)?.toInt(),
-      subcategories:
-          (json['subcategories'] as List?)?.map((e) => Subcategory.fromJson(e as Map<String, dynamic>)).toList() ??
-          const [],
-    );
-  }
+  factory BusinessCategory.fromJson(Map<String, dynamic> json) => _$BusinessCategoryFromJson(json);
 }

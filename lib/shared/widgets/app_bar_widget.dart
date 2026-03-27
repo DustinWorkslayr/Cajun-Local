@@ -1,6 +1,7 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:cajun_local/core/theme/theme.dart';
-import 'package:cajun_local/shared/widgets/app_logo.dart';
 
 class AppBarWidget extends StatelessWidget implements PreferredSizeWidget {
   const AppBarWidget({
@@ -9,7 +10,7 @@ class AppBarWidget extends StatelessWidget implements PreferredSizeWidget {
     this.showBackButton = false,
     this.onBack,
     this.actions = const [],
-    this.toolbarHeight = 96,
+    this.toolbarHeight = 60,
     this.leadingWidth = 120,
     this.logoHeight = 88,
   });
@@ -25,30 +26,43 @@ class AppBarWidget extends StatelessWidget implements PreferredSizeWidget {
   @override
   Widget build(BuildContext context) {
     return AppBar(
-      toolbarHeight: toolbarHeight,
-      leadingWidth: leadingWidth,
+      toolbarHeight: 60,
       leading: showBackButton
-          ? IconButton(icon: const Icon(Icons.arrow_back_rounded), onPressed: onBack, tooltip: 'Back')
-          : Padding(
-              padding: const EdgeInsets.only(left: 8),
-              child: Center(child: AppLogo(height: logoHeight)),
+          ? IconButton(
+              icon: Icon(
+                Platform.isIOS || Platform.isMacOS ? Icons.arrow_back_ios_new_rounded : Icons.arrow_back_rounded,
+              ),
+              onPressed: onBack ?? () => Navigator.of(context).pop(),
+              tooltip: 'Back',
+              color: AppTheme.specNavy,
+            )
+          : Builder(
+              builder: (ctx) => IconButton(
+                icon: const Icon(Icons.menu_rounded),
+                onPressed: () => Scaffold.of(ctx).openDrawer(),
+                tooltip: 'Menu',
+                color: AppTheme.specNavy,
+              ),
             ),
       title: Text(
         title,
         style: const TextStyle(
-          fontFamily: 'Brobane',
-          fontSize: 26,
-          fontWeight: FontWeight.normal,
+          fontFamily: 'PlusJakartaSans',
+          fontSize: 18,
+          fontWeight: FontWeight.w700,
+          letterSpacing: -0.5,
           color: AppTheme.specNavy,
         ),
       ),
-      centerTitle: true,
+      centerTitle: false,
       actions: actions,
-      scrolledUnderElevation: 12,
-      backgroundColor: AppTheme.specOffWhite,
+      scrolledUnderElevation: 1,
+      shadowColor: const Color(0xFF191C1D).withValues(alpha: 0.04),
+      backgroundColor: Colors.white,
       foregroundColor: AppTheme.specNavy,
       surfaceTintColor: Colors.transparent,
       elevation: 0,
+      titleSpacing: showBackButton ? 0 : 8,
     );
   }
 

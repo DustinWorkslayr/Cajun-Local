@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:cajun_local/core/api/api_client.dart';
 import 'package:cajun_local/features/businesses/data/models/business.dart';
+import 'package:cajun_local/features/businesses/data/models/featured_business.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 part 'business_api.g.dart';
@@ -178,6 +179,20 @@ class BusinessApi {
       await _client.dio.patch('/businesses/$businessId', data: {'contact_form_template': template});
     } on DioException catch (e) {
       throw Exception(e.response?.data?['detail'] ?? 'Failed to update contact form template');
+    }
+  }
+
+  /// Fetch featured businesses with category/subcategory pre-populated.
+  Future<List<FeaturedBusiness>> getFeaturedBusiness({int limit = 10}) async {
+    try {
+      final response = await _client.dio.get(
+        '/businesses/featured',
+        queryParameters: {'limit': limit},
+      );
+      final data = response.data as List;
+      return data.map((json) => FeaturedBusiness.fromJson(json as Map<String, dynamic>)).toList();
+    } on DioException catch (e) {
+      throw Exception(e.response?.data?['detail'] ?? 'Failed to get featured businesses');
     }
   }
 }
