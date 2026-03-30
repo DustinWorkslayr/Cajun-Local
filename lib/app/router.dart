@@ -26,6 +26,7 @@ import 'package:cajun_local/features/deals/presentation/screens/scan_punch_scree
 import 'package:cajun_local/features/profile/presentation/screens/about_screen.dart';
 import 'package:cajun_local/features/profile/presentation/screens/privacy_policy_screen.dart';
 import 'package:cajun_local/features/my_listings/presentation/screens/form_submissions_inbox_screen.dart';
+import 'package:cajun_local/features/local_events/presentation/screens/local_events_screen.dart';
 
 final GlobalKey<NavigatorState> _rootNavigatorKey = GlobalKey<NavigatorState>(debugLabel: 'root');
 final GlobalKey<NavigatorState> _shellNavigatorHomeKey = GlobalKey<NavigatorState>(debugLabel: 'shellHome');
@@ -219,6 +220,11 @@ final routerProvider = Provider<GoRouter>((ref) {
           final userId = state.pathParameters['userId']!;
           return MyConversationsScreen(userId: userId);
         },
+      ),
+      GoRoute(
+        parentNavigatorKey: _rootNavigatorKey,
+        path: '/local-events',
+        builder: (context, state) => const LocalEventsScreen(),
       ),
     ],
   );

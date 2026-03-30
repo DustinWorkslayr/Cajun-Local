@@ -19,12 +19,12 @@ class BusinessApi {
   }) async {
     try {
       final response = await _client.dio.get(
-        '/businesses/',
+        '/businesses',
         queryParameters: {
           'status': 'approved',
           if (categoryId != null) 'category_id': categoryId,
           if (parishIds != null && parishIds.isNotEmpty)
-            'parish_id': parishIds.first, // FastAPI schema currently takes single parish_id
+            'parish_id': parishIds.toList(),
           'skip': offset,
           'limit': limit,
         },
@@ -185,10 +185,7 @@ class BusinessApi {
   /// Fetch featured businesses with category/subcategory pre-populated.
   Future<List<FeaturedBusiness>> getFeaturedBusiness({int limit = 10}) async {
     try {
-      final response = await _client.dio.get(
-        '/businesses/featured',
-        queryParameters: {'limit': limit},
-      );
+      final response = await _client.dio.get('/businesses/featured', queryParameters: {'limit': limit});
       final data = response.data as List;
       return data.map((json) => FeaturedBusiness.fromJson(json as Map<String, dynamic>)).toList();
     } on DioException catch (e) {

@@ -13,32 +13,10 @@ import 'package:cajun_local/features/listing/presentation/screens/listing_detail
 import 'package:cajun_local/shared/widgets/app_buttons.dart';
 import 'package:cajun_local/shared/widgets/deal_detail_popup.dart';
 import 'package:cajun_local/shared/widgets/app_refresh_indicator.dart';
+import 'package:cajun_local/shared/widgets/app_bar_widget.dart';
+import 'package:cajun_local/shared/widgets/animated_entrance.dart';
 
-/// Badge shown when a deal has been redeemed/used. Checkmark + "Redeemed" for clarity.
-Widget _redeemedBadge(BuildContext context) {
-  final theme = Theme.of(context);
-  return Container(
-    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-    decoration: BoxDecoration(
-      color: const Color(0xFFE8F5E9),
-      borderRadius: BorderRadius.circular(10),
-      border: Border.all(color: const Color(0xFF81C784).withValues(alpha: 0.6)),
-    ),
-    child: Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(Icons.check_circle_rounded, size: 18, color: const Color(0xFF2E7D32)),
-        const SizedBox(width: 6),
-        Text(
-          'Redeemed',
-          style: theme.textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w700, color: const Color(0xFF1B5E20)),
-        ),
-      ],
-    ),
-  );
-}
-
-/// Profile "My deals": list of deals the user has claimed (saved). Tap to view details.
+/// Profile "My deals": list of deals the user has claimed (saved).
 class MyDealsScreen extends ConsumerStatefulWidget {
   const MyDealsScreen({super.key});
 
@@ -58,6 +36,7 @@ class _MyDealsScreenState extends ConsumerState<MyDealsScreen> {
   }
 
   Future<void> _load() async {
+    if (!mounted) return;
     setState(() {
       _loading = true;
       _error = null;
@@ -73,7 +52,10 @@ class _MyDealsScreenState extends ConsumerState<MyDealsScreen> {
       return;
     }
     try {
-      final userDeals = await ref.read(userDealsRepositoryProvider).listForUser(uid);
+      final userDealsResponse = await ref.read(userDealsRepositoryProvider).listForUser(uid);
+      // Sort by claimedAt descending
+      final userDeals = userDealsResponse..sort((a, b) => b.claimedAt.compareTo(a.claimedAt));
+      
       if (userDeals.isEmpty) {
         if (mounted) {
           setState(() {
@@ -125,218 +107,32 @@ class _MyDealsScreenState extends ConsumerState<MyDealsScreen> {
 
     return Scaffold(
       backgroundColor: AppTheme.specOffWhite,
-      appBar: AppBar(
-        title: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-              decoration: BoxDecoration(
-                color: AppTheme.specGold.withValues(alpha: 0.25),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(Icons.bookmark_rounded, size: 20, color: AppTheme.specNavy),
-                  const SizedBox(width: 8),
-                  Text(
-                    'My deals',
-                    style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700, color: AppTheme.specNavy),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-        centerTitle: true,
-        backgroundColor: AppTheme.specOffWhite,
-        foregroundColor: AppTheme.specNavy,
-        elevation: 0,
+      appBar: const AppBarWidget(
+        title: 'MY SAVED DEALS',
+        showBackButton: true,
       ),
       body: _loading
-          ? const Center(child: CircularProgressIndicator())
+          ? const Center(child: CircularProgressIndicator(color: AppTheme.specGold))
           : _error != null
-          ? Center(
-              child: Padding(
-                padding: const EdgeInsets.all(24),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      'Couldn\'t load your deals',
-                      style: theme.textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w600,
-                        color: AppTheme.specNavy,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      _error!,
-                      style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-                      textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: 16),
-                    AppSecondaryButton(onPressed: _load, child: const Text('Retry')),
-                  ],
-                ),
-              ),
-            )
+          ? _buildErrorState(theme)
           : (_items ?? []).isEmpty
-          ? Center(
-              child: Padding(
-                padding: const EdgeInsets.all(32),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.bookmark_border_rounded, size: 64, color: AppTheme.specGold.withValues(alpha: 0.8)),
-                    const SizedBox(height: 16),
-                    Text(
-                      'No saved deals yet',
-                      style: theme.textTheme.titleLarge?.copyWith(
-                        fontWeight: FontWeight.w700,
-                        color: AppTheme.specNavy,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'Claim deals from the Deals tab and they\'ll show up here.',
-                      style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-                      textAlign: TextAlign.center,
-                    ),
-                  ],
-                ),
-              ),
-            )
+          ? _buildEmptyState(theme)
           : AppRefreshIndicator(
               onRefresh: _load,
               child: ListView.builder(
-                padding: EdgeInsets.fromLTRB(padding.left, 16, padding.right, 28),
+                padding: EdgeInsets.fromLTRB(padding.left, 24, padding.right, 40),
                 itemCount: _items!.length,
                 itemBuilder: (context, index) {
                   final item = _items![index];
                   final deal = item.deal;
-                  if (deal == null) {
-                    return Padding(
-                      padding: const EdgeInsets.only(bottom: 12),
-                      child: Container(
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: AppTheme.specWhite,
-                          borderRadius: BorderRadius.circular(14),
-                          border: Border.all(color: AppTheme.specGold.withValues(alpha: 0.3)),
-                        ),
-                        child: Text(
-                          'Deal no longer available',
-                          style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-                        ),
-                      ),
-                    );
-                  }
-                  final isUsed = item.userDeal.usedAt != null;
-                  return Padding(
-                    padding: const EdgeInsets.only(bottom: 12),
-                    child: Material(
-                      color: Colors.transparent,
-                      child: InkWell(
-                        onTap: () {
-                          DealDetailPopup.show(
-                            context,
-                            deal: deal,
-                            listingName: item.listingName,
-                            isClaimed: true,
-                            isUsed: isUsed,
-                            usedAt: item.userDeal.usedAt,
-                            onGoToListing: deal.businessId.isNotEmpty
-                                ? () {
-                                    Navigator.of(context).push(
-                                      MaterialPageRoute<void>(
-                                        builder: (_) => ListingDetailScreen(listingId: deal.businessId),
-                                      ),
-                                    );
-                                  }
-                                : null,
-                          );
-                        },
-                        borderRadius: BorderRadius.circular(14),
-                        child: Container(
-                          padding: const EdgeInsets.all(16),
-                          decoration: BoxDecoration(
-                            color: isUsed ? AppTheme.specWhite.withValues(alpha: 0.96) : AppTheme.specWhite,
-                            borderRadius: BorderRadius.circular(14),
-                            border: Border.all(
-                              color: isUsed
-                                  ? AppTheme.specNavy.withValues(alpha: 0.12)
-                                  : AppTheme.specGold.withValues(alpha: 0.45),
-                              width: isUsed ? 1 : 1.5,
-                            ),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withValues(alpha: 0.06),
-                                blurRadius: 12,
-                                offset: const Offset(0, 4),
-                              ),
-                            ],
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                                    decoration: BoxDecoration(
-                                      color: AppTheme.specGold.withValues(alpha: 0.28),
-                                      borderRadius: BorderRadius.circular(10),
-                                      border: Border.all(color: AppTheme.specGold.withValues(alpha: 0.5)),
-                                    ),
-                                    child: Text(
-                                      deal.dealType,
-                                      style: theme.textTheme.labelLarge?.copyWith(
-                                        fontWeight: FontWeight.w800,
-                                        color: AppTheme.specNavy,
-                                      ),
-                                    ),
-                                  ),
-                                  const SizedBox(width: 12),
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          deal.title,
-                                          style: theme.textTheme.titleMedium?.copyWith(
-                                            fontWeight: FontWeight.w700,
-                                            color: AppTheme.specNavy,
-                                          ),
-                                        ),
-                                        if (item.listingName != null) ...[
-                                          const SizedBox(height: 4),
-                                          Text(
-                                            item.listingName!,
-                                            style: theme.textTheme.bodySmall?.copyWith(
-                                              color: AppTheme.specRed,
-                                              fontWeight: FontWeight.w600,
-                                            ),
-                                          ),
-                                        ],
-                                      ],
-                                    ),
-                                  ),
-                                  if (isUsed) _redeemedBadge(context),
-                                ],
-                              ),
-                              const SizedBox(height: 10),
-                              Text(
-                                'Claimed ${_formatDate(item.userDeal.claimedAt)}',
-                                style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
+                  
+                  if (deal == null) return const SizedBox.shrink();
+
+                  return AnimatedEntrance(
+                    delay: Duration(milliseconds: 50 * index),
+                    child: _MyDealCard(
+                      item: item,
+                      onRefresh: _load,
                     ),
                   );
                 },
@@ -345,12 +141,261 @@ class _MyDealsScreenState extends ConsumerState<MyDealsScreen> {
     );
   }
 
-  String _formatDate(DateTime d) {
+  Widget _buildEmptyState(ThemeData theme) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(40),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                color: AppTheme.specGold.withValues(alpha: 0.1),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(Icons.bookmark_border_rounded, size: 48, color: AppTheme.specGold),
+            ),
+            const SizedBox(height: 24),
+            Text(
+              'No saved deals yet',
+              style: theme.textTheme.titleLarge?.copyWith(
+                fontWeight: FontWeight.w800,
+                color: AppTheme.specNavy,
+                fontFamily: 'Libre Baskerville',
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 12),
+            Text(
+              'Claim deals from the local discounts section to see them here for easy access.',
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: AppTheme.specNavy.withValues(alpha: 0.6),
+                height: 1.5,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildErrorState(ThemeData theme) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.error_outline_rounded, size: 48, color: AppTheme.specRed),
+            const SizedBox(height: 16),
+            Text(
+              'Something went wrong',
+              style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700, color: AppTheme.specNavy),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              _error ?? 'Unknown error',
+              style: theme.textTheme.bodySmall?.copyWith(color: AppTheme.specNavy.withValues(alpha: 0.5)),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 24),
+            AppSecondaryButton(onPressed: _load, child: const Text('Retry')),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _MyDealCard extends StatelessWidget {
+  const _MyDealCard({required this.item, required this.onRefresh});
+
+  final ({UserDeal userDeal, Deal? deal, String? listingName}) item;
+  final VoidCallback onRefresh;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final deal = item.deal!;
+    final isUsed = item.userDeal.usedAt != null;
+    
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16),
+      child: Container(
+        decoration: BoxDecoration(
+          color: AppTheme.specWhite,
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(
+            color: isUsed 
+                ? AppTheme.specNavy.withValues(alpha: 0.08) 
+                : AppTheme.specGold.withValues(alpha: 0.3),
+            width: isUsed ? 1 : 1.5,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: AppTheme.specNavy.withValues(alpha: 0.06),
+              blurRadius: 20,
+              offset: const Offset(0, 8),
+            ),
+          ],
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: () {
+              DealDetailPopup.show(
+                context,
+                deal: deal,
+                listingName: item.listingName,
+                isClaimed: true,
+                isUsed: isUsed,
+                usedAt: item.userDeal.usedAt,
+                onGoToListing: deal.businessId.isNotEmpty
+                    ? () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute<void>(
+                            builder: (_) => ListingDetailScreen(listingId: deal.businessId),
+                          ),
+                        );
+                      }
+                    : null,
+                onClaim: () async {
+                  // Already claimed, but popup might show it
+                },
+              );
+            },
+            child: Padding(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              deal.dealType.toUpperCase(),
+                              style: theme.textTheme.labelSmall?.copyWith(
+                                color: AppTheme.specGold,
+                                fontWeight: FontWeight.w800,
+                                letterSpacing: 1.2,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              deal.title,
+                              style: theme.textTheme.titleLarge?.copyWith(
+                                color: AppTheme.specNavy,
+                                fontWeight: FontWeight.w800,
+                                height: 1.2,
+                                fontFamily: 'Libre Baskerville',
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      if (isUsed)
+                        _RedeemedBadge()
+                      else
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: AppTheme.specGold.withValues(alpha: 0.15),
+                            shape: BoxShape.circle,
+                          ),
+                          child: Icon(Icons.qr_code_2_rounded, color: AppTheme.specGold, size: 20),
+                        ),
+                    ],
+                  ),
+                  if (item.listingName != null) ...[
+                    const SizedBox(height: 16),
+                    Row(
+                      children: [
+                        Icon(Icons.storefront_rounded, size: 16, color: AppTheme.specNavy.withValues(alpha: 0.4)),
+                        const SizedBox(width: 8),
+                        Text(
+                          item.listingName!,
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            color: AppTheme.specNavy.withValues(alpha: 0.7),
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                  const SizedBox(height: 20),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'Claimed ${_formatRelative(item.userDeal.claimedAt)}',
+                        style: theme.textTheme.labelMedium?.copyWith(
+                          color: AppTheme.specNavy.withValues(alpha: 0.4),
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      if (!isUsed)
+                        Text(
+                          'READY TO USE',
+                          style: theme.textTheme.labelSmall?.copyWith(
+                            color: AppTheme.specRed,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  String _formatRelative(DateTime d) {
     final now = DateTime.now();
     final diff = now.difference(d);
     if (diff.inDays == 0) return 'today';
     if (diff.inDays == 1) return 'yesterday';
-    if (diff.inDays < 7) return '${diff.inDays} days ago';
+    if (diff.inDays < 7) return '${diff.inDays}d ago';
     return '${d.month}/${d.day}/${d.year}';
+  }
+}
+
+class _RedeemedBadge extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF1F8E9),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFC5E1A5)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(Icons.check_circle_rounded, size: 14, color: Color(0xFF558B2F)),
+          const SizedBox(width: 4),
+          Text(
+            'REDEEMED',
+            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+              color: const Color(0xFF33691E),
+              fontWeight: FontWeight.w800,
+              letterSpacing: 0.5,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }

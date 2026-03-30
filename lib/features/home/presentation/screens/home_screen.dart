@@ -214,7 +214,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                             borderRadius: BorderRadius.circular(16),
                             boxShadow: [
                               BoxShadow(
-                                color: const Color(0xFF191C1D).withValues(alpha: 0.06),
+                                color: const Color(0xFF191C1D).withOpacity(0.06),
                                 blurRadius: 24,
                                 offset: const Offset(0, 8),
                               ),
@@ -303,9 +303,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                 child: Container(
                                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                                   decoration: BoxDecoration(
-                                    color: AppTheme.specGold.withValues(alpha: 0.08),
+                                    color: AppTheme.specGold.withOpacity(0.08),
                                     borderRadius: BorderRadius.circular(16),
-                                    border: Border.all(color: AppTheme.specGold.withValues(alpha: 0.2)),
+                                    border: Border.all(color: AppTheme.specGold.withOpacity(0.2)),
                                   ),
                                   child: Row(
                                     children: [
@@ -318,7 +318,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                             Text(
                                               'Browsing in',
                                               style: theme.textTheme.labelSmall?.copyWith(
-                                                color: AppTheme.specNavy.withValues(alpha: 0.6),
+                                                color: AppTheme.specNavy.withOpacity(0.6),
                                                 fontWeight: FontWeight.w600,
                                               ),
                                             ),
@@ -353,9 +353,27 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     padding: EdgeInsets.fromLTRB(padding.left, 0, padding.right, _sectionSpacingLarge),
                     child: HomeQuickActionsWidget(
                       isTablet: width > 500,
-                      onDeals: widget.onNavigateToDeals,
-                      onEvents: widget.onOpenLocalEvents,
-                      onChooseForMe: widget.onOpenChooseForMe,
+                      onDeals: () {
+                        if (widget.onNavigateToDeals != null) {
+                          widget.onNavigateToDeals!();
+                        } else {
+                          context.go('/deals');
+                        }
+                      },
+                      onEvents: () {
+                        if (widget.onOpenLocalEvents != null) {
+                          widget.onOpenLocalEvents!();
+                        } else {
+                          context.push('/local-events');
+                        }
+                      },
+                      onChooseForMe: () {
+                        if (widget.onOpenChooseForMe != null) {
+                          widget.onOpenChooseForMe!();
+                        } else {
+                          context.push('/choose-for-me');
+                        }
+                      },
                     ),
                   ),
                 ),
@@ -617,7 +635,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   ),
                   if (posts.isNotEmpty)
                     GestureDetector(
-                      onTap: () => widget.onNavigateToNews?.call(),
+                      onTap: () {
+                        if (widget.onNavigateToNews != null) {
+                          widget.onNavigateToNews!();
+                        } else {
+                          context.go('/news');
+                        }
+                      },
                       child: Row(
                         children: [
                           Text(
@@ -671,7 +695,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         child: LatestPostCardWidget(
                           post: post,
                           parishLabel: _parishLabelForPost(post, idToName),
-                          onTap: () => widget.onNavigateToNewsPost?.call(post.id),
+                          onTap: () {
+                            if (widget.onNavigateToNewsPost != null) {
+                              widget.onNavigateToNewsPost!(post.id);
+                            } else {
+                              context.push('/news/${post.id}');
+                            }
+                          },
                           cardWidth: cardWidth,
                           cardHeight: cardHeight,
                           featured: isFeatured,

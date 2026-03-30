@@ -1850,52 +1850,6 @@ class _HoursBlock extends StatelessWidget {
   }
 }
 
-class _AmenitiesBlock extends StatelessWidget {
-  const _AmenitiesBlock({required this.amenityNames});
-
-  final List<String> amenityNames;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppTheme.specOffWhite,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppTheme.specNavy.withValues(alpha: 0.08)),
-      ),
-      child: Wrap(
-        spacing: 8,
-        runSpacing: 8,
-        children: amenityNames.map((name) {
-          return Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            decoration: BoxDecoration(
-              color: AppTheme.specWhite,
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: AppTheme.specGold.withValues(alpha: 0.4)),
-              boxShadow: [
-                BoxShadow(color: AppTheme.specNavy.withValues(alpha: 0.06), blurRadius: 6, offset: const Offset(0, 2)),
-              ],
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(Icons.check_circle_rounded, size: 18, color: AppTheme.specGold),
-                const SizedBox(width: 6),
-                Text(
-                  name,
-                  style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w500, color: AppTheme.specNavy),
-                ),
-              ],
-            ),
-          );
-        }).toList(),
-      ),
-    );
-  }
-}
 
 /// Dynamic CTA to contact: button label from contact form template; tap opens form in popup.
 class _ContactCtaSection extends StatelessWidget {

@@ -1,7 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:cajun_local/features/locations/data/models/parish.dart';
 import 'package:cajun_local/features/businesses/data/models/business_category.dart';
 import 'package:cajun_local/features/categories/data/models/subcategory.dart';
@@ -10,11 +9,10 @@ import 'package:cajun_local/features/categories/data/repositories/category_repos
 import 'package:cajun_local/features/profile/data/models/user_parish_preferences.dart';
 import 'package:cajun_local/core/theme/theme.dart';
 import 'package:cajun_local/shared/widgets/app_buttons.dart';
+import 'package:cajun_local/shared/widgets/app_bar_widget.dart';
+import 'package:cajun_local/shared/widgets/animated_entrance.dart';
 import 'package:cajun_local/features/choose_for_me/presentation/screens/choose_for_me_slot_screen.dart'
     show showChooseForMeSlotDialog;
-
-/// Asset for the Choose for me hero illustration (selection screen).
-const String _kChooseForMeAsset = 'assets/images/chooseforme.png';
 
 /// "Choose for me" flow: step 1 = preferred parish + category + optional tags (subcategories);
 /// step 2 = popup with slot-machine style randomizer using Explore-style listing cards.
@@ -40,30 +38,23 @@ class _ChooseForMeScreenState extends ConsumerState<ChooseForMeScreen> with Tick
   /// All categories (any bucket) for dynamic category select.
   List<BusinessCategory> _allCategories = [];
 
-  /// Set when listCategories() throws (e.g. network, RLS); user can retry.
-  bool _categoriesLoadFailed = false;
-
-  late AnimationController _entranceController;
   late AnimationController _pulseController;
 
   @override
   void initState() {
     super.initState();
-    _entranceController = AnimationController(vsync: this, duration: const Duration(milliseconds: 1000));
     _pulseController = AnimationController(vsync: this, duration: const Duration(milliseconds: 1200))
       ..repeat(reverse: true);
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      _entranceController.forward();
       _loadPreferredParishes();
       _loadCategories();
     });
-    WidgetsBinding.instance.ensureVisualUpdate();
   }
 
   @override
   void dispose() {
-    _entranceController.dispose();
     _pulseController.dispose();
     super.dispose();
   }
@@ -87,14 +78,12 @@ class _ChooseForMeScreenState extends ConsumerState<ChooseForMeScreen> with Tick
         _parishesLoaded = true;
       });
     }
-    // Entrance already started in initState; no need to forward again.
   }
 
   /// Load all categories for dynamic category + tags (subcategory) select.
   Future<void> _loadCategories() async {
     if (!mounted) return;
     setState(() {
-      _categoriesLoadFailed = false;
       _categoriesLoaded = false;
     });
     try {
@@ -112,7 +101,6 @@ class _ChooseForMeScreenState extends ConsumerState<ChooseForMeScreen> with Tick
       if (mounted) {
         setState(() {
           _allCategories = [];
-          _categoriesLoadFailed = true;
           _categoriesLoaded = true;
         });
       }
@@ -152,322 +140,276 @@ class _ChooseForMeScreenState extends ConsumerState<ChooseForMeScreen> with Tick
     });
   }
 
-  double _stagger(double begin, double end) {
-    final t = _entranceController.value.clamp(0.0, 1.0);
-    if (t <= begin) return 0;
-    if (t >= end) return 1;
-    return Curves.easeOut.transform((t - begin) / (end - begin));
-  }
-
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final nav = AppTheme.specNavy;
-    final sub = nav.withValues(alpha: 0.7);
-    final tHero = _stagger(0, 0.28);
-    final tSubtitle = _stagger(0.12, 0.38);
-    final tArea = _stagger(0.28, 0.52);
-    final tCuisine = _stagger(0.45, 0.72);
-    final tButton = _stagger(0.6, 0.88);
+
     final pulseScale = 1.0 + 0.04 * Curves.easeInOut.transform(_pulseController.value);
     final canGo = _parishIds.isNotEmpty && _selectedCategoryId != null && _selectedCategoryId!.isNotEmpty;
 
     return Scaffold(
       backgroundColor: AppTheme.specOffWhite,
-      appBar: AppBar(
-        title: Text(
-          'Choose for me',
-          style: GoogleFonts.dancingScript(fontSize: 26, fontWeight: FontWeight.w700, color: nav),
-        ),
-        centerTitle: true,
-        backgroundColor: AppTheme.specOffWhite,
-        foregroundColor: nav,
-        elevation: 0,
-        surfaceTintColor: Colors.transparent,
-      ),
+      appBar: const AppBarWidget(title: 'CHOOSE FOR ME', showBackButton: true),
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+          padding: const EdgeInsets.symmetric(horizontal: 0, vertical: 0),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              AnimatedBuilder(
-                animation: _entranceController,
-                builder: (context, child) {
-                  return Transform.translate(
-                    offset: Offset(0, 16 * (1 - tHero)),
-                    child: Transform.scale(scale: 0.92 + 0.08 * tHero, child: child),
-                  );
-                },
+              AnimatedEntrance(
+                delay: const Duration(milliseconds: 100),
                 child: Padding(
-                  padding: const EdgeInsets.only(top: 8),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(20),
-                    child: Image.asset(
-                      _kChooseForMeAsset,
-                      fit: BoxFit.contain,
-                      height: 160,
-                      errorBuilder: (_, _, _) => const SizedBox(height: 160),
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 20),
-              AnimatedBuilder(
-                animation: _entranceController,
-                builder: (context, child) {
-                  return Transform.translate(offset: Offset(0, 12 * (1 - tSubtitle)), child: child);
-                },
-                child: Text(
-                  'Pick your preferred area, category, and optional tags—then tap to spin.',
-                  style: theme.textTheme.bodyLarge?.copyWith(color: sub, fontWeight: FontWeight.w500),
-                ),
-              ),
-              const SizedBox(height: 24),
-              AnimatedBuilder(
-                animation: _entranceController,
-                builder: (context, child) {
-                  return Transform.translate(offset: Offset(0, 14 * (1 - tArea)), child: child);
-                },
-                child: Theme(
-                  data: theme.copyWith(dividerColor: Colors.transparent),
-                  child: ExpansionTile(
-                    initiallyExpanded: false,
-                    tilePadding: EdgeInsets.zero,
-                    childrenPadding: const EdgeInsets.only(top: 8, bottom: 8),
-                    title: Text(
-                      _parishesLoaded
-                          ? (_parishIds.isEmpty
-                                ? 'Preferred parish — Select at least one'
-                                : _parishIds.length == 1
-                                ? 'Preferred parish — 1 selected'
-                                : 'Preferred parish — ${_parishIds.length} selected')
-                          : 'Preferred parish',
-                      style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700, color: nav),
-                    ),
-                    subtitle: _parishesLoaded && _parishIds.isNotEmpty
-                        ? Padding(
-                            padding: const EdgeInsets.only(top: 4),
-                            child: Text('Tap to change areas', style: theme.textTheme.bodySmall?.copyWith(color: sub)),
-                          )
-                        : null,
-                    children: [
-                      if (!_parishesLoaded)
-                        const Center(
-                          child: Padding(
-                            padding: EdgeInsets.symmetric(vertical: 16),
-                            child: SizedBox(width: 28, height: 28, child: CircularProgressIndicator(strokeWidth: 2)),
-                          ),
-                        )
-                      else
-                        Wrap(
-                          spacing: 10,
-                          runSpacing: 10,
-                          children: _parishes.map((p) {
-                            final selected = _parishIds.contains(p.id);
-                            return TweenAnimationBuilder<double>(
-                              key: ValueKey('${p.id}-$selected'),
-                              tween: Tween(begin: 1, end: selected ? 1.04 : 1),
-                              duration: const Duration(milliseconds: 120),
-                              builder: (context, scale, child) => Transform.scale(scale: scale, child: child),
-                              child: FilterChip(
-                                label: Text(
-                                  p.name,
-                                  style: TextStyle(
-                                    fontSize: 14,
-                                    fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
-                                    color: nav,
-                                  ),
-                                ),
-                                selected: selected,
-                                onSelected: (v) {
-                                  setState(() {
-                                    if (v) {
-                                      _parishIds = Set.from(_parishIds)..add(p.id);
-                                    } else {
-                                      _parishIds = Set.from(_parishIds)..remove(p.id);
-                                    }
-                                  });
-                                  UserParishPreferences.setPreferredParishIds(_parishIds);
-                                },
-                                backgroundColor: AppTheme.specWhite,
-                                selectedColor: AppTheme.specGold.withValues(alpha: 0.4),
-                                side: BorderSide(
-                                  color: selected ? AppTheme.specGold : nav.withValues(alpha: 0.25),
-                                  width: selected ? 1.5 : 1,
-                                ),
-                              ),
-                            );
-                          }).toList(),
-                        ),
-                    ],
-                  ),
-                ),
-              ),
-              const SizedBox(height: 24),
-              if (_categoriesLoadFailed)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 8),
-                  child: Row(
-                    children: [
-                      Icon(Icons.info_outline_rounded, size: 20, color: sub),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          'Couldn\'t load categories.',
-                          style: theme.textTheme.bodySmall?.copyWith(color: sub),
-                        ),
-                      ),
-                      TextButton(onPressed: _loadCategories, child: const Text('Retry')),
-                    ],
-                  ),
-                ),
-              AnimatedBuilder(
-                animation: _entranceController,
-                builder: (context, child) {
-                  return Transform.translate(offset: Offset(0, 12 * (1 - tCuisine)), child: child);
-                },
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Category',
-                      style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700, color: nav),
-                    ),
-                    const SizedBox(height: 8),
-                    if (!_categoriesLoaded)
-                      Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                        child: Row(
-                          children: [
-                            const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2)),
-                            const SizedBox(width: 12),
-                            Text('Loading categories…', style: theme.textTheme.bodyMedium?.copyWith(color: sub)),
-                          ],
-                        ),
-                      )
-                    else if (_allCategories.isEmpty)
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: 4),
-                        child: Text(
-                          'No categories available. Try again later.',
-                          style: theme.textTheme.bodySmall?.copyWith(color: sub),
-                        ),
-                      )
-                    else
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: AppTheme.specWhite,
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: nav.withValues(alpha: 0.25), width: 1),
-                        ),
-                        child: DropdownButtonHideUnderline(
-                          child: DropdownButton<String>(
-                            value: _selectedCategoryId,
-                            isExpanded: true,
-                            hint: Text('Select a category', style: theme.textTheme.bodyMedium?.copyWith(color: sub)),
-                            borderRadius: BorderRadius.circular(12),
-                            dropdownColor: AppTheme.specWhite,
-                            items: [
-                              for (final c in _allCategories)
-                                DropdownMenuItem<String>(
-                                  value: c.id,
-                                  child: Text(
-                                    c.name,
-                                    style: TextStyle(
-                                      fontSize: 15,
-                                      fontWeight: _selectedCategoryId == c.id ? FontWeight.w600 : FontWeight.w500,
-                                      color: nav,
-                                    ),
-                                  ),
-                                ),
-                            ],
-                            onChanged: (id) => setState(() {
-                              _selectedCategoryId = id;
-                              _subcategoryIds = {};
-                            }),
-                          ),
-                        ),
-                      ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 24),
-              if (_selectedSubcategories.isNotEmpty)
-                AnimatedBuilder(
-                  animation: _entranceController,
-                  builder: (context, child) {
-                    return Transform.translate(offset: Offset(0, 12 * (1 - tCuisine)), child: child);
-                  },
+                  padding: const EdgeInsets.fromLTRB(24, 24, 24, 8),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Tags (optional)',
-                        style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700, color: nav),
+                        'Indecisive?',
+                        style: theme.textTheme.headlineMedium?.copyWith(
+                          color: nav,
+                          fontWeight: FontWeight.w800,
+                          fontFamily: 'Libre Baskerville',
+                        ),
                       ),
                       const SizedBox(height: 8),
-                      Wrap(
-                        spacing: 10,
-                        runSpacing: 10,
-                        children: _selectedSubcategories.map((s) {
-                          final selected = _subcategoryIds.contains(s.id);
-                          return TweenAnimationBuilder<double>(
-                            key: ValueKey('${s.id}-$selected'),
-                            tween: Tween(begin: 1, end: selected ? 1.04 : 1),
-                            duration: const Duration(milliseconds: 120),
-                            builder: (context, scale, child) => Transform.scale(scale: scale, child: child),
-                            child: FilterChip(
-                              label: Text(
-                                s.name,
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
-                                  color: nav,
-                                ),
-                              ),
-                              selected: selected,
-                              onSelected: (v) => setState(() {
-                                if (v) {
-                                  _subcategoryIds = Set.from(_subcategoryIds)..add(s.id);
-                                } else {
-                                  _subcategoryIds = Set.from(_subcategoryIds)..remove(s.id);
-                                }
-                              }),
-                              backgroundColor: AppTheme.specWhite,
-                              selectedColor: AppTheme.specGold.withValues(alpha: 0.4),
-                              side: BorderSide(
-                                color: selected ? AppTheme.specGold : nav.withValues(alpha: 0.25),
-                                width: selected ? 1.5 : 1,
-                              ),
-                            ),
-                          );
-                        }).toList(),
+                      Text(
+                        'Pick your vibe and let our slot machine decide where your next adventure begins.',
+                        style: theme.textTheme.bodyLarge?.copyWith(color: nav.withValues(alpha: 0.6), height: 1.5),
                       ),
                     ],
                   ),
                 ),
-              if (_selectedSubcategories.isNotEmpty) const SizedBox(height: 24),
-              AnimatedBuilder(
-                animation: Listenable.merge([_entranceController, _pulseController]),
-                builder: (context, child) {
-                  return Transform.translate(
-                    offset: Offset(0, 14 * (1 - tButton)),
-                    child: Transform.scale(scale: canGo ? pulseScale : 1, child: child),
-                  );
-                },
-                child: AppSecondaryButton(
+              ),
+
+              const SizedBox(height: 16),
+
+              /// 1. Area Selection
+              _buildSectionHeader(context, '1. WHERE ARE YOU?', Icons.location_on_rounded),
+              AnimatedEntrance(
+                delay: const Duration(milliseconds: 200),
+                child: _parishesLoaded
+                    ? Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 24),
+                        child: Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: _parishes.map((p) {
+                            final selected = _parishIds.contains(p.id);
+                            return FilterChip(
+                              label: Text(p.name),
+                              selected: selected,
+                              onSelected: (v) {
+                                setState(() {
+                                  if (v) {
+                                    _parishIds = Set.from(_parishIds)..add(p.id);
+                                  } else {
+                                    _parishIds = Set.from(_parishIds)..remove(p.id);
+                                  }
+                                });
+                                UserParishPreferences.setPreferredParishIds(_parishIds);
+                              },
+                              backgroundColor: AppTheme.specWhite,
+                              selectedColor: AppTheme.specGold.withValues(alpha: 0.15),
+                              checkmarkColor: AppTheme.specGold,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                side: BorderSide(
+                                  color: selected ? AppTheme.specGold : nav.withValues(alpha: 0.1),
+                                  width: 1.5,
+                                ),
+                              ),
+                              labelStyle: theme.textTheme.labelLarge?.copyWith(
+                                color: selected ? AppTheme.specNavy : nav.withValues(alpha: 0.6),
+                                fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                              ),
+                            );
+                          }).toList(),
+                        ),
+                      )
+                    : const Padding(
+                        padding: EdgeInsets.all(24),
+                        child: LinearProgressIndicator(color: AppTheme.specGold, backgroundColor: Colors.white),
+                      ),
+              ),
+
+              const SizedBox(height: 32),
+
+              /// 2. Category Selection
+              _buildSectionHeader(context, '2. WHAT ARE YOU LOOKING FOR?', Icons.grid_view_rounded),
+              AnimatedEntrance(
+                delay: const Duration(milliseconds: 300),
+                child: _categoriesLoaded
+                    ? _buildCategoryList()
+                    : const Padding(
+                        padding: EdgeInsets.all(24),
+                        child: Center(child: CircularProgressIndicator(color: AppTheme.specGold)),
+                      ),
+              ),
+
+              const SizedBox(height: 32),
+
+              /// 3. Subcategories (Action/Tags)
+              if (_selectedSubcategories.isNotEmpty) ...[
+                _buildSectionHeader(context, '3. ADD SOME FLAVOR', Icons.label_rounded),
+                AnimatedEntrance(
+                  delay: const Duration(milliseconds: 400),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 24),
+                    child: Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: _selectedSubcategories.map((s) {
+                        final selected = _subcategoryIds.contains(s.id);
+                        return FilterChip(
+                          label: Text(s.name),
+                          selected: selected,
+                          onSelected: (v) => setState(() {
+                            if (v) {
+                              _subcategoryIds = Set.from(_subcategoryIds)..add(s.id);
+                            } else {
+                              _subcategoryIds = Set.from(_subcategoryIds)..remove(s.id);
+                            }
+                          }),
+                          backgroundColor: AppTheme.specWhite.withValues(alpha: 0.5),
+                          selectedColor: AppTheme.specNavy.withValues(alpha: 0.1),
+                          shape: StadiumBorder(
+                            side: BorderSide(color: selected ? AppTheme.specNavy : nav.withValues(alpha: 0.1)),
+                          ),
+                          labelStyle: theme.textTheme.labelMedium?.copyWith(
+                            color: selected ? AppTheme.specNavy : nav.withValues(alpha: 0.6),
+                            fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                          ),
+                        );
+                      }).toList(),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 48),
+              ],
+
+              /// Action Button
+              Padding(
+                padding: const EdgeInsets.fromLTRB(24, 8, 24, 64),
+                child: AppPrimaryButton(
                   onPressed: !canGo ? null : _goToSlot,
-                  icon: const Icon(Icons.casino_rounded, size: 24),
-                  label: Text('Pick for me', style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
+                  label: Text('SPIN'),
+                  icon: Icon(Icons.casino_rounded, size: 28),
                 ),
               ),
-              const SizedBox(height: 32),
             ],
           ),
         ),
       ),
     );
+  }
+
+  Widget _buildSectionHeader(BuildContext context, String title, IconData icon) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(24, 0, 24, 16),
+      child: Row(
+        children: [
+          Icon(icon, size: 18, color: AppTheme.specGold),
+          const SizedBox(width: 8),
+          Text(
+            title,
+            style: Theme.of(context).textTheme.labelLarge?.copyWith(
+              color: AppTheme.specNavy.withValues(alpha: 0.6),
+              fontWeight: FontWeight.w900,
+              letterSpacing: 1.5,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCategoryList() {
+    return SizedBox(
+      height: 120,
+      child: ListView.builder(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 20),
+        itemCount: _allCategories.length,
+        itemBuilder: (context, index) {
+          final cat = _allCategories[index];
+          final isSelected = _selectedCategoryId == cat.id;
+
+          return Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 4),
+            child: Material(
+              color: Colors.transparent,
+              child: InkWell(
+                onTap: () => setState(() {
+                  _selectedCategoryId = isSelected ? null : cat.id;
+                  _subcategoryIds = {};
+                }),
+                borderRadius: BorderRadius.circular(20),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 250),
+                  width: 110,
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: isSelected ? AppTheme.specGold : AppTheme.specWhite,
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                      color: isSelected ? AppTheme.specGold : Colors.black.withValues(alpha: 0.05),
+                      width: 1.5,
+                    ),
+                    boxShadow: [
+                      if (isSelected)
+                        BoxShadow(
+                          color: AppTheme.specGold.withValues(alpha: 0.4),
+                          blurRadius: 12,
+                          offset: const Offset(0, 4),
+                        )
+                      else
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.04),
+                          blurRadius: 8,
+                          offset: const Offset(0, 2),
+                        ),
+                    ],
+                  ),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        _getCategoryIcon(cat.name),
+                        size: 32,
+                        color: isSelected ? AppTheme.specOffWhite : AppTheme.specNavy.withValues(alpha: 0.4),
+                      ),
+                      const SizedBox(height: 12),
+                      Text(
+                        cat.name.split(' ').first, // Keep it short
+                        style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                          fontWeight: FontWeight.w800,
+                          color: isSelected ? AppTheme.specOffWhite : AppTheme.specNavy.withValues(alpha: 0.7),
+                        ),
+                        textAlign: TextAlign.center,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  IconData _getCategoryIcon(String name) {
+    final n = name.toLowerCase();
+    if (n.contains('restauran') || n.contains('dining') || n.contains('food')) return Icons.restaurant_rounded;
+    if (n.contains('shop') || n.contains('retail')) return Icons.shopping_bag_rounded;
+    if (n.contains('event') || n.contains('happening')) return Icons.event_rounded;
+    if (n.contains('lifestyle') || n.contains('beauty')) return Icons.auto_awesome_rounded;
+    if (n.contains('service')) return Icons.support_agent_rounded;
+    if (n.contains('professional')) return Icons.business_center_rounded;
+    if (n.contains('local tips')) return Icons.lightbulb_rounded;
+    return Icons.grid_view_rounded;
   }
 }

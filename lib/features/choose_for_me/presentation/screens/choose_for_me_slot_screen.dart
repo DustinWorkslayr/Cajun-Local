@@ -11,6 +11,7 @@ import 'package:cajun_local/features/businesses/data/repositories/business_repos
 import 'package:cajun_local/features/categories/data/repositories/category_repository.dart';
 import 'package:cajun_local/core/theme/theme.dart';
 import 'package:cajun_local/shared/widgets/app_buttons.dart';
+import 'package:cajun_local/shared/widgets/glass_card.dart';
 import 'package:go_router/go_router.dart';
 import 'package:cajun_local/features/choose_for_me/presentation/widgets/choose_for_me_listing_card.dart';
 
@@ -800,11 +801,12 @@ class _ChooseForMeSlotContentState extends ConsumerState<ChooseForMeSlotContent>
     final showSlot = _slotList.isNotEmpty;
 
     return Material(
-      color: AppTheme.specOffWhite,
-      borderRadius: BorderRadius.circular(24),
-      child: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+      color: Colors.transparent,
+      child: GlassCard(
+        borderRadius: BorderRadius.circular(28),
+        padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+        blurSigma: 16,
+        child: SafeArea(
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -812,97 +814,165 @@ class _ChooseForMeSlotContentState extends ConsumerState<ChooseForMeSlotContent>
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
-                    'Choose for me',
-                    style: GoogleFonts.dancingScript(fontSize: 22, fontWeight: FontWeight.w700, color: nav),
+                    'CHOOSE FOR ME',
+                    style: theme.textTheme.labelLarge?.copyWith(
+                      color: nav.withValues(alpha: 0.6),
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: 2.0,
+                    ),
                   ),
-                  IconButton(onPressed: widget.onClose, icon: const Icon(Icons.close_rounded), color: nav),
+                  IconButton(
+                    onPressed: widget.onClose,
+                    icon: const Icon(Icons.close_rounded),
+                    color: nav.withValues(alpha: 0.5),
+                  ),
                 ],
               ),
-              const SizedBox(height: 8),
-              Text(
-                _loading ? 'Find local businesses with heart' : (_spinning ? 'Spinning…' : 'We chose…'),
-                style: theme.textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.w700,
-                  color: _loading || _spinning ? sub : AppTheme.specGold,
+              const SizedBox(height: 12),
+              AnimatedCrossFade(
+                firstChild: Text(
+                  _loading ? 'Searching...' : (_spinning ? 'SPINNING...' : 'WE CHOSE...'),
+                  style: theme.textTheme.headlineSmall?.copyWith(
+                    fontWeight: FontWeight.w900,
+                    color: _loading || _spinning ? nav.withValues(alpha: 0.4) : AppTheme.specGold,
+                    fontFamily: 'Libre Baskerville',
+                  ),
                 ),
+                secondChild: const SizedBox(width: double.infinity),
+                crossFadeState: CrossFadeState.showFirst,
+                duration: const Duration(milliseconds: 300),
               ),
-              const SizedBox(height: 16),
-              SizedBox(
-                height: _viewportHeight,
-                child: LayoutBuilder(
-                  builder: (context, constraints) {
-                    final slotSize = Size(constraints.maxWidth, _viewportHeight);
-                    return Stack(
-                      clipBehavior: Clip.none,
-                      children: [
-                        if (_loading || !showSlot)
-                          Center(
-                            child: _LoadingLocalBusinesses(textColor: sub, heartColor: nav, showLabel: false),
-                          )
-                        else
-                          ClipRRect(
-                            borderRadius: BorderRadius.circular(20),
-                            child: ListView.builder(
-                              controller: _scrollController,
-                              physics: const NeverScrollableScrollPhysics(),
-                              padding: EdgeInsets.only(
-                                top: (_viewportHeight - _cardHeight) / 2,
-                                bottom: (_viewportHeight - _cardHeight) / 2,
-                              ),
-                              itemCount: _slotList.length,
-                              itemBuilder: (context, index) {
-                                final tilt = _tiltForIndex(index);
-                                final isWinner = index == _winnerSlotIndex && _showResult && !_spinning;
-                                final card = Padding(
-                                  padding: const EdgeInsets.symmetric(horizontal: 12),
-                                  child: SizedBox(
-                                    height: _cardHeight,
-                                    child: Transform(
-                                      alignment: Alignment.center,
-                                      transform: Matrix4.identity()
-                                        ..setEntry(3, 2, 0.001)
-                                        ..rotateX(tilt),
-                                      child: ExploreStyleListingCard(
-                                        listing: _slotList[index],
-                                        subcategoryNames: _subcategoryNames,
-                                        cardHeight: _cardHeight - 6,
-                                        cardRadius: 14,
-                                        onTap: null,
-                                      ),
-                                    ),
+              const SizedBox(height: 24),
+              /// Slot Machine Frame
+              Container(
+                height: _viewportHeight + 20,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(24),
+                  color: AppTheme.specNavy.withValues(alpha: 0.05),
+                  border: Border.all(color: nav.withValues(alpha: 0.15), width: 1.5),
+                  boxShadow: [
+                    BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 20, offset: const Offset(0, 8)),
+                  ],
+                ),
+                padding: const EdgeInsets.all(4),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(20),
+                  child: Stack(
+                    children: [
+                      if (_loading || !showSlot)
+                        Center(
+                          child: _LoadingLocalBusinesses(textColor: sub, heartColor: nav, showLabel: false),
+                        )
+                      else
+                        ListView.builder(
+                          controller: _scrollController,
+                          physics: const NeverScrollableScrollPhysics(),
+                          padding: EdgeInsets.only(
+                            top: (_viewportHeight - _cardHeight) / 2,
+                            bottom: (_viewportHeight - _cardHeight) / 2,
+                          ),
+                          itemCount: _slotList.length,
+                          itemBuilder: (context, index) {
+                            final tilt = _tiltForIndex(index);
+                            final isWinner = index == _winnerSlotIndex && _showResult && !_spinning;
+                            final card = Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 10),
+                              child: SizedBox(
+                                height: _cardHeight,
+                                child: Transform(
+                                  alignment: Alignment.center,
+                                  transform: Matrix4.identity()
+                                    ..setEntry(3, 2, 0.001)
+                                    ..rotateX(tilt),
+                                  child: ExploreStyleListingCard(
+                                    listing: _slotList[index],
+                                    subcategoryNames: _subcategoryNames,
+                                    cardHeight: _cardHeight - 6,
+                                    cardRadius: 18,
+                                    onTap: null,
                                   ),
-                                );
-                                if (isWinner) {
-                                  return TweenAnimationBuilder<double>(
-                                    tween: Tween(begin: 1.0, end: 1.08),
-                                    duration: const Duration(milliseconds: 450),
-                                    curve: Curves.elasticOut,
-                                    builder: (context, scale, child) => Transform.scale(
-                                      scale: scale,
-                                      alignment: Alignment.center,
-                                      child: _WinnerHighlight(child: child!),
-                                    ),
-                                    child: card,
-                                  );
-                                }
-                                return card;
-                              },
+                                ),
+                              ),
+                            );
+                            if (isWinner) {
+                              return TweenAnimationBuilder<double>(
+                                tween: Tween(begin: 1.0, end: 1.05),
+                                duration: const Duration(milliseconds: 600),
+                                curve: Curves.elasticOut,
+                                builder: (context, scale, child) => Transform.scale(
+                                  scale: scale,
+                                  alignment: Alignment.center,
+                                  child: _WinnerHighlight(child: child!),
+                                ),
+                                child: card,
+                              );
+                            }
+                            return card;
+                          },
+                        ),
+                        
+                      /// Slot Machine Glass Glare & Gradient
+                      IgnorePointer(
+                        child: Container(
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              begin: Alignment.topCenter,
+                              end: Alignment.bottomCenter,
+                              colors: [
+                                AppTheme.specNavy.withValues(alpha: 0.3),
+                                Colors.transparent,
+                                Colors.transparent,
+                                AppTheme.specNavy.withValues(alpha: 0.3),
+                              ],
+                              stops: const [0.0, 0.1, 0.9, 1.0],
                             ),
                           ),
-                        if (_showResult && _winner != null)
-                          Positioned.fill(
-                            child: IgnorePointer(child: _CelebrationOverlay(size: slotSize)),
+                        ),
+                      ),
+                      
+                      /// Center Selector Line
+                      IgnorePointer(
+                        child: Center(
+                          child: Container(
+                            height: _cardHeight + 4,
+                            width: double.infinity,
+                            decoration: BoxDecoration(
+                              border: Border.all(color: AppTheme.specGold.withValues(alpha: 0.6), width: 2),
+                              borderRadius: BorderRadius.circular(16),
+                            ),
                           ),
-                      ],
-                    );
-                  },
+                        ),
+                      ),
+                      
+                      /// Side Pointers
+                      IgnorePointer(
+                        child: Center(
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 0),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                _MachinePointer(isRight: false),
+                                _MachinePointer(isRight: true),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                      
+                      if (_showResult && _winner != null)
+                        Positioned.fill(
+                          child: IgnorePointer(child: _CelebrationOverlay(size: const Size(400, 200))),
+                        ),
+                    ],
+                  ),
                 ),
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 32),
               if (_showResult && _winner != null)
                 AnimatedOpacity(
                   opacity: _resultActionsRevealed ? 1.0 : 0.0,
-                  duration: const Duration(milliseconds: 250),
+                  duration: const Duration(milliseconds: 400),
                   child: _ResultActions(
                     winner: _winner!,
                     onSpinAgain: _spinAgain,
@@ -963,8 +1033,8 @@ class _LoadingLocalBusinessesState extends State<_LoadingLocalBusinesses> with S
       children: [
         if (widget.showLabel) ...[
           Text(
-            'Loading local businesses',
-            style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600, color: textColor),
+            'SCRAPING THE BEST SPOTS',
+            style: theme.textTheme.labelSmall?.copyWith(fontWeight: FontWeight.w900, color: textColor, letterSpacing: 1.2),
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 16),
@@ -974,7 +1044,7 @@ class _LoadingLocalBusinessesState extends State<_LoadingLocalBusinesses> with S
           builder: (context, child) {
             return Transform.scale(
               scale: _pulse.value,
-              child: Icon(Icons.favorite_rounded, size: 40, color: heartColor),
+              child: Icon(Icons.favorite_rounded, size: 48, color: heartColor.withValues(alpha: 0.8)),
             );
           },
         ),
@@ -995,17 +1065,12 @@ class _WinnerHighlight extends StatefulWidget {
 
 class _WinnerHighlightState extends State<_WinnerHighlight> with SingleTickerProviderStateMixin {
   late AnimationController _controller;
-  late Animation<double> _scale;
   late Animation<double> _glow;
 
   @override
   void initState() {
     super.initState();
     _controller = AnimationController(vsync: this, duration: const Duration(milliseconds: 900))..repeat(reverse: true);
-    _scale = Tween<double>(
-      begin: 1.0,
-      end: 1.06,
-    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
     _glow = Tween<double>(begin: 0.0, end: 1.0).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
   }
 
@@ -1021,32 +1086,20 @@ class _WinnerHighlightState extends State<_WinnerHighlight> with SingleTickerPro
     return AnimatedBuilder(
       animation: _controller,
       builder: (context, child) {
-        final borderWidth = 2.5 + _glow.value * 2.5;
-        final blurRadius = 12.0 + _glow.value * 16.0;
-        final spreadRadius = _glow.value * 3.0;
-        final shadowOpacity = 0.35 + _glow.value * 0.45;
-        return Transform.scale(
-          scale: _scale.value,
-          alignment: Alignment.center,
-          child: Container(
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: gold, width: borderWidth),
-              boxShadow: [
-                BoxShadow(
-                  color: gold.withValues(alpha: shadowOpacity),
-                  blurRadius: blurRadius,
-                  spreadRadius: spreadRadius,
-                ),
-                BoxShadow(
-                  color: gold.withValues(alpha: 0.15),
-                  blurRadius: blurRadius * 1.5,
-                  spreadRadius: spreadRadius + 2,
-                ),
-              ],
-            ),
-            child: ClipRRect(borderRadius: BorderRadius.circular(17), child: child),
+        final blurRadius = 12.0 + _glow.value * 20.0;
+        final shadowOpacity = 0.3 + _glow.value * 0.4;
+        return Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: [
+              BoxShadow(
+                color: gold.withValues(alpha: shadowOpacity),
+                blurRadius: blurRadius,
+                spreadRadius: 2,
+              ),
+            ],
           ),
+          child: child,
         );
       },
       child: widget.child,
@@ -1068,27 +1121,35 @@ class _ResultActions extends StatelessWidget {
   Widget build(BuildContext context) {
     final canSpinAgain = cooldownSecondsRemaining == null || cooldownSecondsRemaining! <= 0;
     final spinLabel = (cooldownSecondsRemaining != null && cooldownSecondsRemaining! > 0)
-        ? 'Spin again ($cooldownSecondsRemaining)'
-        : 'Spin again';
+        ? 'RETRY ($cooldownSecondsRemaining)'
+        : 'RETRY';
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 8),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
+      padding: const EdgeInsets.symmetric(horizontal: 0),
+      child: Column(
         children: [
-          TextButton.icon(
-            onPressed: canSpinAgain ? onSpinAgain : null,
-            icon: const Icon(Icons.refresh_rounded, size: 20),
-            label: Text(spinLabel),
-          ),
-          const SizedBox(width: 12),
           AppPrimaryButton(
             onPressed: () {
               onClose?.call();
               context.push('/listing/${winner.id}');
             },
-            expanded: false,
+            expanded: true,
             icon: const Icon(Icons.arrow_forward_rounded, size: 20),
-            label: const Text('View listing'),
+            label: const Text('LET\'S GO', style: TextStyle(fontWeight: FontWeight.w900)),
+            style: FilledButton.styleFrom(
+              backgroundColor: AppTheme.specGold,
+              foregroundColor: AppTheme.specNavy,
+            ),
+          ),
+          const SizedBox(height: 12),
+          AppOutlinedButton(
+            onPressed: canSpinAgain ? onSpinAgain : null,
+            expanded: true,
+            icon: const Icon(Icons.refresh_rounded, size: 20),
+            label: Text(spinLabel, style: const TextStyle(fontWeight: FontWeight.w800)),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: AppTheme.specNavy,
+              side: BorderSide(color: AppTheme.specNavy.withValues(alpha: 0.1)),
+            ),
           ),
         ],
       ),
@@ -1124,7 +1185,7 @@ class _CelebrationOverlayState extends State<_CelebrationOverlay> with SingleTic
     super.initState();
     _controller = AnimationController(vsync: this, duration: const Duration(milliseconds: 2500))..repeat();
     final rng = Random();
-    final w = widget.size.width;
+    final w = widget.size.width > 0 ? widget.size.width : 400.0;
     _particles = List.generate(90, (_) {
       final isRect = rng.nextBool();
       return _ConfettiParticle(
@@ -1237,3 +1298,21 @@ class _ConfettiPainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant _ConfettiPainter oldDelegate) => oldDelegate.progress != progress;
 }
+
+class _MachinePointer extends StatelessWidget {
+  const _MachinePointer({required this.isRight});
+  final bool isRight;
+
+  @override
+  Widget build(BuildContext context) {
+    return Transform.rotate(
+      angle: isRight ? pi : 0,
+      child: Icon(
+        Icons.play_arrow_rounded,
+        color: AppTheme.specGold,
+        size: 28,
+      ),
+    );
+  }
+}
+

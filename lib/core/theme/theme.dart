@@ -20,7 +20,8 @@ class AppTheme {
   // static const Color primaryColor = Color(0xFFEAB308); // secondary (brand) - updated to darker yellow/gold
 
   static const Color specNavy = Color(0xFF002045); // primary
-  static const Color specGold = Color(0xFF795900); // secondary (brand)
+  // static const Color specGold = Color(0xFF795900); // secondary (brand)
+  static const Color specGold = Color(0xFFEAB308);
   static const Color specRed = Color(0xFFBA1A1A); // error
   static const Color specOffWhite = Color(0xFFF8F9FA); // background / surface
   static const Color specWhite = Color(0xFFFFFFFF); // surface_container_lowest

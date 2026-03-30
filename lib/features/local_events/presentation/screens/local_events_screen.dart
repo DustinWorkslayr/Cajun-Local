@@ -1,6 +1,7 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:cajun_local/features/auth/presentation/controllers/auth_controller.dart';
 import 'package:cajun_local/core/data/providers/app_data_providers.dart';
 import 'package:cajun_local/features/events/data/models/business_event.dart';
@@ -9,10 +10,11 @@ import 'package:cajun_local/features/events/data/repositories/business_events_re
 import 'package:cajun_local/features/businesses/data/repositories/business_repository.dart';
 import 'package:cajun_local/core/theme/app_layout.dart';
 import 'package:cajun_local/core/theme/theme.dart';
-import 'package:cajun_local/features/listing/presentation/screens/listing_detail_screen.dart';
+import 'package:cajun_local/shared/widgets/app_bar_widget.dart';
+import 'package:cajun_local/shared/widgets/animated_entrance.dart';
+import 'package:cajun_local/shared/widgets/app_refresh_indicator.dart';
 
-/// Local Events — approved events from all businesses. Theme aligned with home/news.
-/// Shows "My RSVPs" when signed in and RSVP chips on each event card.
+/// Local Events — redesigned with a premium editorial aesthetic.
 class LocalEventsScreen extends ConsumerStatefulWidget {
   const LocalEventsScreen({super.key});
 
@@ -45,7 +47,9 @@ class _LocalEventsScreenState extends ConsumerState<LocalEventsScreen> {
     if (eventDay == today) return 'Today';
     final tomorrow = today.add(const Duration(days: 1));
     if (eventDay == tomorrow) return 'Tomorrow';
-    return '${d.month}/${d.day}/${d.year}';
+    
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    return '${months[d.month - 1]} ${d.day}, ${d.year}';
   }
 
   static String formatTime(DateTime d) {
@@ -70,238 +74,253 @@ class _LocalEventsScreenState extends ConsumerState<LocalEventsScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final padding = AppLayout.horizontalPadding(context);
+    final isSignedIn = ref.watch(authControllerProvider).valueOrNull?.id != null;
 
     return Scaffold(
       backgroundColor: AppTheme.specOffWhite,
-      body: CustomScrollView(
-        slivers: [
-          SliverToBoxAdapter(
-            child: SafeArea(
-              bottom: false,
+      appBar: AppBarWidget(
+        title: 'Local Events',
+        showBackButton: true,
+        onBack: () => context.pop(),
+      ),
+      body: AppRefreshIndicator(
+        onRefresh: () async {
+          if (isSignedIn) await _loadMyRsvps();
+          setState(() {});
+        },
+        child: CustomScrollView(
+          slivers: [
+            // --- Header & My RSVPs ---
+            SliverToBoxAdapter(
               child: Padding(
-                padding: EdgeInsets.fromLTRB(padding.left, 24, padding.right, 16),
+                padding: EdgeInsets.fromLTRB(padding.left, 24, padding.right, 0),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Local Events',
-                      style: theme.textTheme.headlineMedium?.copyWith(
+                      'HAPPENINGS',
+                      style: theme.textTheme.labelSmall?.copyWith(
+                        color: AppTheme.specGold,
                         fontWeight: FontWeight.w800,
-                        color: AppTheme.specNavy,
-                        letterSpacing: -0.5,
+                        letterSpacing: 2.0,
                       ),
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      'Happenings from businesses near you.',
-                      style: theme.textTheme.bodyLarge?.copyWith(color: AppTheme.specNavy.withValues(alpha: 0.7)),
+                      'Upcoming in Acadiana',
+                      style: theme.textTheme.headlineSmall?.copyWith(
+                        color: AppTheme.specNavy,
+                        fontFamily: 'Libre Baskerville',
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
+                    const SizedBox(height: 24),
+                    
+                    if (isSignedIn) ...[
+                      _buildMyRsvpsSection(theme),
+                      const SizedBox(height: 32),
+                    ],
                   ],
                 ),
               ),
             ),
-          ),
-          SliverPadding(
-            padding: EdgeInsets.fromLTRB(padding.left, 12, padding.right, padding.right),
-            sliver: FutureBuilder<List<EventRsvp>>(
-              future: ref.watch(authControllerProvider).valueOrNull?.id != null
-                  ? ref.read(eventRsvpsRepositoryProvider).listMyRsvps()
-                  : Future.value(<EventRsvp>[]),
-              builder: (context, myRsvpsSnapshot) {
-                final myRsvps = myRsvpsSnapshot.data ?? [];
-                if (myRsvps.isEmpty) {
-                  return const SliverToBoxAdapter(child: SizedBox.shrink());
-                }
-                return SliverToBoxAdapter(
-                  child: FutureBuilder<Map<String, (BusinessEvent?, String)>>(
-                    future: _loadMyRsvpsWithDetails(myRsvps),
-                    builder: (context, detailsSnapshot) {
-                      if (detailsSnapshot.connectionState == ConnectionState.waiting && !detailsSnapshot.hasData) {
-                        return const Padding(
-                          padding: EdgeInsets.only(bottom: 24),
-                          child: Center(
-                            child: SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2)),
-                          ),
-                        );
-                      }
-                      final details = detailsSnapshot.data ?? {};
-                      if (details.isEmpty) return const SizedBox.shrink();
-                      return Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'My RSVPs',
-                            style: theme.textTheme.titleMedium?.copyWith(
-                              fontWeight: FontWeight.w700,
-                              color: AppTheme.specNavy,
-                            ),
-                          ),
-                          const SizedBox(height: 10),
-                          ...details.entries.map((e) {
-                            final eventId = e.key;
-                            final event = e.value.$1;
-                            final businessName = e.value.$2;
-                            if (event == null) return const SizedBox.shrink();
-                            final status = _myStatusByEventId[eventId] ?? '';
+
+            // --- Main Events List ---
+            SliverPadding(
+              padding: EdgeInsets.symmetric(horizontal: padding.left),
+              sliver: FutureBuilder<List<BusinessEvent>>(
+                future: BusinessEventsRepository().listApproved(),
+                builder: (context, eventsSnapshot) {
+                  if (eventsSnapshot.connectionState == ConnectionState.waiting && !eventsSnapshot.hasData) {
+                    return const SliverToBoxAdapter(
+                      child: Padding(
+                        padding: EdgeInsets.symmetric(vertical: 64),
+                        child: Center(child: CircularProgressIndicator(color: AppTheme.specNavy)),
+                      ),
+                    );
+                  }
+                  
+                  final events = eventsSnapshot.data ?? [];
+                  if (events.isEmpty) return _buildEmptyState(theme);
+
+                  final businessIds = events.map((e) => e.businessId).toSet().toList();
+                  return FutureBuilder<Map<String, String>>(
+                    future: _loadBusinessNames(businessIds),
+                    builder: (context, namesSnapshot) {
+                      final names = namesSnapshot.data ?? {};
+                      return SliverList(
+                        delegate: SliverChildBuilderDelegate(
+                          (context, index) {
+                            final event = events[index];
+                            final businessName = names[event.businessId] ?? 'Local Business';
                             return Padding(
-                              padding: const EdgeInsets.only(bottom: 8),
-                              child: Material(
-                                color: AppTheme.specWhite,
-                                borderRadius: BorderRadius.circular(12),
-                                child: InkWell(
-                                  onTap: () {
-                                    Navigator.of(context).push(
-                                      MaterialPageRoute<void>(
-                                        builder: (_) => ListingDetailScreen(listingId: event.businessId),
-                                      ),
-                                    );
-                                  },
-                                  borderRadius: BorderRadius.circular(12),
-                                  child: Padding(
-                                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                                    child: Row(
-                                      children: [
-                                        Expanded(
-                                          child: Column(
-                                            crossAxisAlignment: CrossAxisAlignment.start,
-                                            children: [
-                                              Text(
-                                                event.title,
-                                                style: theme.textTheme.bodyLarge?.copyWith(
-                                                  fontWeight: FontWeight.w600,
-                                                  color: AppTheme.specNavy,
-                                                ),
-                                                maxLines: 1,
-                                                overflow: TextOverflow.ellipsis,
-                                              ),
-                                              Text(
-                                                businessName,
-                                                style: theme.textTheme.bodySmall?.copyWith(
-                                                  color: AppTheme.specNavy.withValues(alpha: 0.7),
-                                                ),
-                                                maxLines: 1,
-                                                overflow: TextOverflow.ellipsis,
-                                              ),
-                                            ],
-                                          ),
-                                        ),
-                                        Container(
-                                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                                          decoration: BoxDecoration(
-                                            color: status == 'going'
-                                                ? Colors.green.withValues(alpha: 0.2)
-                                                : status == 'interested'
-                                                ? AppTheme.specGold.withValues(alpha: 0.3)
-                                                : AppTheme.specNavy.withValues(alpha: 0.1),
-                                            borderRadius: BorderRadius.circular(8),
-                                          ),
-                                          child: Text(
-                                            status == 'going'
-                                                ? 'Going'
-                                                : status == 'interested'
-                                                ? 'Interested'
-                                                : 'Not going',
-                                            style: theme.textTheme.labelSmall?.copyWith(
-                                              fontWeight: FontWeight.w600,
-                                              color: AppTheme.specNavy,
-                                            ),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
+                              padding: const EdgeInsets.only(bottom: 24),
+                              child: AnimatedEntrance(
+                                delay: Duration(milliseconds: 100 * (index % 5)),
+                                child: _EventCard(
+                                  event: event,
+                                  businessName: businessName,
+                                  myRsvpStatus: _myStatusByEventId[event.id],
+                                  isSignedIn: isSignedIn,
+                                  onRsvp: (status) => _setRsvp(event.id, status),
+                                  onTap: () => context.push('/listing/${event.businessId}'),
                                 ),
                               ),
                             );
-                          }),
-                          const SizedBox(height: 24),
-                        ],
+                          },
+                          childCount: events.length,
+                        ),
                       );
                     },
-                  ),
-                );
-              },
-            ),
-          ),
-          SliverPadding(
-            padding: EdgeInsets.fromLTRB(padding.left, 20, padding.right, padding.right),
-            sliver: FutureBuilder<List<BusinessEvent>>(
-              future: BusinessEventsRepository().listApproved(),
-              builder: (context, eventsSnapshot) {
-                if (eventsSnapshot.connectionState == ConnectionState.waiting && !eventsSnapshot.hasData) {
-                  return const SliverToBoxAdapter(
-                    child: Padding(
-                      padding: EdgeInsets.symmetric(vertical: 48),
-                      child: Center(child: CircularProgressIndicator(color: AppTheme.specNavy)),
-                    ),
                   );
-                }
-                final events = eventsSnapshot.data ?? [];
-                if (events.isEmpty) {
-                  return SliverToBoxAdapter(
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 48),
-                      child: Center(
-                        child: Column(
-                          children: [
-                            Icon(Icons.event_rounded, size: 56, color: AppTheme.specNavy.withValues(alpha: 0.4)),
-                            const SizedBox(height: 16),
-                            Text(
-                              'No events yet',
-                              style: theme.textTheme.titleMedium?.copyWith(
-                                color: AppTheme.specNavy.withValues(alpha: 0.8),
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              'Check back for local happenings.',
-                              style: theme.textTheme.bodyMedium?.copyWith(
-                                color: AppTheme.specNavy.withValues(alpha: 0.6),
-                              ),
+                },
+              ),
+            ),
+            
+            const SliverToBoxAdapter(child: SizedBox(height: 100)),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMyRsvpsSection(ThemeData theme) {
+    return FutureBuilder<List<EventRsvp>>(
+      future: ref.read(eventRsvpsRepositoryProvider).listMyRsvps(),
+      builder: (context, snapshot) {
+        final rsvps = snapshot.data ?? [];
+        if (rsvps.isEmpty) return const SizedBox.shrink();
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Icon(Icons.bookmark_rounded, size: 18, color: AppTheme.specGold),
+                const SizedBox(width: 8),
+                Text(
+                  'My RSVPs',
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w700,
+                    color: AppTheme.specNavy,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            FutureBuilder<Map<String, (BusinessEvent?, String)>>(
+              future: _loadMyRsvpsWithDetails(rsvps),
+              builder: (context, detailsSnapshot) {
+                final details = detailsSnapshot.data ?? {};
+                if (details.isEmpty) return const SizedBox.shrink();
+
+                return Column(
+                  children: details.entries.map((e) {
+                    final event = e.value.$1;
+                    final businessName = e.value.$2;
+                    if (event == null) return const SizedBox.shrink();
+                    final status = _myStatusByEventId[event.id] ?? '';
+
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 10),
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: AppTheme.specWhite,
+                          borderRadius: BorderRadius.circular(16),
+                          boxShadow: [
+                            BoxShadow(
+                              color: AppTheme.specNavy.withOpacity(0.04),
+                              blurRadius: 10,
+                              offset: const Offset(0, 4),
                             ),
                           ],
                         ),
-                      ),
-                    ),
-                  );
-                }
-                final businessIds = events.map((e) => e.businessId).toSet().toList();
-                return FutureBuilder<Map<String, String>>(
-                  future: _loadBusinessNames(businessIds),
-                  builder: (context, namesSnapshot) {
-                    final names = namesSnapshot.data ?? {};
-                    return SliverList(
-                      delegate: SliverChildBuilderDelegate((context, index) {
-                        final event = events[index];
-                        final businessName = names[event.businessId] ?? 'Local business';
-                        final isFirst = index == 0;
-                        return Padding(
-                          padding: EdgeInsets.only(bottom: isFirst ? 24 : 20),
-                          child: _EventCard(
-                            event: event,
-                            businessName: businessName,
-                            featured: isFirst,
-                            myRsvpStatus: _myStatusByEventId[event.id],
-                            isSignedIn: ref.watch(authControllerProvider).valueOrNull?.id != null,
-                            onRsvp: (status) => _setRsvp(event.id, status),
-                            onTap: () {
-                              Navigator.of(context).push(
-                                MaterialPageRoute<void>(
-                                  builder: (_) => ListingDetailScreen(listingId: event.businessId),
-                                ),
-                              );
-                            },
+                        child: ListTile(
+                          onTap: () => context.push('/listing/${event.businessId}'),
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                          title: Text(
+                            event.title,
+                            style: theme.textTheme.bodyLarge?.copyWith(
+                              fontWeight: FontWeight.w700,
+                              color: AppTheme.specNavy,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                           ),
-                        );
-                      }, childCount: events.length),
+                          subtitle: Text(
+                            businessName,
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: AppTheme.specNavy.withOpacity(0.6),
+                            ),
+                          ),
+                          trailing: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                            decoration: BoxDecoration(
+                              color: status == 'going'
+                                  ? Colors.green.withOpacity(0.1)
+                                  : status == 'interested'
+                                      ? AppTheme.specGold.withOpacity(0.15)
+                                      : AppTheme.specNavy.withOpacity(0.05),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Text(
+                              status == 'going' ? 'Going' : status == 'interested' ? 'Interested' : 'RSVP',
+                              style: theme.textTheme.labelSmall?.copyWith(
+                                fontWeight: FontWeight.w800,
+                                color: status == 'going'
+                                    ? Colors.green[700]
+                                    : status == 'interested'
+                                        ? AppTheme.specGold
+                                        : AppTheme.specNavy,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
                     );
-                  },
+                  }).toList(),
                 );
               },
             ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildEmptyState(ThemeData theme) {
+    return SliverToBoxAdapter(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 80),
+        child: Center(
+          child: Column(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(24),
+                decoration: BoxDecoration(
+                  color: AppTheme.specNavy.withOpacity(0.05),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(Icons.event_rounded, size: 48, color: AppTheme.specNavy.withOpacity(0.3)),
+              ),
+              const SizedBox(height: 20),
+              Text(
+                'No upcoming events',
+                style: theme.textTheme.titleLarge?.copyWith(
+                  fontWeight: FontWeight.w800,
+                  color: AppTheme.specNavy,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Check back later for local happenings.',
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: AppTheme.specNavy.withOpacity(0.6),
+                ),
+              ),
+            ],
           ),
-          const SliverToBoxAdapter(child: SizedBox(height: 32)),
-        ],
+        ),
       ),
     );
   }
@@ -341,7 +360,6 @@ class _EventCard extends StatelessWidget {
   const _EventCard({
     required this.event,
     required this.businessName,
-    required this.featured,
     required this.onTap,
     this.myRsvpStatus,
     this.isSignedIn = false,
@@ -350,7 +368,6 @@ class _EventCard extends StatelessWidget {
 
   final BusinessEvent event;
   final String businessName;
-  final bool featured;
   final VoidCallback onTap;
   final String? myRsvpStatus;
   final bool isSignedIn;
@@ -362,172 +379,221 @@ class _EventCard extends StatelessWidget {
     final hasImage = event.imageUrl != null && event.imageUrl!.isNotEmpty;
     final dateStr = _LocalEventsScreenState.formatDate(event.eventDate);
     final timeStr = _LocalEventsScreenState.formatTime(event.eventDate);
-    final dateTimeStr = timeStr.isEmpty ? dateStr : '$dateStr · $timeStr';
     final description = event.description?.trim() ?? '';
-    final excerpt = description.length > 120 ? '${description.substring(0, 120).trim()}…' : description;
+    final excerpt = description.length > 140 ? '${description.substring(0, 140).trim()}…' : description;
 
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(16),
-        child: Container(
-          decoration: BoxDecoration(
-            color: AppTheme.specWhite,
-            borderRadius: BorderRadius.circular(16),
-            boxShadow: [
-              BoxShadow(color: Colors.black.withValues(alpha: 0.06), blurRadius: 12, offset: const Offset(0, 4)),
-            ],
+    return Container(
+      decoration: BoxDecoration(
+        color: AppTheme.specWhite,
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [
+          BoxShadow(
+            color: AppTheme.specNavy.withOpacity(0.08),
+            blurRadius: 20,
+            offset: const Offset(0, 8),
           ),
-          clipBehavior: Clip.antiAlias,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              if (hasImage)
-                AspectRatio(
-                  aspectRatio: featured ? 2.1 : 1.85,
-                  child: CachedNetworkImage(
+        ],
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (hasImage)
+            AspectRatio(
+              aspectRatio: 16 / 9,
+              child: Stack(
+                children: [
+                  CachedNetworkImage(
                     imageUrl: event.imageUrl!,
+                    width: double.infinity,
                     fit: BoxFit.cover,
-                    placeholder: (_, _) => Container(
-                      color: AppTheme.specNavy.withValues(alpha: 0.08),
-                      child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
-                    ),
-                    errorWidget: (_, _, _) => Container(
-                      color: AppTheme.specNavy.withValues(alpha: 0.08),
-                      child: Icon(Icons.image_not_supported_outlined, color: AppTheme.specNavy.withValues(alpha: 0.3)),
+                    placeholder: (_, _) => Container(color: AppTheme.specNavy.withOpacity(0.05)),
+                    errorWidget: (_, _, _) => Container(color: AppTheme.specNavy.withOpacity(0.05)),
+                  ),
+                  Positioned(
+                    top: 16,
+                    right: 16,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: Colors.black.withOpacity(0.6),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(
+                        dateStr.toUpperCase(),
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 1.0,
+                        ),
+                      ),
                     ),
                   ),
-                ),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                ],
+              ),
+            ),
+          Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
                   children: [
-                    Text(
-                      dateTimeStr,
-                      style: theme.textTheme.labelMedium?.copyWith(
-                        color: AppTheme.specGold,
-                        fontWeight: FontWeight.w600,
-                        letterSpacing: 0.5,
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      event.title,
-                      style: theme.textTheme.titleLarge?.copyWith(
-                        fontWeight: FontWeight.w700,
-                        color: AppTheme.specNavy,
-                        height: 1.25,
-                      ),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      businessName,
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        color: AppTheme.specNavy.withValues(alpha: 0.65),
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                    if (event.location != null && event.location!.trim().isNotEmpty) ...[
-                      const SizedBox(height: 4),
-                      Row(
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Icon(Icons.location_on_outlined, size: 16, color: AppTheme.specNavy.withValues(alpha: 0.6)),
-                          const SizedBox(width: 4),
-                          Expanded(
-                            child: Text(
-                              event.location!.trim(),
-                              style: theme.textTheme.bodySmall?.copyWith(
-                                color: AppTheme.specNavy.withValues(alpha: 0.65),
-                              ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
+                          Text(
+                            event.title,
+                            style: theme.textTheme.titleLarge?.copyWith(
+                              fontWeight: FontWeight.w800,
+                              color: AppTheme.specNavy,
+                              height: 1.2,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            businessName,
+                            style: theme.textTheme.bodyMedium?.copyWith(
+                              color: AppTheme.specGold,
+                              fontWeight: FontWeight.w700,
                             ),
                           ),
                         ],
                       ),
-                    ],
-                    if (excerpt.isNotEmpty) ...[
-                      const SizedBox(height: 10),
-                      Text(
-                        excerpt,
-                        style: theme.textTheme.bodyMedium?.copyWith(
-                          color: AppTheme.specNavy.withValues(alpha: 0.75),
-                          height: 1.45,
-                        ),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ],
-                    if (isSignedIn && onRsvp != null) ...[
-                      const SizedBox(height: 12),
-                      Wrap(
-                        spacing: 8,
-                        runSpacing: 6,
-                        children: [
-                          FilterChip(
-                            label: const Text('Going'),
-                            selected: myRsvpStatus == 'going',
-                            onSelected: (_) => onRsvp!('going'),
-                            selectedColor: Colors.green.withValues(alpha: 0.35),
-                            checkmarkColor: AppTheme.specNavy,
-                            labelStyle: theme.textTheme.labelMedium?.copyWith(
-                              color: myRsvpStatus == 'going'
-                                  ? AppTheme.specNavy
-                                  : AppTheme.specNavy.withValues(alpha: 0.8),
-                              fontWeight: myRsvpStatus == 'going' ? FontWeight.w600 : FontWeight.w500,
-                            ),
-                          ),
-                          FilterChip(
-                            label: const Text('Interested'),
-                            selected: myRsvpStatus == 'interested',
-                            onSelected: (_) => onRsvp!('interested'),
-                            selectedColor: AppTheme.specGold.withValues(alpha: 0.35),
-                            checkmarkColor: AppTheme.specNavy,
-                            labelStyle: theme.textTheme.labelMedium?.copyWith(
-                              color: myRsvpStatus == 'interested'
-                                  ? AppTheme.specNavy
-                                  : AppTheme.specNavy.withValues(alpha: 0.8),
-                              fontWeight: myRsvpStatus == 'interested' ? FontWeight.w600 : FontWeight.w500,
-                            ),
-                          ),
-                          FilterChip(
-                            label: const Text('Not going'),
-                            selected: myRsvpStatus == 'not_going',
-                            onSelected: (_) => onRsvp!('not_going'),
-                            selectedColor: AppTheme.specNavy.withValues(alpha: 0.15),
-                            checkmarkColor: AppTheme.specNavy,
-                            labelStyle: theme.textTheme.labelMedium?.copyWith(
-                              color: myRsvpStatus == 'not_going'
-                                  ? AppTheme.specNavy
-                                  : AppTheme.specNavy.withValues(alpha: 0.8),
-                              fontWeight: myRsvpStatus == 'not_going' ? FontWeight.w600 : FontWeight.w500,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                    const SizedBox(height: 12),
-                    Row(
-                      children: [
-                        Text(
-                          'View business',
-                          style: theme.textTheme.labelLarge?.copyWith(
-                            color: AppTheme.specGold,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        const SizedBox(width: 4),
-                        Icon(Icons.arrow_forward_rounded, size: 18, color: AppTheme.specGold),
-                      ],
                     ),
                   ],
                 ),
+                const SizedBox(height: 12),
+                if (timeStr.isNotEmpty || (event.location != null && event.location!.isNotEmpty))
+                  Row(
+                    children: [
+                      if (timeStr.isNotEmpty) ...[
+                        Icon(Icons.access_time_filled_rounded, size: 16, color: AppTheme.specNavy.withOpacity(0.4)),
+                        const SizedBox(width: 6),
+                        Text(
+                          timeStr,
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: AppTheme.specNavy.withOpacity(0.6),
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                      ],
+                      if (event.location != null && event.location!.isNotEmpty) ...[
+                        Icon(Icons.location_on_rounded, size: 16, color: AppTheme.specNavy.withOpacity(0.4)),
+                        const SizedBox(width: 6),
+                        Expanded(
+                          child: Text(
+                            event.location!,
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: AppTheme.specNavy.withOpacity(0.6),
+                              fontWeight: FontWeight.w600,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                if (excerpt.isNotEmpty) ...[
+                  const SizedBox(height: 12),
+                  Text(
+                    excerpt,
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: AppTheme.specNavy.withOpacity(0.7),
+                      height: 1.5,
+                    ),
+                  ),
+                ],
+                const SizedBox(height: 20),
+                if (isSignedIn && onRsvp != null) ...[
+                  Row(
+                    children: [
+                      _RsvpButton(
+                        label: 'Going',
+                        isSelected: myRsvpStatus == 'going',
+                        onTap: () => onRsvp!('going'),
+                        activeColor: Colors.green,
+                      ),
+                      const SizedBox(width: 10),
+                      _RsvpButton(
+                        label: 'Interested',
+                        isSelected: myRsvpStatus == 'interested',
+                        onTap: () => onRsvp!('interested'),
+                        activeColor: AppTheme.specGold,
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                ],
+                InkWell(
+                  onTap: onTap,
+                  child: Row(
+                    children: [
+                      const Icon(Icons.arrow_right_alt_rounded, color: AppTheme.specGold, size: 20),
+                      const SizedBox(width: 8),
+                      Text(
+                        'View Details',
+                        style: theme.textTheme.labelLarge?.copyWith(
+                          color: AppTheme.specGold,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _RsvpButton extends StatelessWidget {
+  const _RsvpButton({
+    required this.label,
+    required this.isSelected,
+    required this.onTap,
+    required this.activeColor,
+  });
+
+  final String label;
+  final bool isSelected;
+  final VoidCallback onTap;
+  final Color activeColor;
+
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      child: Material(
+        color: isSelected ? activeColor : AppTheme.specNavy.withOpacity(0.03),
+        borderRadius: BorderRadius.circular(12),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(12),
+          child: Container(
+            padding: const EdgeInsets.symmetric(vertical: 12),
+            decoration: BoxDecoration(
+              border: Border.all(
+                color: isSelected ? activeColor : AppTheme.specNavy.withOpacity(0.1),
               ),
-            ],
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Center(
+              child: Text(
+                label,
+                style: TextStyle(
+                  color: isSelected ? Colors.white : AppTheme.specNavy.withOpacity(0.7),
+                  fontWeight: FontWeight.w800,
+                  fontSize: 13,
+                ),
+              ),
+            ),
           ),
         ),
       ),

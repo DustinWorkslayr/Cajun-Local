@@ -105,7 +105,6 @@ class _DetailsTabState extends ConsumerState<DetailsTab> {
 
         final selectedCat = state.categories.where((c) => c.id == _selectedCategoryId).firstOrNull;
         final subcategories = selectedCat?.subcategories ?? <Subcategory>[];
-        final categoryBucket = selectedCat?.bucket;
 
         return ListView(
           padding: const EdgeInsets.all(24),
