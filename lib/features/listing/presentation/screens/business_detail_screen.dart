@@ -20,9 +20,6 @@ class BusinessDetailScreen extends StatelessWidget {
   Widget build(BuildContext context) => _Loader(listingId: listingId);
 }
 
-/// Legacy alias — all existing callers using [ListingDetailScreen] continue to work.
-typedef ListingDetailScreen = BusinessDetailScreen;
-
 // ─────────────────────────────────────────────────────────────────────────────
 // Data loader
 // ─────────────────────────────────────────────────────────────────────────────
@@ -43,22 +40,27 @@ class _Loader extends ConsumerWidget {
             body: const Center(child: Text('Business not found')),
           );
         }
-        return _Screen(data: data, currentUserId: userId, onReload: () => ref.read(listingDetailControllerProvider(listingId).notifier).reload());
+        return _Screen(
+          data: data,
+          currentUserId: userId,
+          onReload: () => ref.read(listingDetailControllerProvider(listingId).notifier).reload(),
+        );
       },
-      loading: () => const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
-      ),
+      loading: () => const Scaffold(body: Center(child: CircularProgressIndicator())),
       error: (_, __) => Scaffold(
         appBar: const AppBarWidget(title: 'Business', showBackButton: true),
         body: Center(
-          child: Column(mainAxisSize: MainAxisSize.min, children: [
-            const Text("Couldn't load this business"),
-            const SizedBox(height: 12),
-            AppSecondaryButton(
-              onPressed: () => ref.read(listingDetailControllerProvider(listingId).notifier).reload(),
-              child: const Text('Retry'),
-            ),
-          ]),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text("Couldn't load this business"),
+              const SizedBox(height: 12),
+              AppSecondaryButton(
+                onPressed: () => ref.read(listingDetailControllerProvider(listingId).notifier).reload(),
+                child: const Text('Retry'),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -88,8 +90,14 @@ class _Screen extends StatelessWidget {
           showBackButton: true,
           actions: [
             if (data.isOwnerOrManager)
-              IconButton(icon: const Icon(Icons.edit_rounded, color: AppTheme.specNavy), onPressed: () {}),
-            IconButton(icon: const Icon(Icons.share_rounded, color: AppTheme.specNavy), onPressed: () {}),
+              IconButton(
+                icon: const Icon(Icons.edit_rounded, color: AppTheme.specNavy),
+                onPressed: () {},
+              ),
+            IconButton(
+              icon: const Icon(Icons.share_rounded, color: AppTheme.specNavy),
+              onPressed: () {},
+            ),
           ],
         ),
         body: SingleChildScrollView(
@@ -102,12 +110,7 @@ class _Screen extends StatelessWidget {
               const SizedBox(height: 24),
 
               // ── Body (Tab strip + content + extras) ─────────────────────
-              BusinessDetailBody(
-                data: data,
-                currentUserId: currentUserId,
-                isTablet: isTablet,
-                onReload: onReload,
-              ),
+              BusinessDetailBody(data: data, currentUserId: currentUserId, isTablet: isTablet, onReload: onReload),
             ],
           ),
         ),

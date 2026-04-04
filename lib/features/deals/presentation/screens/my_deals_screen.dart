@@ -1,3 +1,4 @@
+import 'package:cajun_local/features/listing/presentation/screens/business_detail_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cajun_local/features/auth/presentation/controllers/auth_controller.dart';
@@ -9,7 +10,6 @@ import 'package:cajun_local/features/deals/data/repositories/user_deals_reposito
 import 'package:cajun_local/features/businesses/data/repositories/business_repository.dart';
 import 'package:cajun_local/core/theme/app_layout.dart';
 import 'package:cajun_local/core/theme/theme.dart';
-import 'package:cajun_local/features/listing/presentation/screens/listing_detail_screen.dart';
 import 'package:cajun_local/shared/widgets/app_buttons.dart';
 import 'package:cajun_local/shared/widgets/deal_detail_popup.dart';
 import 'package:cajun_local/shared/widgets/app_refresh_indicator.dart';
@@ -55,7 +55,7 @@ class _MyDealsScreenState extends ConsumerState<MyDealsScreen> {
       final userDealsResponse = await ref.read(userDealsRepositoryProvider).listForUser(uid);
       // Sort by claimedAt descending
       final userDeals = userDealsResponse..sort((a, b) => b.claimedAt.compareTo(a.claimedAt));
-      
+
       if (userDeals.isEmpty) {
         if (mounted) {
           setState(() {
@@ -65,16 +65,14 @@ class _MyDealsScreenState extends ConsumerState<MyDealsScreen> {
         }
         return;
       }
-      
+
       final dealRepo = ref.read(dealsRepositoryProvider);
       final bizRepo = BusinessRepository();
-      
+
       final deals = await Future.wait(userDeals.map((ud) => dealRepo.getById(ud.dealId)));
       final listingIds = deals.whereType<Deal>().map((d) => d.businessId).toSet();
       final listings = await Future.wait(listingIds.map((id) => bizRepo.getById(id)));
-      final nameById = {
-        for (var biz in listings.whereType<Business>()) biz.id: biz.name
-      };
+      final nameById = {for (var biz in listings.whereType<Business>()) biz.id: biz.name};
 
       if (mounted) {
         setState(() {
@@ -107,10 +105,7 @@ class _MyDealsScreenState extends ConsumerState<MyDealsScreen> {
 
     return Scaffold(
       backgroundColor: AppTheme.specOffWhite,
-      appBar: const AppBarWidget(
-        title: 'MY SAVED DEALS',
-        showBackButton: true,
-      ),
+      appBar: const AppBarWidget(title: 'MY SAVED DEALS', showBackButton: true),
       body: _loading
           ? const Center(child: CircularProgressIndicator(color: AppTheme.specGold))
           : _error != null
@@ -125,15 +120,12 @@ class _MyDealsScreenState extends ConsumerState<MyDealsScreen> {
                 itemBuilder: (context, index) {
                   final item = _items![index];
                   final deal = item.deal;
-                  
+
                   if (deal == null) return const SizedBox.shrink();
 
                   return AnimatedEntrance(
                     delay: Duration(milliseconds: 50 * index),
-                    child: _MyDealCard(
-                      item: item,
-                      onRefresh: _load,
-                    ),
+                    child: _MyDealCard(item: item, onRefresh: _load),
                   );
                 },
               ),
@@ -150,10 +142,7 @@ class _MyDealsScreenState extends ConsumerState<MyDealsScreen> {
           children: [
             Container(
               padding: const EdgeInsets.all(24),
-              decoration: BoxDecoration(
-                color: AppTheme.specGold.withValues(alpha: 0.1),
-                shape: BoxShape.circle,
-              ),
+              decoration: BoxDecoration(color: AppTheme.specGold.withValues(alpha: 0.1), shape: BoxShape.circle),
               child: Icon(Icons.bookmark_border_rounded, size: 48, color: AppTheme.specGold),
             ),
             const SizedBox(height: 24),
@@ -169,10 +158,7 @@ class _MyDealsScreenState extends ConsumerState<MyDealsScreen> {
             const SizedBox(height: 12),
             Text(
               'Claim deals from the local discounts section to see them here for easy access.',
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: AppTheme.specNavy.withValues(alpha: 0.6),
-                height: 1.5,
-              ),
+              style: theme.textTheme.bodyMedium?.copyWith(color: AppTheme.specNavy.withValues(alpha: 0.6), height: 1.5),
               textAlign: TextAlign.center,
             ),
           ],
@@ -220,7 +206,7 @@ class _MyDealCard extends StatelessWidget {
     final theme = Theme.of(context);
     final deal = item.deal!;
     final isUsed = item.userDeal.usedAt != null;
-    
+
     return Padding(
       padding: const EdgeInsets.only(bottom: 16),
       child: Container(
@@ -228,17 +214,11 @@ class _MyDealCard extends StatelessWidget {
           color: AppTheme.specWhite,
           borderRadius: BorderRadius.circular(24),
           border: Border.all(
-            color: isUsed 
-                ? AppTheme.specNavy.withValues(alpha: 0.08) 
-                : AppTheme.specGold.withValues(alpha: 0.3),
+            color: isUsed ? AppTheme.specNavy.withValues(alpha: 0.08) : AppTheme.specGold.withValues(alpha: 0.3),
             width: isUsed ? 1 : 1.5,
           ),
           boxShadow: [
-            BoxShadow(
-              color: AppTheme.specNavy.withValues(alpha: 0.06),
-              blurRadius: 20,
-              offset: const Offset(0, 8),
-            ),
+            BoxShadow(color: AppTheme.specNavy.withValues(alpha: 0.06), blurRadius: 20, offset: const Offset(0, 8)),
           ],
         ),
         clipBehavior: Clip.antiAlias,
@@ -256,9 +236,7 @@ class _MyDealCard extends StatelessWidget {
                 onGoToListing: deal.businessId.isNotEmpty
                     ? () {
                         Navigator.of(context).push(
-                          MaterialPageRoute<void>(
-                            builder: (_) => ListingDetailScreen(listingId: deal.businessId),
-                          ),
+                          MaterialPageRoute<void>(builder: (_) => BusinessDetailScreen(listingId: deal.businessId)),
                         );
                       }
                     : null,

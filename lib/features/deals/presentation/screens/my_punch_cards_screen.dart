@@ -1,9 +1,9 @@
+import 'package:cajun_local/features/listing/presentation/screens/business_detail_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cajun_local/features/auth/presentation/controllers/auth_controller.dart';
 import 'package:cajun_local/core/theme/app_layout.dart';
 import 'package:cajun_local/core/theme/theme.dart';
-import 'package:cajun_local/features/listing/presentation/screens/listing_detail_screen.dart';
 import 'package:cajun_local/shared/widgets/app_buttons.dart';
 import 'package:cajun_local/shared/widgets/punch_qr_sheet.dart';
 import 'package:cajun_local/features/deals/data/models/user_punch_card.dart';
@@ -95,7 +95,7 @@ class MyPunchCardsScreen extends ConsumerWidget {
                 builder: (context, programsSnap) {
                   final program = (programsSnap.data ?? []).where((p) => p.id == enrollment.programId).firstOrNull;
                   if (program == null) return const SizedBox.shrink();
-                  
+
                   return FutureBuilder<Business?>(
                     future: BusinessRepository().getById(program.businessId),
                     builder: (context, bizSnap) {
@@ -109,16 +109,20 @@ class MyPunchCardsScreen extends ConsumerWidget {
                           onTap: () {
                             Navigator.of(context).push(
                               MaterialPageRoute<void>(
-                                builder: (_) => ListingDetailScreen(listingId: program.businessId),
+                                builder: (_) => BusinessDetailScreen(listingId: program.businessId),
                               ),
                             );
                           },
                           onShowQr: !enrollment.isRedeemed
-                              ? () => showPunchQrSheet(context, programId: program.id, cardTitle: program.title ?? 'Loyalty Program')
+                              ? () => showPunchQrSheet(
+                                  context,
+                                  programId: program.id,
+                                  cardTitle: program.title ?? 'Loyalty Program',
+                                )
                               : null,
                         ),
                       );
-                    }
+                    },
                   );
                 },
               );

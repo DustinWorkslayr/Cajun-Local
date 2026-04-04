@@ -4,7 +4,6 @@ import 'package:go_router/go_router.dart';
 import 'package:cajun_local/features/auth/presentation/controllers/auth_controller.dart';
 import 'package:cajun_local/core/data/providers/app_data_providers.dart';
 import 'package:cajun_local/features/businesses/data/repositories/business_managers_repository.dart';
-import 'package:cajun_local/features/businesses/data/repositories/business_repository.dart';
 import 'package:cajun_local/features/notifications/data/repositories/notifications_repository.dart';
 import 'package:cajun_local/features/deals/data/repositories/punch_card_programs_repository.dart';
 import 'package:cajun_local/features/profile/data/models/user_parish_preferences.dart';

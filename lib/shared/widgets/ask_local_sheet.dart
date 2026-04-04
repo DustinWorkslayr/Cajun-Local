@@ -1,3 +1,4 @@
+import 'package:cajun_local/features/listing/presentation/screens/business_detail_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cajun_local/shared/widgets/app_buttons.dart';
@@ -9,7 +10,6 @@ import 'package:cajun_local/features/businesses/data/models/business.dart';
 import 'package:cajun_local/features/businesses/data/repositories/business_repository.dart';
 import 'package:cajun_local/features/locations/data/models/parish.dart';
 import 'package:cajun_local/features/locations/data/repositories/parish_repository.dart';
-import 'package:cajun_local/features/listing/presentation/screens/listing_detail_screen.dart';
 
 /// Message in the Ask Local conversation (user or AI). AI messages may include listing IDs to show as cards.
 class _Message {
@@ -563,7 +563,7 @@ class _CompactListingCard extends StatelessWidget {
                 Navigator.of(context).pop();
                 Navigator.of(
                   context,
-                ).push(MaterialPageRoute<void>(builder: (_) => ListingDetailScreen(listingId: listing.id)));
+                ).push(MaterialPageRoute<void>(builder: (_) => BusinessDetailScreen(listingId: listing.id)));
               },
               borderRadius: BorderRadius.circular(12),
               child: Container(

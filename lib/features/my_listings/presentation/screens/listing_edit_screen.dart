@@ -1,5 +1,6 @@
 import 'package:cajun_local/features/auth/presentation/controllers/auth_controller.dart';
 import 'package:cajun_local/core/data/contact_form_templates.dart';
+import 'package:cajun_local/features/listing/presentation/screens/business_detail_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cajun_local/features/businesses/data/models/business.dart';
@@ -19,7 +20,6 @@ import 'package:cajun_local/core/theme/app_layout.dart';
 import 'package:cajun_local/core/theme/theme.dart';
 import 'package:cajun_local/shared/widgets/business_tier_upgrade_dialog.dart';
 import 'package:cajun_local/core/preferences/owner_onboarding_preferences.dart';
-import 'package:cajun_local/features/listing/presentation/screens/listing_detail_screen.dart';
 import 'package:cajun_local/features/my_listings/presentation/screens/business_ads_screen.dart';
 import 'package:cajun_local/features/my_listings/presentation/screens/create_business_item_screen.dart';
 import 'package:cajun_local/features/my_listings/presentation/screens/event_detail_screen.dart';
@@ -264,7 +264,7 @@ class _ListingEditScreenState extends ConsumerState<ListingEditScreen> with Sing
                                   onPressed: () {
                                     Navigator.of(context).push(
                                       MaterialPageRoute<void>(
-                                        builder: (_) => ListingDetailScreen(listingId: widget.listingId),
+                                        builder: (_) => BusinessDetailScreen(listingId: widget.listingId),
                                       ),
                                     );
                                   },
@@ -339,7 +339,7 @@ class _ListingEditScreenState extends ConsumerState<ListingEditScreen> with Sing
                 onPressed: () {
                   Navigator.of(
                     context,
-                  ).push(MaterialPageRoute<void>(builder: (_) => ListingDetailScreen(listingId: widget.listingId)));
+                  ).push(MaterialPageRoute<void>(builder: (_) => BusinessDetailScreen(listingId: widget.listingId)));
                 },
                 tooltip: 'View as customer',
                 color: AppTheme.specNavy,
@@ -355,11 +355,7 @@ class _ListingEditScreenState extends ConsumerState<ListingEditScreen> with Sing
                   controller: _tabController,
                   children: [
                     OverviewTab(listingId: widget.listingId, businessTier: businessTier),
-                    DetailsTab(
-                      listing: listing,
-                      listingId: widget.listingId,
-                      onSaveRequested: _onDetailsSaveRequested,
-                    ),
+                    DetailsTab(listing: listing, listingId: widget.listingId, onSaveRequested: _onDetailsSaveRequested),
                     _MenuTab(listingId: widget.listingId, items: menuItems),
                     _DealsTab(
                       listingId: widget.listingId,

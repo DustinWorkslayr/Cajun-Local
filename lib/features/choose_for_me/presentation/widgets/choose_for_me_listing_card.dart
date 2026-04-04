@@ -1,8 +1,8 @@
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:cajun_local/features/listing/presentation/screens/business_detail_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:cajun_local/features/businesses/data/models/business.dart';
 import 'package:cajun_local/core/theme/theme.dart';
-import 'package:cajun_local/features/listing/presentation/screens/listing_detail_screen.dart';
 
 /// Compact listing card for slot machine (minimal style).
 class ChooseForMeListingCard extends StatelessWidget {
@@ -27,7 +27,7 @@ class ChooseForMeListingCard extends StatelessWidget {
             () {
               Navigator.of(
                 context,
-              ).push(MaterialPageRoute<void>(builder: (_) => ListingDetailScreen(listingId: listing.id)));
+              ).push(MaterialPageRoute<void>(builder: (_) => BusinessDetailScreen(listingId: listing.id)));
             },
         borderRadius: BorderRadius.circular(16),
         child: Container(
@@ -125,7 +125,7 @@ class ExploreStyleListingCard extends StatelessWidget {
     final rating = 4.8;
     final ratingStr = '(4.8)';
     final location = listing.address ?? '—';
-    final distanceStr = null; 
+    final distanceStr = null;
     final subNames = subcategoryIds.map((id) => subcategoryNames[id]).whereType<String>().toList();
     final catLabel = categoryName ?? 'Listing';
     final categorySubLine = subNames.isNotEmpty ? '$catLabel · ${subNames.join(", ")}' : catLabel;
@@ -138,7 +138,7 @@ class ExploreStyleListingCard extends StatelessWidget {
             () {
               Navigator.of(
                 context,
-              ).push(MaterialPageRoute<void>(builder: (_) => ListingDetailScreen(listingId: listing.id)));
+              ).push(MaterialPageRoute<void>(builder: (_) => BusinessDetailScreen(listingId: listing.id)));
             },
         borderRadius: BorderRadius.circular(cardRadius),
         child: Container(

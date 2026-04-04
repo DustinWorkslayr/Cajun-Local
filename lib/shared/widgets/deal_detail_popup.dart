@@ -1,12 +1,12 @@
 import 'dart:ui';
 
+import 'package:cajun_local/features/listing/presentation/screens/business_detail_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:cajun_local/core/data/deal_type_icons.dart';
 import 'package:cajun_local/core/extensions/buildcontext_extension.dart';
 import 'package:cajun_local/features/deals/data/models/deal.dart';
 import 'package:cajun_local/shared/widgets/app_buttons.dart';
 import 'package:cajun_local/core/theme/theme.dart';
-import 'package:cajun_local/features/listing/presentation/screens/listing_detail_screen.dart';
 
 /// Glassy popup showing full deal details. Use [DealDetailPopup.show] to present.
 class DealDetailPopup extends StatefulWidget {
@@ -291,7 +291,7 @@ class _DealDetailPopupState extends State<DealDetailPopup> {
                           } else {
                             Navigator.of(context).push(
                               MaterialPageRoute<void>(
-                                builder: (_) => ListingDetailScreen(listingId: widget.deal.businessId),
+                                builder: (_) => BusinessDetailScreen(listingId: widget.deal.businessId),
                               ),
                             );
                           }

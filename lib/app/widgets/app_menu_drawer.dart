@@ -270,14 +270,14 @@ class _AppMenuDrawerState extends ConsumerState<AppMenuDrawer> {
                 NavTile(
                   icon: Icons.local_offer_outlined,
                   title: 'Deals',
-                  selected: widget.currentIndex == 4,
-                  onTap: () => widget.onNavigateToTab(4),
+                  selected: widget.currentIndex == 3,
+                  onTap: () => widget.onNavigateToTab(3),
                 ),
                 NavTile(
                   icon: Icons.person_outline_rounded,
                   title: 'Profile',
-                  selected: widget.currentIndex == 5,
-                  onTap: () => widget.onNavigateToTab(5),
+                  selected: widget.currentIndex == 4,
+                  onTap: () => widget.onNavigateToTab(4),
                 ),
 
                 const SizedBox(height: 12),

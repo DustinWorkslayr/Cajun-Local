@@ -8,7 +8,6 @@ import 'package:cajun_local/core/data/providers/app_data_providers.dart';
 import 'package:cajun_local/core/data/mock_data.dart';
 import 'package:cajun_local/features/businesses/data/repositories/business_managers_repository.dart';
 import 'package:cajun_local/features/messaging/data/repositories/form_submissions_repository.dart';
-import 'package:cajun_local/features/profile/data/repositories/user_plans_repository.dart';
 import 'package:cajun_local/core/stripe/stripe_checkout_service.dart';
 import 'package:cajun_local/core/stripe/stripe_config.dart';
 import 'package:cajun_local/core/theme/app_layout.dart';

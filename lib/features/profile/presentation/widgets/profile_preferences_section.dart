@@ -105,11 +105,7 @@ class _ProfilePreferencesSectionState extends ConsumerState<ProfilePreferencesSe
           color: Colors.transparent,
           child: InkWell(
             onTap: () {
-              Navigator.of(context).push(
-                MaterialPageRoute<void>(
-                  builder: (_) => NotificationsScreen(onHandleActionUrl: widget.onHandleNotificationActionUrl),
-                ),
-              );
+              Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => NotificationsScreen()));
             },
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
@@ -119,10 +115,7 @@ class _ProfilePreferencesSectionState extends ConsumerState<ProfilePreferencesSe
                   const SizedBox(width: 12),
                   Text(
                     'Manage all notifications',
-                    style: TextStyle(
-                      color: AppTheme.specNavy,
-                      fontWeight: FontWeight.w500,
-                    ),
+                    style: TextStyle(color: AppTheme.specNavy, fontWeight: FontWeight.w500),
                   ),
                   const Spacer(),
                   Icon(Icons.chevron_right_rounded, size: 20, color: AppTheme.specNavy.withValues(alpha: 0.4)),
@@ -162,18 +155,18 @@ class _NotificationToggleListTile extends StatelessWidget {
                 Text(
                   title,
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        color: AppTheme.specNavy,
-                        fontWeight: FontWeight.w700,
-                        fontSize: 15,
-                        letterSpacing: -0.2,
-                      ),
+                    color: AppTheme.specNavy,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 15,
+                    letterSpacing: -0.2,
+                  ),
                 ),
                 Text(
                   subtitle,
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: AppTheme.specNavy.withValues(alpha: 0.55),
-                        fontWeight: FontWeight.w500,
-                      ),
+                    color: AppTheme.specNavy.withValues(alpha: 0.55),
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
               ],
             ),

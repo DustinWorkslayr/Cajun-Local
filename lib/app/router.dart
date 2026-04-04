@@ -72,18 +72,9 @@ final routerProvider = Provider<GoRouter>((ref) {
     },
     routes: [
       // Auth routes (not in shell)
-      GoRoute(
-        path: '/splash',
-        builder: (context, state) => const CajunSplashScreen(),
-      ),
-      GoRoute(
-        path: '/auth/login',
-        builder: (context, state) => const SignInScreen(),
-      ),
-      GoRoute(
-        path: '/auth/register',
-        builder: (context, state) => const SignUpScreen(),
-      ),
+      GoRoute(path: '/splash', builder: (context, state) => const CajunSplashScreen()),
+      GoRoute(path: '/auth/login', builder: (context, state) => const SignInScreen()),
+      GoRoute(path: '/auth/register', builder: (context, state) => const SignUpScreen()),
       GoRoute(
         path: '/auth/set-new-password',
         builder: (context, state) {
@@ -149,7 +140,7 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/listing/:id',
         builder: (context, state) {
           final id = state.pathParameters['id']!;
-          return ListingDetailScreen(listingId: id);
+          return BusinessDetailScreen(listingId: id);
         },
       ),
       GoRoute(
@@ -161,7 +152,7 @@ final routerProvider = Provider<GoRouter>((ref) {
           // Actually, many screens use ListingDetailScreen for both?
           // No, usually there's an edit screen.
           // For now, let's keep it simple.
-          return ListingDetailScreen(listingId: id);
+          return BusinessDetailScreen(listingId: id);
         },
       ),
       GoRoute(
@@ -236,7 +227,7 @@ class RouterNotifier extends ChangeNotifier {
 
   RouterNotifier(this._ref) {
     _ref.listen<AsyncValue<UserModel?>>(authControllerProvider, (previous, next) {
-      // Notify GoRouter to re-run the redirect whenever auth status changes 
+      // Notify GoRouter to re-run the redirect whenever auth status changes
       // (from loading to data, or between different users).
       if (previous?.isLoading != next.isLoading || previous?.valueOrNull != next.valueOrNull) {
         notifyListeners();
